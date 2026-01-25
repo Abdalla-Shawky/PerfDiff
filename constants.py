@@ -1,0 +1,247 @@
+"""
+Performance Regression Detection Tool - Constants Configuration
+
+This module centralizes all configuration constants used throughout the tool.
+Each constant is documented with its purpose and acceptable value ranges.
+"""
+
+# ==============================================================================
+# REGRESSION DETECTION THRESHOLDS
+# ==============================================================================
+
+# Absolute median threshold in milliseconds
+# Regression is flagged if median change exceeds this value
+# Used to detect regressions in slower operations (>1000ms)
+MS_FLOOR = 50.0
+
+# Relative median threshold as a fraction (0.0 - 1.0)
+# Regression is flagged if median change exceeds this percentage
+# 0.05 = 5% increase. Used for faster operations where absolute thresholds may be too lenient
+PCT_FLOOR = 0.05
+
+# Tail latency percentile for tail performance analysis (0.0 - 1.0)
+# 0.90 = 90th percentile (p90). Measures worst-case performance
+TAIL_QUANTILE = 0.90
+
+# Absolute tail threshold in milliseconds
+# Regression is flagged if tail latency (p90) change exceeds this value
+TAIL_MS_FLOOR = 75.0
+
+# Relative tail threshold as a fraction (0.0 - 1.0)
+# Regression is flagged if tail latency (p90) change exceeds this percentage
+# 0.05 = 5% increase at the tail
+TAIL_PCT_FLOOR = 0.05
+
+
+# ==============================================================================
+# DIRECTIONALITY CHECK
+# ==============================================================================
+
+# Maximum allowed fraction of "slower" runs (0.0 - 1.0)
+# If more than this fraction of change runs are slower than baseline median,
+# it indicates a consistent performance degradation
+# 0.70 = 70% of runs can be slower before flagging as regression
+DIRECTIONALITY = 0.70
+
+
+# ==============================================================================
+# STATISTICAL TEST PARAMETERS
+# ==============================================================================
+
+# Enable/disable Wilcoxon signed-rank test
+# This non-parametric test detects distributional shifts
+USE_WILCOXON = True
+
+# Significance level (alpha) for Wilcoxon test (0.0 - 1.0)
+# 0.05 = 5% significance level (95% confidence)
+# Lower values make the test more conservative
+WILCOXON_ALPHA = 0.05
+
+# Confidence level for bootstrap confidence intervals (0.0 - 1.0)
+# 0.95 = 95% confidence interval
+# Higher values produce wider intervals (more conservative)
+BOOTSTRAP_CONFIDENCE = 0.95
+
+# Number of bootstrap resampling iterations
+# More iterations = more accurate but slower
+# 5000 is a good balance between accuracy and performance
+BOOTSTRAP_N = 5000
+
+# Random seed for reproducibility
+# Set to 0 or any integer for deterministic results
+# Set to None for non-deterministic (different results each run)
+SEED = 0
+
+
+# ==============================================================================
+# EQUIVALENCE TEST PARAMETERS
+# ==============================================================================
+
+# Equivalence margin in milliseconds for equivalence testing
+# If the confidence interval falls within [-margin, +margin],
+# the performance is considered equivalent (no significant change)
+# 30ms is typically imperceptible to users
+EQUIVALENCE_MARGIN_MS = 30.0
+
+
+# ==============================================================================
+# DATA QUALITY ASSESSMENT - SAMPLE SIZE THRESHOLDS
+# ==============================================================================
+
+# Minimum sample size before flagging as "very few samples" issue
+# n < 5 is insufficient for reliable statistical analysis
+MIN_SAMPLE_CRITICAL = 5
+
+# Minimum sample size before flagging as "small sample" warning
+# n < 10 has limited statistical power
+MIN_SAMPLE_WARNING = 10
+
+
+# ==============================================================================
+# DATA QUALITY ASSESSMENT - VARIABILITY THRESHOLDS
+# ==============================================================================
+
+# Coefficient of variation (CV) percentage thresholds
+# CV = (std_dev / mean) * 100
+
+# High variability threshold (%)
+# CV > 20% indicates inconsistent performance (issue)
+CV_HIGH_THRESHOLD = 20
+
+# Moderate variability threshold (%)
+# CV > 10% indicates some inconsistency (warning)
+CV_MODERATE_THRESHOLD = 10
+
+# Low variability threshold (%)
+# CV > 5% indicates minor inconsistency (warning)
+CV_SOME_THRESHOLD = 5
+
+
+# ==============================================================================
+# DATA QUALITY ASSESSMENT - OUTLIER DETECTION
+# ==============================================================================
+
+# IQR multiplier for outlier detection using Tukey's method
+# Outliers are values outside [Q1 - k*IQR, Q3 + k*IQR]
+# 1.5 is the standard multiplier (classic definition)
+IQR_OUTLIER_MULTIPLIER = 1.5
+
+# Outlier percentage threshold for flagging as issue (%)
+# If > 20% of samples are outliers, data quality is concerning
+OUTLIER_PCT_ISSUE = 20
+
+
+# ==============================================================================
+# DATA QUALITY ASSESSMENT - SCORING SYSTEM
+# ==============================================================================
+
+# Initial quality score (before applying penalties)
+# Starts at 100 (perfect), penalties are subtracted
+INITIAL_QUALITY_SCORE = 100
+
+# Penalty for critical sample size issue (n < 5)
+PENALTY_SAMPLE_CRITICAL = 30
+
+# Penalty for small sample warning (n < 10)
+PENALTY_SAMPLE_WARNING = 10
+
+# Penalty for high variability (CV > 20%)
+PENALTY_CV_HIGH = 25
+
+# Penalty for moderate variability (CV > 10%)
+PENALTY_CV_MODERATE = 10
+
+# Penalty for some variability (CV > 5%)
+PENALTY_CV_SOME = 5
+
+# Penalty for high outlier percentage (> 20%)
+PENALTY_OUTLIER_ISSUE = 20
+
+# Penalty for any detected outliers
+PENALTY_OUTLIER_WARNING = 5
+
+
+# ==============================================================================
+# DATA QUALITY ASSESSMENT - VERDICT THRESHOLDS
+# ==============================================================================
+
+# Score threshold for "Excellent" verdict
+# Score >= 90 indicates high-quality data
+QUALITY_EXCELLENT_THRESHOLD = 90
+
+# Score threshold for "Good" verdict
+# Score >= 75 indicates acceptable data quality
+QUALITY_GOOD_THRESHOLD = 75
+
+# Score threshold for "Fair" verdict
+# Score >= 60 indicates marginal data quality
+QUALITY_FAIR_THRESHOLD = 60
+
+# Scores < 60 result in "Poor" verdict
+
+
+# ==============================================================================
+# OVERALL CONFIDENCE THRESHOLDS
+# ==============================================================================
+
+# Overall quality score threshold for "High confidence"
+# Average score >= 85 across all metrics
+OVERALL_HIGH_CONFIDENCE = 85
+
+# Overall quality score threshold for "Moderate confidence"
+# Average score >= 70 across all metrics
+OVERALL_MODERATE_CONFIDENCE = 70
+
+# Scores < 70 result in "Low confidence"
+
+
+# ==============================================================================
+# QUANTILE DEFINITIONS
+# ==============================================================================
+
+# First quartile (Q1) - 25th percentile
+# Used for IQR calculation: IQR = Q3 - Q1
+Q1_QUANTILE = 0.25
+
+# Third quartile (Q3) - 75th percentile
+# Used for IQR calculation: IQR = Q3 - Q1
+Q3_QUANTILE = 0.75
+
+# 90th percentile for tail latency analysis
+# Same as TAIL_QUANTILE, defined here for consistency
+P90_QUANTILE = 0.90
+
+
+# ==============================================================================
+# MATHEMATICAL CONSTANTS
+# ==============================================================================
+
+# Conversion factor from fraction to percentage
+# Multiply by 100 to convert 0.05 -> 5%
+PCT_CONVERSION_FACTOR = 100
+
+# Divisor for two-sided statistical tests
+# Divide alpha by 2 for two-tailed tests
+TWO_SIDED_TEST_DIVISOR = 2
+
+
+# ==============================================================================
+# UI/HTML REPORT CONSTANTS
+# ==============================================================================
+
+# Maximum width for progress bars in HTML report (%)
+BAR_MAX_WIDTH_PCT = 100.0
+
+
+# ==============================================================================
+# EXIT CODES
+# ==============================================================================
+
+# Exit code for successful execution (no regression detected)
+EXIT_SUCCESS = 0
+
+# Exit code for regression detected
+EXIT_FAILURE = 1
+
+# Exit code for parsing/input errors
+EXIT_PARSE_ERROR = 2

@@ -14,6 +14,48 @@ import numpy as np
 # If perf_regress.py is in the same folder, this works:
 from perf_regress import gate_regression, equivalence_bootstrap_median
 
+from constants import (
+    MS_FLOOR,
+    PCT_FLOOR,
+    TAIL_QUANTILE,
+    TAIL_MS_FLOOR,
+    TAIL_PCT_FLOOR,
+    DIRECTIONALITY,
+    WILCOXON_ALPHA,
+    BOOTSTRAP_CONFIDENCE,
+    BOOTSTRAP_N,
+    SEED,
+    EQUIVALENCE_MARGIN_MS,
+    MIN_SAMPLE_CRITICAL,
+    MIN_SAMPLE_WARNING,
+    CV_HIGH_THRESHOLD,
+    CV_MODERATE_THRESHOLD,
+    CV_SOME_THRESHOLD,
+    IQR_OUTLIER_MULTIPLIER,
+    OUTLIER_PCT_ISSUE,
+    INITIAL_QUALITY_SCORE,
+    PENALTY_SAMPLE_CRITICAL,
+    PENALTY_SAMPLE_WARNING,
+    PENALTY_CV_HIGH,
+    PENALTY_CV_MODERATE,
+    PENALTY_CV_SOME,
+    PENALTY_OUTLIER_ISSUE,
+    PENALTY_OUTLIER_WARNING,
+    QUALITY_EXCELLENT_THRESHOLD,
+    QUALITY_GOOD_THRESHOLD,
+    QUALITY_FAIR_THRESHOLD,
+    OVERALL_HIGH_CONFIDENCE,
+    OVERALL_MODERATE_CONFIDENCE,
+    Q1_QUANTILE,
+    Q3_QUANTILE,
+    P90_QUANTILE,
+    PCT_CONVERSION_FACTOR,
+    BAR_MAX_WIDTH_PCT,
+    EXIT_SUCCESS,
+    EXIT_FAILURE,
+    EXIT_PARSE_ERROR,
+)
+
 
 def _parse_array(s: str) -> List[float]:
     """
@@ -43,7 +85,7 @@ def _fmt_ms(x: float) -> str:
 
 
 def _fmt_pct(x: float) -> str:
-    return f"{x*100:.2f}%"
+    return f"{x*PCT_CONVERSION_FACTOR:.2f}%"
 
 
 def _mini_table(rows: List[List[str]]) -> str:
@@ -73,13 +115,13 @@ def render_html_report(
     base_med = float(np.median(a))
     change_med = float(np.median(b))
     delta_med = float(np.median(d))
-    base_p90 = float(np.quantile(a, 0.90, method="linear"))
-    change_p90 = float(np.quantile(b, 0.90, method="linear"))
-    delta_p90 = float(np.quantile(d, 0.90, method="linear"))
+    base_p90 = float(np.quantile(a, P90_QUANTILE, method="linear"))
+    change_p90 = float(np.quantile(b, P90_QUANTILE, method="linear"))
+    delta_p90 = float(np.quantile(d, P90_QUANTILE, method="linear"))
     pos_frac = float(np.mean(d > 0))
 
     # Calculate percentage change for plain English
-    pct_change = ((change_med - base_med) / base_med * 100) if base_med > 0 else 0
+    pct_change = ((change_med - base_med) / base_med * PCT_CONVERSION_FACTOR) if base_med > 0 else 0
 
     # Determine plain English explanation
     if passed:
@@ -111,65 +153,65 @@ def render_html_report(
         median = float(np.median(data))
         mean = float(np.mean(data))
         std = float(np.std(data))
-        cv = (std / mean * 100) if mean > 0 else 0  # Coefficient of variation
+        cv = (std / mean * PCT_CONVERSION_FACTOR) if mean > 0 else 0  # Coefficient of variation
         min_val = float(np.min(data))
         max_val = float(np.max(data))
         range_val = max_val - min_val
-        iqr = float(np.quantile(data, 0.75, method="linear") - np.quantile(data, 0.25, method="linear"))
+        iqr = float(np.quantile(data, Q3_QUANTILE, method="linear") - np.quantile(data, Q1_QUANTILE, method="linear"))
 
         # Detect outliers using IQR method
-        q1 = float(np.quantile(data, 0.25, method="linear"))
-        q3 = float(np.quantile(data, 0.75, method="linear"))
-        iqr_threshold = 1.5 * iqr
+        q1 = float(np.quantile(data, Q1_QUANTILE, method="linear"))
+        q3 = float(np.quantile(data, Q3_QUANTILE, method="linear"))
+        iqr_threshold = IQR_OUTLIER_MULTIPLIER * iqr
         outliers = data[(data < q1 - iqr_threshold) | (data > q3 + iqr_threshold)]
         num_outliers = len(outliers)
 
         # Assessment criteria
         issues = []
         warnings = []
-        score = 100  # Start with perfect score
+        score = INITIAL_QUALITY_SCORE  # Start with perfect score
 
         # Sample size check
-        if n < 5:
+        if n < MIN_SAMPLE_CRITICAL:
             issues.append(f"Very few samples ({n}). Recommend at least 10 samples for reliable results.")
-            score -= 30
-        elif n < 10:
+            score -= PENALTY_SAMPLE_CRITICAL
+        elif n < MIN_SAMPLE_WARNING:
             warnings.append(f"Small sample size ({n}). Consider 10+ samples for better confidence.")
-            score -= 10
+            score -= PENALTY_SAMPLE_WARNING
 
         # Variability check (CV = coefficient of variation)
-        if cv > 20:
+        if cv > CV_HIGH_THRESHOLD:
             issues.append(f"High variability (CV={cv:.1f}%). Data is inconsistent - check test environment.")
-            score -= 25
-        elif cv > 10:
+            score -= PENALTY_CV_HIGH
+        elif cv > CV_MODERATE_THRESHOLD:
             warnings.append(f"Moderate variability (CV={cv:.1f}%). Results may be noisy.")
-            score -= 10
-        elif cv > 5:
+            score -= PENALTY_CV_MODERATE
+        elif cv > CV_SOME_THRESHOLD:
             warnings.append(f"Some variability (CV={cv:.1f}%). This is normal for most systems.")
-            score -= 5
+            score -= PENALTY_CV_SOME
 
         # Outlier check
         if num_outliers > 0:
-            outlier_pct = num_outliers / n * 100
-            if outlier_pct > 20:
+            outlier_pct = num_outliers / n * PCT_CONVERSION_FACTOR
+            if outlier_pct > OUTLIER_PCT_ISSUE:
                 issues.append(f"{num_outliers} outliers detected ({outlier_pct:.0f}% of data). Test environment may be unstable.")
-                score -= 20
+                score -= PENALTY_OUTLIER_ISSUE
             else:
                 warnings.append(f"{num_outliers} outlier(s) detected. May indicate measurement noise.")
-                score -= 5
+                score -= PENALTY_OUTLIER_WARNING
 
         # Determine overall verdict
-        if score >= 90:
+        if score >= QUALITY_EXCELLENT_THRESHOLD:
             verdict = "Excellent"
             verdict_icon = "🟢"
             verdict_color = "#137333"
             verdict_desc = "Data quality is excellent. Results are highly reliable."
-        elif score >= 75:
+        elif score >= QUALITY_GOOD_THRESHOLD:
             verdict = "Good"
             verdict_icon = "🟡"
             verdict_color = "#f9ab00"
             verdict_desc = "Data quality is good. Results are reliable with minor caveats."
-        elif score >= 60:
+        elif score >= QUALITY_FAIR_THRESHOLD:
             verdict = "Fair"
             verdict_icon = "🟠"
             verdict_color = "#f57c00"
@@ -206,10 +248,10 @@ def render_html_report(
 
     # Overall data quality verdict
     overall_quality_score = (baseline_quality["score"] + change_quality["score"]) / 2
-    if overall_quality_score >= 85:
+    if overall_quality_score >= OVERALL_HIGH_CONFIDENCE:
         overall_quality_verdict = "✅ High confidence in results"
         overall_quality_class = "good"
-    elif overall_quality_score >= 70:
+    elif overall_quality_score >= OVERALL_MODERATE_CONFIDENCE:
         overall_quality_verdict = "⚠️ Moderate confidence - see data quality notes"
         overall_quality_class = "warning"
     else:
@@ -220,7 +262,7 @@ def render_html_report(
     def bar(value: float, maxv: float) -> str:
         if maxv <= 0:
             return ""
-        w = max(0.0, min(100.0, 100.0 * value / maxv))
+        w = max(0.0, min(BAR_MAX_WIDTH_PCT, BAR_MAX_WIDTH_PCT * value / maxv))
         return f'<div class="bar"><div class="barfill" style="width:{w:.1f}%"></div></div>'
 
     # Detect outliers using IQR method (same as data quality assessment)
@@ -228,10 +270,10 @@ def render_html_report(
         """Returns a set of outlier values using IQR method."""
         if len(data) < 4:  # Need at least 4 points for IQR
             return set()
-        q1 = float(np.quantile(data, 0.25, method="linear"))
-        q3 = float(np.quantile(data, 0.75, method="linear"))
+        q1 = float(np.quantile(data, Q1_QUANTILE, method="linear"))
+        q3 = float(np.quantile(data, Q3_QUANTILE, method="linear"))
         iqr = q3 - q1
-        iqr_threshold = 1.5 * iqr
+        iqr_threshold = IQR_OUTLIER_MULTIPLIER * iqr
         lower_bound = q1 - iqr_threshold
         upper_bound = q3 + iqr_threshold
         outliers = data[(data < lower_bound) | (data > upper_bound)]
@@ -586,21 +628,21 @@ def main() -> int:
     p.add_argument("--title", default="Performance Regression Report", help="Report title")
 
     # Gate config (PR-style)
-    p.add_argument("--ms-floor", type=float, default=50.0)
-    p.add_argument("--pct-floor", type=float, default=0.05)
-    p.add_argument("--tail-ms-floor", type=float, default=75.0)
-    p.add_argument("--tail-pct-floor", type=float, default=0.05)
-    p.add_argument("--tail-quantile", type=float, default=0.90)
-    p.add_argument("--directionality", type=float, default=0.70)
+    p.add_argument("--ms-floor", type=float, default=MS_FLOOR)
+    p.add_argument("--pct-floor", type=float, default=PCT_FLOOR)
+    p.add_argument("--tail-ms-floor", type=float, default=TAIL_MS_FLOOR)
+    p.add_argument("--tail-pct-floor", type=float, default=TAIL_PCT_FLOOR)
+    p.add_argument("--tail-quantile", type=float, default=TAIL_QUANTILE)
+    p.add_argument("--directionality", type=float, default=DIRECTIONALITY)
     p.add_argument("--no-wilcoxon", action="store_true")
-    p.add_argument("--wilcoxon-alpha", type=float, default=0.05)
-    p.add_argument("--bootstrap-confidence", type=float, default=0.95)
-    p.add_argument("--bootstrap-n", type=int, default=5000)
-    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--wilcoxon-alpha", type=float, default=WILCOXON_ALPHA)
+    p.add_argument("--bootstrap-confidence", type=float, default=BOOTSTRAP_CONFIDENCE)
+    p.add_argument("--bootstrap-n", type=int, default=BOOTSTRAP_N)
+    p.add_argument("--seed", type=int, default=SEED)
 
     # Release equivalence mode (optional)
     p.add_argument("--mode", choices=["pr", "release"], default="pr")
-    p.add_argument("--equivalence-margin-ms", type=float, default=30.0, help="Used only in --mode release")
+    p.add_argument("--equivalence-margin-ms", type=float, default=EQUIVALENCE_MARGIN_MS, help="Used only in --mode release")
 
     args = p.parse_args()
 
@@ -609,7 +651,7 @@ def main() -> int:
         change = _parse_array(args.change)
     except Exception as e:
         print(f"Error parsing arrays: {e}", file=sys.stderr)
-        return 2
+        return EXIT_PARSE_ERROR
 
     # Run the PR-style gate always (even for release, useful signal)
     gate = gate_regression(
@@ -669,10 +711,10 @@ def main() -> int:
     # as long as the change is within the equivalence margin.
     if args.mode == "release":
         # Fail if NOT equivalent
-        return 0 if (eq_payload and eq_payload["equivalent"]) else 1
+        return EXIT_SUCCESS if (eq_payload and eq_payload["equivalent"]) else EXIT_FAILURE
 
     # PR mode: fail if gate check failed
-    return 0 if gate.passed else 1
+    return EXIT_SUCCESS if gate.passed else EXIT_FAILURE
 
 
 if __name__ == "__main__":

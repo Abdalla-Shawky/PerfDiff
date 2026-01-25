@@ -6,6 +6,22 @@ from typing import List, Dict, Any, Optional
 import numpy as np
 from scipy import stats
 
+from constants import (
+    MS_FLOOR,
+    PCT_FLOOR,
+    TAIL_QUANTILE,
+    TAIL_MS_FLOOR,
+    TAIL_PCT_FLOOR,
+    DIRECTIONALITY,
+    USE_WILCOXON,
+    WILCOXON_ALPHA,
+    BOOTSTRAP_CONFIDENCE,
+    BOOTSTRAP_N,
+    SEED,
+    EQUIVALENCE_MARGIN_MS,
+    TWO_SIDED_TEST_DIVISOR,
+)
+
 
 @dataclass
 class GateResult:
@@ -32,17 +48,17 @@ class EquivalenceResult:
 def gate_regression(
     baseline: List[float],
     change: List[float],
-    ms_floor: float = 50.0,
-    pct_floor: float = 0.05,
-    tail_quantile: float = 0.90,
-    tail_ms_floor: float = 75.0,
-    tail_pct_floor: float = 0.05,
-    directionality: float = 0.70,
-    use_wilcoxon: bool = True,
-    wilcoxon_alpha: float = 0.05,
-    bootstrap_confidence: float = 0.95,
-    bootstrap_n: int = 5000,
-    seed: int = 0,
+    ms_floor: float = MS_FLOOR,
+    pct_floor: float = PCT_FLOOR,
+    tail_quantile: float = TAIL_QUANTILE,
+    tail_ms_floor: float = TAIL_MS_FLOOR,
+    tail_pct_floor: float = TAIL_PCT_FLOOR,
+    directionality: float = DIRECTIONALITY,
+    use_wilcoxon: bool = USE_WILCOXON,
+    wilcoxon_alpha: float = WILCOXON_ALPHA,
+    bootstrap_confidence: float = BOOTSTRAP_CONFIDENCE,
+    bootstrap_n: int = BOOTSTRAP_N,
+    seed: int = SEED,
 ) -> GateResult:
     """
     Gate regression check for performance testing.
@@ -181,8 +197,8 @@ def gate_regression(
 
         boot_medians = np.array(boot_medians)
         alpha = 1 - bootstrap_confidence
-        ci_low = float(np.quantile(boot_medians, alpha / 2, method="linear"))
-        ci_high = float(np.quantile(boot_medians, 1 - alpha / 2, method="linear"))
+        ci_low = float(np.quantile(boot_medians, alpha / TWO_SIDED_TEST_DIVISOR, method="linear"))
+        ci_high = float(np.quantile(boot_medians, 1 - alpha / TWO_SIDED_TEST_DIVISOR, method="linear"))
 
         details["bootstrap_ci_median"] = {
             "confidence": bootstrap_confidence,
@@ -197,10 +213,10 @@ def gate_regression(
 def equivalence_bootstrap_median(
     baseline: List[float],
     change: List[float],
-    margin_ms: float = 30.0,
-    confidence: float = 0.95,
-    n_boot: int = 5000,
-    seed: int = 0,
+    margin_ms: float = EQUIVALENCE_MARGIN_MS,
+    confidence: float = BOOTSTRAP_CONFIDENCE,
+    n_boot: int = BOOTSTRAP_N,
+    seed: int = SEED,
 ) -> EquivalenceResult:
     """
     Test for equivalence using bootstrap CI on median delta.
