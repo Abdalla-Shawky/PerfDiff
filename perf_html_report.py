@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, UTC
 from html import escape
@@ -545,10 +546,22 @@ def main() -> int:
         eq=eq_payload,
     )
 
-    with open(args.out, "w", encoding="utf-8") as f:
+    # Create generated_reports folder if it doesn't exist
+    output_dir = "generated_reports"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Prepend folder to output path (unless user already included a path)
+    if os.path.dirname(args.out):
+        # User specified a path like "foo/bar.html" - use as-is
+        output_path = args.out
+    else:
+        # User specified just a filename like "report.html" - put in generated_reports/
+        output_path = os.path.join(output_dir, args.out)
+
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(report)
 
-    print(f"Wrote HTML report to: {args.out}")
+    print(f"Wrote HTML report to: {output_path}")
 
     # Exit code logic:
     # - PR mode: Exit 0 if gate check passed, exit 1 if regression detected
