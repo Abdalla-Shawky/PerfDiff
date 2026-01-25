@@ -54,6 +54,28 @@ from constants import (
     EXIT_SUCCESS,
     EXIT_FAILURE,
     EXIT_PARSE_ERROR,
+    # UI Constants
+    CHARTJS_CDN_URL,
+    CHARTJS_CDN_SRI,
+    ANIMATION_DURATION_FAST,
+    ANIMATION_DURATION_NORMAL,
+    ANIMATION_DURATION_SLOW,
+    CHART_COLOR_BASELINE,
+    CHART_COLOR_CHANGE_IMPROVEMENT,
+    CHART_COLOR_CHANGE_REGRESSION,
+    CHART_COLOR_NEUTRAL,
+    DARK_BG_PRIMARY,
+    DARK_BG_SECONDARY,
+    DARK_BG_TERTIARY,
+    DARK_TEXT_PRIMARY,
+    DARK_TEXT_SECONDARY,
+    DARK_BORDER,
+    LIGHT_BG_PRIMARY,
+    LIGHT_BG_SECONDARY,
+    LIGHT_BG_TERTIARY,
+    LIGHT_TEXT_PRIMARY,
+    LIGHT_TEXT_SECONDARY,
+    LIGHT_BORDER,
 )
 
 
@@ -354,90 +376,762 @@ def render_html_report(
             ["Confidence", f'{float(eq.get("confidence", 0.95))*100:.1f}%'],
         ]
 
+    # Prepare data for charts and exports (as JSON)
+    baseline_data_json = json.dumps(a.tolist())
+    change_data_json = json.dumps(b.tolist())
+    delta_data_json = json.dumps(d.tolist())
+
+    # Prepare full data export
+    export_data = {
+        "title": title,
+        "mode": mode,
+        "generated": now,
+        "status": {"passed": passed, "reason": result.get("reason", "")},
+        "measurements": {
+            "baseline": a.tolist(),
+            "change": b.tolist(),
+            "delta": d.tolist(),
+        },
+        "statistics": {
+            "baseline_median": base_med,
+            "change_median": change_med,
+            "median_delta": delta_med,
+            "baseline_p90": base_p90,
+            "change_p90": change_p90,
+            "p90_delta": delta_p90,
+            "positive_fraction": pos_frac,
+        },
+        "data_quality": {
+            "baseline": {
+                "score": baseline_quality["score"],
+                "verdict": baseline_quality["verdict"],
+                "n": baseline_quality["n"],
+                "cv": baseline_quality["cv"],
+                "outliers": baseline_quality["num_outliers"],
+            },
+            "change": {
+                "score": change_quality["score"],
+                "verdict": change_quality["verdict"],
+                "n": change_quality["n"],
+                "cv": change_quality["cv"],
+                "outliers": change_quality["num_outliers"],
+            },
+        },
+        "details": details,
+    }
+    if eq:
+        export_data["equivalence"] = eq
+
+    export_data_json = json.dumps(export_data, indent=2)
+
+    # Determine chart color for change data (regression vs improvement)
+    chart_change_color = CHART_COLOR_CHANGE_REGRESSION if delta_med > 0 else CHART_COLOR_CHANGE_IMPROVEMENT
+
     html = f"""<!doctype html>
-<html>
+<html data-theme="light">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>{escape(title)} - Perf Report</title>
+
+  <!-- Chart.js for interactive visualizations -->
+  <script src="{CHARTJS_CDN_URL}" crossorigin="anonymous"></script>
+
   <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; }}
-    .container {{ max-width: 1200px; margin: 0 auto; padding: 24px; }}
-    h1 {{ margin: 0 0 8px 0; font-size: 28px; }}
-    .meta {{ color: #666; margin-bottom: 24px; font-size: 14px; }}
+    /* ============================================================================
+       CSS CUSTOM PROPERTIES (CSS Variables) FOR THEMING
+       ============================================================================ */
+    :root {{
+      /* Light mode colors (default) */
+      --bg-primary: {LIGHT_BG_PRIMARY};
+      --bg-secondary: {LIGHT_BG_SECONDARY};
+      --bg-tertiary: {LIGHT_BG_TERTIARY};
+      --text-primary: {LIGHT_TEXT_PRIMARY};
+      --text-secondary: {LIGHT_TEXT_SECONDARY};
+      --border-color: {LIGHT_BORDER};
 
-    /* Executive Summary - Simple & Clear */
-    .executive-summary {{ background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
-    .big-status {{ font-size: 48px; font-weight: 700; margin-bottom: 16px; text-align: center; }}
-    .big-status.pass {{ color: #137333; }}
-    .big-status.fail {{ color: #b3261e; }}
-    .verdict {{ font-size: 24px; font-weight: 600; margin-bottom: 16px; text-align: center; color: #333; }}
-    .recommendation {{ font-size: 18px; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 24px 0; text-align: center; line-height: 1.6; }}
+      /* Status colors (same in both themes) */
+      --color-success: #137333;
+      --color-error: #b3261e;
+      --color-warning: #f57c00;
+      --color-info: #1976d2;
 
-    .comparison {{ display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin: 24px 0; }}
-    .comparison-item {{ text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; }}
-    .comparison-label {{ font-size: 12px; text-transform: uppercase; color: #666; margin-bottom: 8px; font-weight: 600; }}
-    .comparison-value {{ font-size: 32px; font-weight: 700; color: #333; }}
-    .comparison-arrow {{ font-size: 48px; color: {change_color}; }}
+      /* Chart colors */
+      --chart-baseline: {CHART_COLOR_BASELINE};
+      --chart-improvement: {CHART_COLOR_CHANGE_IMPROVEMENT};
+      --chart-regression: {CHART_COLOR_CHANGE_REGRESSION};
+
+      /* Animation durations */
+      --anim-fast: {ANIMATION_DURATION_FAST}ms;
+      --anim-normal: {ANIMATION_DURATION_NORMAL}ms;
+      --anim-slow: {ANIMATION_DURATION_SLOW}ms;
+
+      /* Shadows */
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+    }}
+
+    /* Dark mode color overrides */
+    [data-theme="dark"] {{
+      --bg-primary: {DARK_BG_PRIMARY};
+      --bg-secondary: {DARK_BG_SECONDARY};
+      --bg-tertiary: {DARK_BG_TERTIARY};
+      --text-primary: {DARK_TEXT_PRIMARY};
+      --text-secondary: {DARK_TEXT_SECONDARY};
+      --border-color: {DARK_BORDER};
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.25);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.35);
+    }}
+
+    /* Smooth transitions for theme changes */
+    * {{
+      transition: background-color var(--anim-normal) ease,
+                  color var(--anim-normal) ease,
+                  border-color var(--anim-normal) ease,
+                  box-shadow var(--anim-normal) ease;
+    }}
+
+    /* Disable transitions for immediate feedback on clicks */
+    *, *::before, *::after {{
+      transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+    }}
+
+    /* Base styles */
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }}
+
+    /* Header with controls */
+    .header {{
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }}
+
+    .header-left {{
+      flex: 1;
+      min-width: 200px;
+    }}
+
+    .header-right {{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }}
+
+    h1 {{
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }}
+
+    .meta {{
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: 4px;
+    }}
+
+    .container {{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }}
+
+    /* Control buttons (theme toggle, export) */
+    .control-btn {{
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+    }}
+
+    .control-btn:hover {{
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+      background: var(--bg-secondary);
+    }}
+
+    .control-btn:active {{
+      transform: translateY(0);
+    }}
+
+    .icon-btn {{
+      background: transparent;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      font-size: 20px;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--anim-fast) ease;
+    }}
+
+    .icon-btn:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    /* Export dropdown */
+    .export-dropdown {{
+      position: relative;
+      display: inline-block;
+    }}
+
+    .export-menu {{
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      min-width: 160px;
+      z-index: 1000;
+    }}
+
+    .export-dropdown.active .export-menu {{
+      display: block;
+      animation: fadeIn var(--anim-fast) ease;
+    }}
+
+    .export-menu button {{
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color var(--anim-fast) ease;
+    }}
+
+    .export-menu button:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    .export-menu button:first-child {{
+      border-radius: 8px 8px 0 0;
+    }}
+
+    .export-menu button:last-child {{
+      border-radius: 0 0 8px 8px;
+    }}
+
+    /* Executive Summary */
+    .executive-summary {{
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-md);
+      animation: slideUp var(--anim-slow) ease;
+    }}
+
+    .big-status {{
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      text-align: center;
+      animation: scaleIn var(--anim-normal) ease;
+    }}
+
+    .big-status.pass {{ color: var(--color-success); }}
+    .big-status.fail {{ color: var(--color-error); }}
+
+    .verdict {{
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      text-align: center;
+      color: var(--text-primary);
+    }}
+
+    .recommendation {{
+      font-size: 16px;
+      padding: 20px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      margin: 24px 0;
+      text-align: center;
+      line-height: 1.7;
+      border: 1px solid var(--border-color);
+    }}
+
+    .comparison {{
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      margin: 24px 0;
+    }}
+
+    .comparison-item {{
+      text-align: center;
+      padding: 24px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      transition: all var(--anim-fast) ease;
+    }}
+
+    .comparison-item:hover {{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }}
+
+    .comparison-label {{
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }}
+
+    .comparison-value {{
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 8px 0;
+    }}
+
+    .comparison-arrow {{
+      font-size: 40px;
+      color: {change_color};
+      opacity: 0.8;
+    }}
 
     /* Collapsible Sections */
-    .section {{ background: white; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
-    .section-header {{ cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }}
-    .section-header:hover {{ background: #f8f9fa; margin: -8px; padding: 8px; border-radius: 8px; }}
-    .section-title {{ font-size: 20px; font-weight: 600; color: #333; margin: 0; }}
-    .section-subtitle {{ font-size: 14px; color: #666; margin-top: 4px; }}
-    .toggle-icon {{ font-size: 24px; color: #666; transition: transform 0.3s; }}
-    .section-content {{ margin-top: 20px; display: none; }}
-    .section-content.show {{ display: block; }}
-    .section.expanded .toggle-icon {{ transform: rotate(180deg); }}
+    .section {{
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+      animation: fadeIn var(--anim-normal) ease;
+    }}
+
+    .section-header {{
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      padding: 8px;
+      margin: -8px;
+      border-radius: 8px;
+      transition: background-color var(--anim-fast) ease;
+    }}
+
+    .section-header:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    .section-title {{
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }}
+
+    .section-subtitle {{
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }}
+
+    .toggle-icon {{
+      font-size: 20px;
+      color: var(--text-secondary);
+      transition: transform var(--anim-normal) cubic-bezier(0.4, 0, 0.2, 1);
+    }}
+
+    .section-content {{
+      margin-top: 20px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height var(--anim-normal) ease, opacity var(--anim-normal) ease;
+    }}
+
+    .section-content.show {{
+      max-height: 10000px;
+      opacity: 1;
+    }}
+
+    .section.expanded .toggle-icon {{
+      transform: rotate(180deg);
+    }}
+
+    /* Charts container */
+    .chart-container {{
+      position: relative;
+      height: 350px;
+      margin: 20px 0;
+    }}
+
+    .chart-grid {{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin: 20px 0;
+    }}
 
     /* Tables */
-    table {{ border-collapse: collapse; width: 100%; }}
-    td, th {{ border-bottom: 1px solid #e5e5e5; padding: 12px; text-align: left; font-size: 14px; }}
-    th {{ font-weight: 600; background: #f8f9fa; }}
+    table {{
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+    }}
 
-    /* Misc */
-    .card {{ border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; margin: 14px 0; background: white; }}
-    .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
-    .bar {{ background:#f0f0f0; border-radius: 8px; height: 10px; overflow:hidden; }}
-    .barfill {{ background:#999; height:10px; }}
-    .small {{ color:#666; font-size: 12px; }}
-    .badge {{ display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }}
-    .badge-info {{ background: #e3f2fd; color: #1976d2; }}
-    .outlier-badge {{ display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #fff3cd; color: #856404; margin-left: 4px; font-weight: 600; }}
-    .quality-badge {{ display: inline-block; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; }}
-    .quality-good {{ background: #e8f5e9; color: #2e7d32; }}
-    .quality-warning {{ background: #fff3cd; color: #856404; }}
-    .quality-poor {{ background: #f8d7da; color: #721c24; }}
-    .data-quality-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }}
-    .quality-item {{ padding: 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #ccc; }}
-    .quality-item.excellent {{ border-left-color: #137333; }}
+    td, th {{
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px;
+      text-align: left;
+      font-size: 14px;
+    }}
+
+    th {{
+      font-weight: 600;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }}
+
+    tr:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    /* Cards and Grid */
+    .card {{
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 14px 0;
+      background: var(--bg-secondary);
+    }}
+
+    .grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }}
+
+    .card h3 {{
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }}
+
+    /* Enhanced Progress Bars with Gradients */
+    .bar {{
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      height: 12px;
+      overflow: hidden;
+      position: relative;
+    }}
+
+    .barfill {{
+      height: 12px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--chart-baseline), {CHART_COLOR_NEUTRAL});
+      transition: width var(--anim-slow) cubic-bezier(0.4, 0, 0.2, 1);
+      animation: barGrow var(--anim-slow) ease;
+    }}
+
+    .barfill.improvement {{
+      background: linear-gradient(90deg, var(--chart-improvement), #4caf50);
+    }}
+
+    .barfill.regression {{
+      background: linear-gradient(90deg, var(--chart-regression), #f44336);
+    }}
+
+    /* Badges */
+    .small {{
+      color: var(--text-secondary);
+      font-size: 12px;
+    }}
+
+    .badge {{
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }}
+
+    .badge-info {{
+      background: #e3f2fd;
+      color: var(--color-info);
+    }}
+
+    .outlier-badge {{
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      background: #fff3cd;
+      color: #856404;
+      margin-left: 4px;
+      font-weight: 600;
+    }}
+
+    .quality-badge {{
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      animation: pulse 2s ease infinite;
+    }}
+
+    .quality-good {{
+      background: #e8f5e9;
+      color: #2e7d32;
+    }}
+
+    .quality-warning {{
+      background: #fff3cd;
+      color: #856404;
+    }}
+
+    .quality-poor {{
+      background: #f8d7da;
+      color: #721c24;
+    }}
+
+    /* Data Quality Grid */
+    .data-quality-grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }}
+
+    .quality-item {{
+      padding: 20px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      border-left: 4px solid var(--border-color);
+      transition: all var(--anim-fast) ease;
+    }}
+
+    .quality-item:hover {{
+      transform: translateX(4px);
+      box-shadow: var(--shadow-md);
+    }}
+
+    .quality-item.excellent {{ border-left-color: var(--color-success); }}
     .quality-item.good {{ border-left-color: #f9ab00; }}
-    .quality-item.fair {{ border-left-color: #f57c00; }}
-    .quality-item.poor {{ border-left-color: #b3261e; }}
-    .issue-list {{ margin: 8px 0; padding-left: 20px; }}
-    .issue-list li {{ margin: 4px 0; color: #666; }}
+    .quality-item.fair {{ border-left-color: var(--color-warning); }}
+    .quality-item.poor {{ border-left-color: var(--color-error); }}
 
+    .issue-list {{
+      margin: 8px 0;
+      padding-left: 20px;
+    }}
+
+    .issue-list li {{
+      margin: 6px 0;
+      color: var(--text-secondary);
+    }}
+
+    /* Info boxes */
+    .info-box {{
+      margin: 16px 0;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border-left: 4px solid var(--color-info);
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }}
+
+    .warning-box {{
+      margin: 16px 0;
+      padding: 16px;
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }}
+
+    /* Scroll to top button */
+    .scroll-top-btn {{
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      color: var(--text-primary);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-lg);
+      transition: all var(--anim-fast) ease;
+      z-index: 999;
+    }}
+
+    .scroll-top-btn:hover {{
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }}
+
+    .scroll-top-btn.visible {{
+      display: flex;
+      animation: fadeIn var(--anim-normal) ease;
+    }}
+
+    /* Animations */
+    @keyframes fadeIn {{
+      from {{ opacity: 0; }}
+      to {{ opacity: 1; }}
+    }}
+
+    @keyframes slideUp {{
+      from {{
+        opacity: 0;
+        transform: translateY(20px);
+      }}
+      to {{
+        opacity: 1;
+        transform: translateY(0);
+      }}
+    }}
+
+    @keyframes scaleIn {{
+      from {{
+        opacity: 0;
+        transform: scale(0.9);
+      }}
+      to {{
+        opacity: 1;
+        transform: scale(1);
+      }}
+    }}
+
+    @keyframes barGrow {{
+      from {{ width: 0; }}
+    }}
+
+    @keyframes pulse {{
+      0%, 100% {{ opacity: 1; }}
+      50% {{ opacity: 0.8; }}
+    }}
+
+    /* Responsive Design */
     @media (max-width: 900px) {{
       .grid {{ grid-template-columns: 1fr; }}
       .comparison {{ grid-template-columns: 1fr; }}
       .comparison-arrow {{ transform: rotate(90deg); }}
+      .data-quality-grid {{ grid-template-columns: 1fr; }}
+      .header {{ flex-direction: column; align-items: flex-start; }}
+      .header-right {{ width: 100%; justify-content: flex-end; }}
+      .scroll-top-btn {{ bottom: 16px; right: 16px; }}
+    }}
+
+    @media (max-width: 600px) {{
+      .container {{ padding: 16px; }}
+      .executive-summary {{ padding: 20px; }}
+      .big-status {{ font-size: 36px; }}
+      .comparison-value {{ font-size: 24px; }}
+      h1 {{ font-size: 20px; }}
+    }}
+
+    /* Print styles */
+    @media print {{
+      .header-right, .scroll-top-btn, .section-header {{
+        display: none !important;
+      }}
+      .section-content {{
+        max-height: none !important;
+        opacity: 1 !important;
+        display: block !important;
+      }}
+      body {{
+        background: white;
+        color: black;
+      }}
+      .section, .executive-summary {{
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+      }}
     }}
   </style>
-  <script>
-    function toggleSection(id) {{
-      const content = document.getElementById(id);
-      const section = content.parentElement;
-      content.classList.toggle('show');
-      section.classList.toggle('expanded');
-    }}
-  </script>
 </head>
 <body>
-  <div class="container">
-    <h1>{escape(title)}</h1>
-    <div class="meta">Generated: {escape(now)}</div>
+  <!-- Sticky Header with Controls -->
+  <div class="header">
+    <div class="header-left">
+      <h1>{escape(title)}</h1>
+      <div class="meta">Generated: {escape(now)} | Mode: {mode.upper()}</div>
+    </div>
+    <div class="header-right">
+      <!-- Theme Toggle -->
+      <button class="icon-btn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+      </button>
 
+      <!-- Export Dropdown -->
+      <div class="export-dropdown" id="export-dropdown">
+        <button class="control-btn" onclick="toggleExportMenu()">
+          📥 Export ▼
+        </button>
+        <div class="export-menu">
+          <button onclick="exportJSON()">📄 Export JSON</button>
+          <button onclick="exportCSV()">📊 Export CSV</button>
+          <button onclick="window.print()">🖨️ Print / PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
     <!-- EXECUTIVE SUMMARY - Simple & Clear for Everyone -->
     <div class="executive-summary">
       <div class="big-status {'pass' if passed else 'fail'}">{status}</div>
@@ -459,8 +1153,55 @@ def render_html_report(
 
       <div class="recommendation">{escape(recommendation)}</div>
 
-      <div class="small" style="text-align: center; margin-top: 16px; color: #999;">
+      <div class="small" style="text-align: center; margin-top: 16px; color: var(--text-secondary);">
         💡 Scroll down for detailed technical analysis
+      </div>
+    </div>
+
+    <!-- INTERACTIVE CHARTS - Visual Data Exploration -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('charts')">
+        <div>
+          <h2 class="section-title">📊 Interactive Charts</h2>
+          <div class="section-subtitle">Visual comparison of performance distributions</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="charts" class="section-content">
+        <div class="chart-grid">
+          <!-- Histogram Comparison Chart -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Distribution Histogram</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Compare the distribution of measurements between baseline and change. Overlapping peaks indicate similar performance.
+            </p>
+            <div class="chart-container">
+              <canvas id="histogramChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Run-by-Run Line Chart -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Run-by-Run Comparison</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Track how each paired measurement compares. The gap between lines shows performance delta.
+            </p>
+            <div class="chart-container">
+              <canvas id="lineChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Statistical Summary Comparison -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Statistical Summary</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Compare key statistics: min, quartiles (Q1/Q3), median, mean, and max values side-by-side.
+            </p>
+            <div class="chart-container">
+              <canvas id="boxPlotChart"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -607,11 +1348,467 @@ def render_html_report(
       </div>
     </div>
 
-    <div style="text-align: center; margin: 32px 0; padding: 16px; color: #999; font-size: 12px;">
-      Generated by Performance Regression Detection Tool
+    <div style="text-align: center; margin: 32px 0; padding: 16px; color: var(--text-secondary); font-size: 12px;">
+      Generated by Performance Regression Detection Tool 🚀
     </div>
 
   </div>
+
+  <!-- Scroll to Top Button -->
+  <button class="scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()" aria-label="Scroll to top">
+    ↑
+  </button>
+
+  <script>
+    // ============================================================================
+    // DATA PREPARATION FOR CHARTS
+    // ============================================================================
+    const baselineData = {baseline_data_json};
+    const changeData = {change_data_json};
+    const deltaData = {delta_data_json};
+    const exportData = {export_data_json};
+
+    // Chart colors
+    const CHART_COLORS = {{
+      baseline: '{CHART_COLOR_BASELINE}',
+      change: '{chart_change_color}',
+      neutral: '{CHART_COLOR_NEUTRAL}',
+    }};
+
+    // ============================================================================
+    // THEME TOGGLE (DARK MODE)
+    // ============================================================================
+    function toggleTheme() {{
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      const icon = document.getElementById('theme-icon');
+
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+
+      // Update chart colors for dark mode (only if charts are already initialized)
+      if (chartsInitialized && window.charts) {{
+        Object.values(window.charts).forEach(chart => {{
+          if (chart) chart.destroy();
+        }});
+        initializeCharts();
+      }}
+    }}
+
+    // Initialize theme from localStorage or system preference
+    function initializeTheme() {{
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }}
+
+    // ============================================================================
+    // EXPORT FUNCTIONALITY
+    // ============================================================================
+    function toggleExportMenu() {{
+      const dropdown = document.getElementById('export-dropdown');
+      dropdown.classList.toggle('active');
+    }}
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {{
+      const dropdown = document.getElementById('export-dropdown');
+      if (!dropdown.contains(event.target)) {{
+        dropdown.classList.remove('active');
+      }}
+    }});
+
+    function exportJSON() {{
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], {{ type: 'application/json' }});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'perf-report-data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('export-dropdown').classList.remove('active');
+      showToast('JSON exported successfully');
+    }}
+
+    function exportCSV() {{
+      const rows = [
+        ['Run', 'Baseline (ms)', 'Change (ms)', 'Delta (ms)']
+      ];
+
+      for (let i = 0; i < baselineData.length; i++) {{
+        rows.push([
+          i + 1,
+          baselineData[i].toFixed(2),
+          changeData[i].toFixed(2),
+          deltaData[i].toFixed(2)
+        ]);
+      }}
+
+      const csvContent = rows.map(row => row.join(',')).join('\\n');
+      const blob = new Blob([csvContent], {{ type: 'text/csv' }});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'perf-report-measurements.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('export-dropdown').classList.remove('active');
+      showToast('CSV exported successfully');
+    }}
+
+    function showToast(message) {{
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        right: 32px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+        border: 1px solid var(--border-color);
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {{
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }}, 2000);
+    }}
+
+    // ============================================================================
+    // SECTION TOGGLE ENHANCEMENT
+    // ============================================================================
+    let chartsInitialized = false;
+
+    function toggleSection(id) {{
+      const content = document.getElementById(id);
+      const section = content.parentElement;
+      content.classList.toggle('show');
+      section.classList.toggle('expanded');
+
+      // Lazy load charts when Interactive Charts section is first opened
+      if (id === 'charts' && content.classList.contains('show') && !chartsInitialized) {{
+        chartsInitialized = true;
+        initializeCharts();
+      }}
+    }}
+
+    // ============================================================================
+    // SCROLL TO TOP BUTTON
+    // ============================================================================
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+
+    window.addEventListener('scroll', () => {{
+      if (window.pageYOffset > 300) {{
+        scrollTopBtn.classList.add('visible');
+      }} else {{
+        scrollTopBtn.classList.remove('visible');
+      }}
+    }});
+
+    function scrollToTop() {{
+      window.scrollTo({{
+        top: 0,
+        behavior: 'smooth'
+      }});
+    }}
+
+    // ============================================================================
+    // CHART.JS INITIALIZATION
+    // ============================================================================
+    window.charts = {{}};
+
+    function getChartColors() {{
+      const theme = document.documentElement.getAttribute('data-theme');
+      return {{
+        gridColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        textColor: theme === 'dark' ? '#e0e0e0' : '#333',
+      }};
+    }}
+
+    function initializeCharts() {{
+      const colors = getChartColors();
+
+      // 1. HISTOGRAM - Distribution comparison
+      const histCtx = document.getElementById('histogramChart');
+      if (histCtx) {{
+        // Calculate histogram bins
+        const allData = [...baselineData, ...changeData];
+        const min = Math.min(...allData);
+        const max = Math.max(...allData);
+        const numBins = Math.min(20, Math.max(10, Math.floor(Math.sqrt(baselineData.length))));
+        const binWidth = (max - min) / numBins;
+
+        const bins = Array.from({{ length: numBins }}, (_, i) => min + i * binWidth);
+
+        function calculateHistogram(data) {{
+          const counts = new Array(numBins).fill(0);
+          data.forEach(val => {{
+            const binIndex = Math.min(numBins - 1, Math.floor((val - min) / binWidth));
+            counts[binIndex]++;
+          }});
+          return counts;
+        }}
+
+        const baselineHist = calculateHistogram(baselineData);
+        const changeHist = calculateHistogram(changeData);
+
+        window.charts.histogram = new Chart(histCtx, {{
+          type: 'bar',
+          data: {{
+            labels: bins.map(b => b.toFixed(1)),
+            datasets: [
+              {{
+                label: 'Baseline',
+                data: baselineHist,
+                backgroundColor: CHART_COLORS.baseline + '80',
+                borderColor: CHART_COLORS.baseline,
+                borderWidth: 1.5,
+              }},
+              {{
+                label: 'Change',
+                data: changeHist,
+                backgroundColor: CHART_COLORS.change + '80',
+                borderColor: CHART_COLORS.change,
+                borderWidth: 1.5,
+              }}
+            ]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+              mode: 'index',
+              intersect: false,
+            }},
+            plugins: {{
+              legend: {{
+                labels: {{ color: colors.textColor }}
+              }},
+              tooltip: {{
+                callbacks: {{
+                  title: (items) => `Range: ${{items[0].label}}ms`,
+                  label: (item) => `${{item.dataset.label}}: ${{item.parsed.y}} measurements`
+                }}
+              }}
+            }},
+            scales: {{
+              x: {{
+                title: {{
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }},
+              y: {{
+                title: {{
+                  display: true,
+                  text: 'Count',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor, precision: 0 }}
+              }}
+            }}
+          }}
+        }});
+      }}
+
+      // 2. LINE CHART - Run-by-run comparison
+      const lineCtx = document.getElementById('lineChart');
+      if (lineCtx) {{
+        const runLabels = Array.from({{ length: baselineData.length }}, (_, i) => (i + 1).toString());
+
+        window.charts.line = new Chart(lineCtx, {{
+          type: 'line',
+          data: {{
+            labels: runLabels,
+            datasets: [
+              {{
+                label: 'Baseline',
+                data: baselineData,
+                borderColor: CHART_COLORS.baseline,
+                backgroundColor: CHART_COLORS.baseline + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true,
+              }},
+              {{
+                label: 'Change',
+                data: changeData,
+                borderColor: CHART_COLORS.change,
+                backgroundColor: CHART_COLORS.change + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true,
+              }}
+            ]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+              mode: 'index',
+              intersect: false,
+            }},
+            plugins: {{
+              legend: {{
+                labels: {{ color: colors.textColor }}
+              }},
+              tooltip: {{
+                callbacks: {{
+                  title: (items) => `Run #${{items[0].label}}`,
+                  afterLabel: (item) => {{
+                    const delta = changeData[item.dataIndex] - baselineData[item.dataIndex];
+                    return `Delta: ${{delta.toFixed(2)}}ms (${{delta > 0 ? '+' : ''}}${{((delta / baselineData[item.dataIndex]) * 100).toFixed(1)}}%)`;
+                  }}
+                }}
+              }}
+            }},
+            scales: {{
+              x: {{
+                title: {{
+                  display: true,
+                  text: 'Run Number',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }},
+              y: {{
+                title: {{
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }}
+            }}
+          }}
+        }});
+      }}
+
+      // 3. STATISTICAL SUMMARY - Bar chart comparison
+      const boxCtx = document.getElementById('boxPlotChart');
+      if (boxCtx) {{
+        function calculateStats(data) {{
+          const sorted = [...data].sort((a, b) => a - b);
+          const min = sorted[0];
+          const max = sorted[sorted.length - 1];
+          const q1 = sorted[Math.floor(sorted.length * 0.25)];
+          const median = sorted[Math.floor(sorted.length * 0.5)];
+          const q3 = sorted[Math.floor(sorted.length * 0.75)];
+          const mean = data.reduce((a, b) => a + b, 0) / data.length;
+
+          return {{ min, q1, median, q3, max, mean }};
+        }}
+
+        const baselineStats = calculateStats(baselineData);
+        const changeStats = calculateStats(changeData);
+
+        window.charts.boxplot = new Chart(boxCtx, {{
+          type: 'bar',
+          data: {{
+            labels: ['Min', 'Q1 (25%)', 'Median', 'Mean', 'Q3 (75%)', 'Max'],
+            datasets: [
+              {{
+                label: 'Baseline',
+                data: [
+                  baselineStats.min,
+                  baselineStats.q1,
+                  baselineStats.median,
+                  baselineStats.mean,
+                  baselineStats.q3,
+                  baselineStats.max
+                ],
+                backgroundColor: CHART_COLORS.baseline + '80',
+                borderColor: CHART_COLORS.baseline,
+                borderWidth: 2,
+              }},
+              {{
+                label: 'Change',
+                data: [
+                  changeStats.min,
+                  changeStats.q1,
+                  changeStats.median,
+                  changeStats.mean,
+                  changeStats.q3,
+                  changeStats.max
+                ],
+                backgroundColor: CHART_COLORS.change + '80',
+                borderColor: CHART_COLORS.change,
+                borderWidth: 2,
+              }}
+            ]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+              mode: 'index',
+              intersect: false,
+            }},
+            plugins: {{
+              legend: {{
+                labels: {{ color: colors.textColor }}
+              }},
+              tooltip: {{
+                callbacks: {{
+                  label: (item) => `${{item.dataset.label}}: ${{item.parsed.y.toFixed(2)}}ms`
+                }}
+              }}
+            }},
+            scales: {{
+              x: {{
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }},
+              y: {{
+                title: {{
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }}
+            }}
+          }}
+        }});
+      }}
+    }}
+
+    // ============================================================================
+    // INITIALIZATION ON PAGE LOAD
+    // ============================================================================
+    document.addEventListener('DOMContentLoaded', function() {{
+      initializeTheme();
+      // Charts are lazy-loaded when the section is first opened
+    }});
+  </script>
 </body>
 </html>
 """

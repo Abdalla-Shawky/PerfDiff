@@ -232,6 +232,42 @@ TWO_SIDED_TEST_DIVISOR = 2
 # Maximum width for progress bars in HTML report (%)
 BAR_MAX_WIDTH_PCT = 100.0
 
+# Chart.js CDN version for interactive charts
+CHARTJS_CDN_VERSION = "4.4.1"
+
+# Chart.js CDN URL with SRI hash for security
+CHARTJS_CDN_URL = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+
+# Chart.js CDN SRI hash for integrity verification
+CHARTJS_CDN_SRI = "sha384-5PiDZVYBsJ4dB1mKiMnRYqHdkf7VUYauvBZ0LCJWi7YwJKHbPH8JLH0P1WXwTQ6p"
+
+# Animation durations in milliseconds
+ANIMATION_DURATION_FAST = 200      # Quick transitions (hover effects)
+ANIMATION_DURATION_NORMAL = 300    # Standard transitions (section expand)
+ANIMATION_DURATION_SLOW = 500      # Slow transitions (scroll animations)
+
+# Chart color palette
+CHART_COLOR_BASELINE = "#1976d2"            # Blue - baseline measurements
+CHART_COLOR_CHANGE_IMPROVEMENT = "#2e7d32"  # Green - performance improvement
+CHART_COLOR_CHANGE_REGRESSION = "#d32f2f"   # Red - performance regression
+CHART_COLOR_NEUTRAL = "#f57c00"             # Orange - neutral/warning
+
+# Dark mode colors
+DARK_BG_PRIMARY = "#1a1a1a"       # Main background
+DARK_BG_SECONDARY = "#2d2d2d"     # Cards and sections
+DARK_BG_TERTIARY = "#3a3a3a"      # Nested elements
+DARK_TEXT_PRIMARY = "#e0e0e0"     # Main text
+DARK_TEXT_SECONDARY = "#a0a0a0"   # Secondary text
+DARK_BORDER = "#404040"           # Border color
+
+# Light mode colors (default)
+LIGHT_BG_PRIMARY = "#f8f9fa"      # Main background
+LIGHT_BG_SECONDARY = "#ffffff"    # Cards and sections
+LIGHT_BG_TERTIARY = "#f0f0f0"     # Nested elements
+LIGHT_TEXT_PRIMARY = "#333333"    # Main text
+LIGHT_TEXT_SECONDARY = "#666666"  # Secondary text
+LIGHT_BORDER = "#e5e5e5"          # Border color
+
 
 # ==============================================================================
 # EXIT CODES
