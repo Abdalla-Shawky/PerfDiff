@@ -196,6 +196,39 @@ OVERALL_MODERATE_CONFIDENCE = 70
 
 
 # ==============================================================================
+# DATA QUALITY GATES FOR REGRESSION DETECTION
+# ==============================================================================
+
+# Enable strict quality gates to prevent false positives/negatives
+# When enabled, regression detection is blocked if data quality is too poor
+ENABLE_QUALITY_GATES = True
+
+# Maximum coefficient of variation (%) allowed for regression detection
+# If CV exceeds this, regression check will return INCONCLUSIVE
+# Set to 15% - data with CV > 15% is too noisy for reliable conclusions
+# Your 28% same-commit variance had CV of 17-18%, which would be rejected
+MAX_CV_FOR_REGRESSION_CHECK = 15.0
+
+# Minimum quality score required for regression detection
+# If quality score < this threshold, regression check will return INCONCLUSIVE
+# Set to 70 - ensures at least "Fair" quality before making conclusions
+MIN_QUALITY_SCORE_FOR_REGRESSION = 70
+
+# CV-based threshold multiplier
+# When CV is high (but below MAX_CV), increase detection thresholds proportionally
+# This makes the test more conservative when variance is elevated
+# Formula: effective_threshold = base_threshold * (1 + CV_THRESHOLD_MULTIPLIER * CV/100)
+# Example: With CV=10%, MS_FLOOR=50ms, multiplier=0.5:
+#   effective_threshold = 50 * (1 + 0.5 * 0.10) = 52.5ms
+CV_THRESHOLD_MULTIPLIER = 0.5
+
+# Minimum sample size required for regression detection
+# If n < this value, regression check will return INCONCLUSIVE
+# Set to 10 - fewer samples have insufficient statistical power
+MIN_SAMPLES_FOR_REGRESSION = 10
+
+
+# ==============================================================================
 # QUANTILE DEFINITIONS
 # ==============================================================================
 

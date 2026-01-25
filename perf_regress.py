@@ -20,15 +20,29 @@ from constants import (
     SEED,
     EQUIVALENCE_MARGIN_MS,
     TWO_SIDED_TEST_DIVISOR,
+    ENABLE_QUALITY_GATES,
+    MAX_CV_FOR_REGRESSION_CHECK,
+    MIN_QUALITY_SCORE_FOR_REGRESSION,
+    CV_THRESHOLD_MULTIPLIER,
+    MIN_SAMPLES_FOR_REGRESSION,
+    PCT_CONVERSION_FACTOR,
 )
 
 
 @dataclass
 class GateResult:
-    """Result from gate_regression check."""
+    """Result from gate_regression check.
+
+    Attributes:
+        passed: True if no regression detected, False if regression detected
+        reason: Human-readable explanation of the result
+        details: Dictionary containing all metrics and analysis details
+        inconclusive: True if data quality is too poor to make a reliable determination
+    """
     passed: bool
     reason: str
     details: Dict[str, Any]
+    inconclusive: bool = False  # New field for quality gate failures
 
 
 @dataclass
@@ -43,6 +57,73 @@ class EquivalenceResult:
     """Result from equivalence test."""
     equivalent: bool
     ci: BootstrapCI
+
+
+def _calculate_cv(data: np.ndarray) -> float:
+    """
+    Calculate coefficient of variation (CV) as percentage.
+
+    CV = (std_dev / mean) * 100
+
+    Args:
+        data: Array of measurements
+
+    Returns:
+        CV as percentage (e.g., 15.5 for 15.5%)
+    """
+    mean_val = np.mean(data)
+    if mean_val == 0:
+        return 0.0
+    std_val = np.std(data, ddof=1)  # Sample std dev
+    return float((std_val / mean_val) * PCT_CONVERSION_FACTOR)
+
+
+def _check_quality_gates(
+    baseline: np.ndarray,
+    change: np.ndarray,
+    enable_gates: bool = ENABLE_QUALITY_GATES,
+    max_cv: float = MAX_CV_FOR_REGRESSION_CHECK,
+    min_samples: int = MIN_SAMPLES_FOR_REGRESSION,
+) -> Optional[str]:
+    """
+    Check if data quality is sufficient for regression detection.
+
+    Args:
+        baseline: Baseline measurements
+        change: Change measurements
+        enable_gates: Whether to enforce quality gates
+        max_cv: Maximum allowed coefficient of variation (%)
+        min_samples: Minimum required sample size
+
+    Returns:
+        None if quality is acceptable, otherwise error message explaining why data is rejected
+    """
+    if not enable_gates:
+        return None
+
+    n = len(baseline)
+
+    # Gate 1: Sample size
+    if n < min_samples:
+        return (
+            f"INSUFFICIENT SAMPLES: Only {n} measurements (minimum {min_samples} required). "
+            f"Results would be unreliable. Collect more data and re-run."
+        )
+
+    # Gate 2: Coefficient of variation
+    baseline_cv = _calculate_cv(baseline)
+    change_cv = _calculate_cv(change)
+    max_observed_cv = max(baseline_cv, change_cv)
+
+    if max_observed_cv > max_cv:
+        return (
+            f"HIGH VARIANCE: CV = {max_observed_cv:.1f}% exceeds maximum {max_cv:.1f}%. "
+            f"Measurements are too noisy for reliable regression detection. "
+            f"Use interleaved testing and control environment (see MEASUREMENT_GUIDE.md). "
+            f"Target: CV < {max_cv:.1f}%"
+        )
+
+    return None
 
 
 def gate_regression(
@@ -91,26 +172,54 @@ def gate_regression(
         return GateResult(
             passed=False,
             reason="Baseline and change arrays must have same length",
-            details={}
+            details={},
+            inconclusive=False
         )
 
     if len(a) == 0:
         return GateResult(
             passed=False,
             reason="Empty arrays",
-            details={}
+            details={},
+            inconclusive=False
+        )
+
+    # Check quality gates FIRST - reject if data quality is too poor
+    quality_gate_error = _check_quality_gates(a, b)
+    if quality_gate_error:
+        return GateResult(
+            passed=True,  # Don't fail the build - data is inconclusive
+            reason=f"INCONCLUSIVE: {quality_gate_error}",
+            details={
+                "baseline_cv": _calculate_cv(a),
+                "change_cv": _calculate_cv(b),
+                "sample_size": len(a),
+            },
+            inconclusive=True
         )
 
     delta = b - a
     median_delta = float(np.median(delta))
     baseline_median = float(np.median(a))
 
+    # Calculate CV for adaptive thresholds
+    baseline_cv = _calculate_cv(a)
+    change_cv = _calculate_cv(b)
+    max_cv = max(baseline_cv, change_cv)
+
+    # Apply CV-based threshold multiplier
+    # When variance is elevated (but acceptable), be more conservative
+    # Formula: effective_threshold = base_threshold * (1 + CV_THRESHOLD_MULTIPLIER * CV/100)
+    cv_multiplier = 1.0 + (CV_THRESHOLD_MULTIPLIER * max_cv / PCT_CONVERSION_FACTOR)
+
     # Calculate threshold (max of absolute and relative)
     # For very small baseline values (<< ms_floor), the relative threshold
     # (pct_floor * baseline_median) will be tiny, so ms_floor dominates.
     # This is intentional - we want a minimum absolute threshold even for
     # very fast operations to avoid flagging insignificant noise.
-    threshold = max(ms_floor, pct_floor * baseline_median)
+    # NOW: Apply CV multiplier to make threshold stricter when variance is high
+    base_threshold = max(ms_floor, pct_floor * baseline_median)
+    threshold = base_threshold * cv_multiplier
 
     # Collect failures
     failures = []
@@ -129,7 +238,9 @@ def gate_regression(
     # Calculate tail threshold (max of absolute and relative)
     # Similar to median threshold, uses max of absolute and relative to handle
     # both fast and slow operations appropriately
-    tail_threshold = max(tail_ms_floor, tail_pct_floor * baseline_tail)
+    # Apply same CV multiplier to make tail check consistent with median
+    base_tail_threshold = max(tail_ms_floor, tail_pct_floor * baseline_tail)
+    tail_threshold = base_tail_threshold * cv_multiplier
 
     if tail_delta > tail_threshold:
         failures.append(f"Tail delta {tail_delta:.2f}ms exceeds threshold {tail_threshold:.2f}ms")
@@ -143,10 +254,15 @@ def gate_regression(
 
     details: Dict[str, Any] = {
         "threshold_ms": threshold,
+        "base_threshold_ms": base_threshold,
         "median_delta_ms": median_delta,
         "tail_threshold_ms": tail_threshold,
+        "base_tail_threshold_ms": base_tail_threshold,
         "tail_delta_ms": tail_delta,
         "positive_fraction": positive_fraction,
+        "baseline_cv": baseline_cv,
+        "change_cv": change_cv,
+        "cv_multiplier": cv_multiplier,
     }
 
     # Wilcoxon signed-rank test

@@ -54,6 +54,11 @@ from constants import (
     EXIT_SUCCESS,
     EXIT_FAILURE,
     EXIT_PARSE_ERROR,
+    # Quality Gate Constants
+    ENABLE_QUALITY_GATES,
+    MAX_CV_FOR_REGRESSION_CHECK,
+    MIN_SAMPLES_FOR_REGRESSION,
+    CV_THRESHOLD_MULTIPLIER,
     # UI Constants
     CHARTJS_CDN_URL,
     CHARTJS_CDN_SRI,
@@ -132,7 +137,17 @@ def render_html_report(
 
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     passed = result.get("passed", False)
-    status = "PASS ✅" if passed else "FAIL ❌"
+    inconclusive = result.get("inconclusive", False)
+
+    if inconclusive:
+        status = "INCONCLUSIVE ⚠️"
+        status_color = "#ff9800"  # Orange for warning
+    elif passed:
+        status = "PASS ✅"
+        status_color = "#4caf50"  # Green
+    else:
+        status = "FAIL ❌"
+        status_color = "#f44336"  # Red
 
     base_med = float(np.median(a))
     change_med = float(np.median(b))
@@ -146,7 +161,13 @@ def render_html_report(
     pct_change = ((change_med - base_med) / base_med * PCT_CONVERSION_FACTOR) if base_med > 0 else 0
 
     # Determine plain English explanation
-    if passed:
+    if inconclusive:
+        simple_verdict = "Data quality too poor for reliable regression detection"
+        recommendation = (
+            "⚠️ Cannot determine if performance changed. Measurements are too noisy/inconsistent. "
+            "Fix data quality issues and re-test with interleaved measurements."
+        )
+    elif passed:
         if delta_med < 0:
             simple_verdict = f"Performance IMPROVED by {abs(delta_med):.1f}ms ({abs(pct_change):.1f}% faster)"
             recommendation = "✅ This change is safe to deploy. Performance has improved."
@@ -671,6 +692,7 @@ def render_html_report(
 
     .big-status.pass {{ color: var(--color-success); }}
     .big-status.fail {{ color: var(--color-error); }}
+    .big-status.inconclusive {{ color: var(--color-warning); }}
 
     .verdict {{
       font-size: 22px;
@@ -1134,7 +1156,7 @@ def render_html_report(
   <div class="container">
     <!-- EXECUTIVE SUMMARY - Simple & Clear for Everyone -->
     <div class="executive-summary">
-      <div class="big-status {'pass' if passed else 'fail'}">{status}</div>
+      <div class="big-status {'inconclusive' if inconclusive else ('pass' if passed else 'fail')}">{status}</div>
       <div class="verdict">{escape(simple_verdict)}</div>
 
       <div class="comparison">
@@ -1341,6 +1363,96 @@ def render_html_report(
           <strong>💡 What this means:</strong><br/>
           {'The performance test passed all checks. ' if passed else 'The performance test failed one or more checks. '}
           The tool checks multiple factors: median change, worst-case (p90) latency, consistency across runs, and statistical significance.
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Gates Configuration -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('quality-gates-config')">
+        <div>
+          <h2 class="section-title">⚙️ Quality Gate Configuration</h2>
+          <div class="section-subtitle">Data quality thresholds applied before regression detection</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="quality-gates-config" class="section-content">
+        <table>
+          <tr>
+            <th>Setting</th>
+            <th>Threshold</th>
+            <th>Observed</th>
+            <th>Status</th>
+          </tr>
+          <tr>
+            <td><strong>Quality Gates Enabled</strong></td>
+            <td>{'✅ Yes' if ENABLE_QUALITY_GATES else '❌ No (permissive mode)'}</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>Minimum Sample Size</strong></td>
+            <td>≥ {MIN_SAMPLES_FOR_REGRESSION} measurements</td>
+            <td>{len(a)} measurements</td>
+            <td>{'✅ PASS' if len(a) >= MIN_SAMPLES_FOR_REGRESSION else '❌ FAIL'}</td>
+          </tr>
+          <tr>
+            <td><strong>Maximum CV (Variability)</strong></td>
+            <td>≤ {MAX_CV_FOR_REGRESSION_CHECK}%</td>
+            <td>Baseline: {result['details'].get('baseline_cv', 0):.1f}%, Change: {result['details'].get('change_cv', 0):.1f}%</td>
+            <td>{'✅ PASS' if max(result['details'].get('baseline_cv', 0), result['details'].get('change_cv', 0)) <= MAX_CV_FOR_REGRESSION_CHECK else '❌ FAIL'}</td>
+          </tr>
+          <tr>
+            <td><strong>CV Threshold Multiplier</strong></td>
+            <td>{CV_THRESHOLD_MULTIPLIER}× (adaptive strictness)</td>
+            <td>Applied multiplier: {result['details'].get('cv_multiplier', 1.0):.3f}×</td>
+            <td>—</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 20px; margin-bottom: 12px; font-weight: 600; color: var(--text-primary);">
+          📊 Regression Detection Thresholds
+        </div>
+        <table>
+          <tr>
+            <th>Check</th>
+            <th>Base Threshold Formula</th>
+            <th>Computed Value → Effective (After CV Multiplier)</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td><strong>Median Delta</strong></td>
+            <td>max({MS_FLOOR}ms, {PCT_FLOOR*100:.0f}% of baseline)</td>
+            <td><strong>{result['details'].get('base_threshold_ms', MS_FLOOR):.1f}ms</strong> → <strong style="color: var(--color-info);">{result['details'].get('threshold_ms', MS_FLOOR):.1f}ms</strong></td>
+            <td>Absolute or relative threshold, whichever is larger</td>
+          </tr>
+          <tr>
+            <td><strong>Tail (p90) Delta</strong></td>
+            <td>max({TAIL_MS_FLOOR}ms, {TAIL_PCT_FLOOR*100:.0f}% of baseline)</td>
+            <td><strong>{result['details'].get('base_tail_threshold_ms', TAIL_MS_FLOOR):.1f}ms</strong> → <strong style="color: var(--color-info);">{result['details'].get('tail_threshold_ms', TAIL_MS_FLOOR):.1f}ms</strong></td>
+            <td>Catches worst-case latency regressions</td>
+          </tr>
+          <tr>
+            <td><strong>Directionality</strong></td>
+            <td>≤ {DIRECTIONALITY*100:.0f}% slower runs</td>
+            <td>{DIRECTIONALITY*100:.0f}% (not affected by CV)</td>
+            <td>Max fraction of runs that can be slower</td>
+          </tr>
+          <tr>
+            <td><strong>Wilcoxon p-value</strong></td>
+            <td>≥ {WILCOXON_ALPHA} (significance level)</td>
+            <td>{WILCOXON_ALPHA} (not affected by CV)</td>
+            <td>Statistical significance threshold</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 16px; padding: 12px; background: {'#fff3cd' if inconclusive else '#f8f9fa'}; border-left: 4px solid {'#ffc107' if inconclusive else '#1976d2'}; border-radius: 4px;">
+          <strong>💡 What are Quality Gates?</strong><br/>
+          Quality gates validate data quality <em>before</em> checking for regressions. If data is too noisy (high CV) or insufficient (too few samples), the test returns <strong>INCONCLUSIVE</strong> instead of PASS/FAIL. This prevents false positives/negatives from unreliable measurements.
+          <br/><br/>
+          <strong>CV-based Adaptive Thresholds:</strong> When variance is elevated (but acceptable), regression thresholds become stricter proportionally. Formula: effective_threshold = base_threshold × cv_multiplier
+          <br/><br/>
+          {'<span style="color: #d32f2f;">⚠️ <strong>Quality gate failed!</strong> Data rejected as too unreliable. Fix measurement methodology and re-test. See MEASUREMENT_GUIDE.md</span>' if inconclusive else '<span style="color: #2e7d32;">✅ <strong>Quality gates passed.</strong> Data quality is acceptable for regression detection.</span>'}
         </div>
       </div>
     </div>
@@ -1914,7 +2026,12 @@ def main() -> int:
         title=args.title,
         baseline=baseline,
         change=change,
-        result={"passed": gate.passed, "reason": gate.reason, "details": gate.details},
+        result={
+            "passed": gate.passed,
+            "reason": gate.reason,
+            "details": gate.details,
+            "inconclusive": gate.inconclusive,
+        },
         mode=args.mode,
         eq=eq_payload,
     )
