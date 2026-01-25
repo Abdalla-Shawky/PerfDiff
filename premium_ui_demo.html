@@ -1,0 +1,1988 @@
+<!doctype html>
+<html data-theme="light">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Performance Regression Report - Perf Report</title>
+
+  <!-- Chart.js for interactive visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+
+  <!-- Google Fonts - Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================================
+       CSS CUSTOM PROPERTIES (CSS Variables) FOR THEMING - PREMIUM EDITION
+       ============================================================================ */
+    :root {
+      /* Light mode colors (default) */
+      --bg-primary: #f8f9fa;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f0f0f0;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --border-color: #e5e5e5;
+
+      /* Status colors (same in both themes) */
+      --color-success: #137333;
+      --color-error: #b3261e;
+      --color-warning: #f57c00;
+      --color-info: #1976d2;
+
+      /* Chart colors */
+      --chart-baseline: #1976d2;
+      --chart-improvement: #2e7d32;
+      --chart-regression: #d32f2f;
+
+      /* Animation durations */
+      --anim-fast: 200ms;
+      --anim-normal: 300ms;
+      --anim-slow: 500ms;
+
+      /* Shadows - Multi-level elevation system */
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
+      --shadow-xl: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1);
+      --shadow-2xl: 0 16px 48px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.12);
+
+      /* Glow shadows for status indicators */
+      --glow-success: 0 0 20px rgba(52, 168, 83, 0.3), 0 0 40px rgba(52, 168, 83, 0.15);
+      --glow-error: 0 0 20px rgba(234, 67, 53, 0.3), 0 0 40px rgba(234, 67, 53, 0.15);
+      --glow-warning: 0 0 20px rgba(245, 124, 0, 0.3), 0 0 40px rgba(245, 124, 0, 0.15);
+      --glow-info: 0 0 20px rgba(25, 118, 210, 0.3), 0 0 40px rgba(25, 118, 210, 0.15);
+
+      /* Premium gradients */
+      --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --gradient-success: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+      --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --gradient-mesh: linear-gradient(135deg, #f8f9fa 0%, #e3e8ee 50%, #d7dce3 100%);
+
+      /* Glassmorphism */
+      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+      --blur-amount: 20px;
+    }
+
+    /* Dark mode color overrides - Premium Edition */
+    [data-theme="dark"] {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2d2d2d;
+      --bg-tertiary: #3a3a3a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --border-color: #404040;
+
+      /* Enhanced dark mode shadows */
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
+      --shadow-xl: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+      --shadow-2xl: 0 16px 48px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.35);
+
+      /* Dark mode glassmorphism */
+      --glass-bg: rgba(30, 30, 30, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+      /* Dark mode gradient mesh */
+      --gradient-mesh: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+    }
+
+    /* Smooth transitions for theme changes */
+    * {
+      transition: background-color var(--anim-normal) ease,
+                  color var(--anim-normal) ease,
+                  border-color var(--anim-normal) ease,
+                  box-shadow var(--anim-normal) ease;
+    }
+
+    /* Disable transitions for immediate feedback on clicks */
+    *, *::before, *::after {
+      transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+    }
+
+    /* ============================================================================
+       PREMIUM BASE STYLES WITH GLASSMORPHISM
+       ============================================================================ */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--gradient-mesh);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Animated gradient mesh background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--gradient-mesh);
+      z-index: -1;
+      animation: gradient-shift 15s ease infinite;
+    }
+
+    /* Custom premium scrollbar */
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 10px;
+      border: 2px solid var(--bg-tertiary);
+      transition: all var(--anim-fast) ease;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #764ba2, #667eea);
+      box-shadow: var(--glow-info);
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Premium Header with Glassmorphism */
+    .header {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--blur-amount));
+      -webkit-backdrop-filter: blur(var(--blur-amount));
+      border-bottom: 1px solid var(--glass-border);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      animation: slideDown var(--anim-normal) ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .header-left {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .meta {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Control buttons (theme toggle, export) */
+    .control-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .control-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+      background: var(--bg-secondary);
+    }
+
+    .control-btn:active {
+      transform: translateY(0);
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      font-size: 20px;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--anim-fast) ease;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* Premium ripple effect for buttons */
+    .control-btn, .icon-btn {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.6);
+      animation: ripple 0.6s ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    /* Export dropdown */
+    .export-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .export-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      min-width: 160px;
+      z-index: 1000;
+    }
+
+    .export-dropdown.active .export-menu {
+      display: block;
+      animation: fadeIn var(--anim-fast) ease;
+    }
+
+    .export-menu button {
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color var(--anim-fast) ease;
+    }
+
+    .export-menu button:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .export-menu button:first-child {
+      border-radius: 8px 8px 0 0;
+    }
+
+    .export-menu button:last-child {
+      border-radius: 0 0 8px 8px;
+    }
+
+    /* Executive Summary */
+    /* Premium Executive Summary with Glassmorphism */
+    .executive-summary {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--blur-amount));
+      -webkit-backdrop-filter: blur(var(--blur-amount));
+      border-radius: 24px;
+      padding: 40px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--glass-border);
+      animation: slideUp var(--anim-slow) ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Gradient glow effect on executive summary */
+    .executive-summary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-primary);
+      animation: shimmer 2s linear infinite;
+    }
+
+    /* Premium Status Badge with Glow */
+    .big-status {
+      font-size: 56px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: bounceIn var(--anim-slow) cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .big-status.pass {
+      color: var(--color-success);
+      filter: drop-shadow(var(--glow-success));
+      animation: bounceIn var(--anim-slow) cubic-bezier(0.68, -0.55, 0.265, 1.55),
+                 glow-pulse 3s ease-in-out infinite;
+    }
+    .big-status.fail {
+      color: var(--color-error);
+      filter: drop-shadow(var(--glow-error));
+      animation: bounceIn var(--anim-slow) cubic-bezier(0.68, -0.55, 0.265, 1.55),
+                 glow-pulse 3s ease-in-out infinite;
+    }
+    .big-status.inconclusive {
+      color: var(--color-warning);
+      filter: drop-shadow(var(--glow-warning));
+    }
+
+    .verdict {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      text-align: center;
+      color: var(--text-primary);
+    }
+
+    .recommendation {
+      font-size: 16px;
+      padding: 20px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      margin: 24px 0;
+      text-align: center;
+      line-height: 1.7;
+      border: 1px solid var(--border-color);
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      margin: 24px 0;
+    }
+
+    .comparison-item {
+      text-align: center;
+      padding: 24px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      transition: all var(--anim-fast) ease;
+    }
+
+    .comparison-item:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .comparison-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .comparison-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 8px 0;
+    }
+
+    .comparison-arrow {
+      font-size: 40px;
+      color: #b3261e;
+      opacity: 0.8;
+    }
+
+    /* Premium Collapsible Sections with Glassmorphism */
+    .section {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--blur-amount));
+      -webkit-backdrop-filter: blur(var(--blur-amount));
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--glass-border);
+      animation: fadeIn var(--anim-normal) ease, float 6s ease-in-out infinite;
+      position: relative;
+      transition: all var(--anim-normal) cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .section:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-2xl);
+    }
+
+    .section-header {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      padding: 8px;
+      margin: -8px;
+      border-radius: 8px;
+      transition: background-color var(--anim-fast) ease;
+    }
+
+    .section-header:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .section-title {
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .section-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .toggle-icon {
+      font-size: 20px;
+      color: var(--text-secondary);
+      transition: transform var(--anim-normal) cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .section-content {
+      margin-top: 20px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height var(--anim-normal) ease, opacity var(--anim-normal) ease;
+    }
+
+    .section-content.show {
+      max-height: 10000px;
+      opacity: 1;
+    }
+
+    .section.expanded .toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    /* Charts container */
+    .chart-container {
+      position: relative;
+      height: 350px;
+      margin: 20px 0;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin: 20px 0;
+    }
+
+    /* Tables */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+    }
+
+    td, th {
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      font-weight: 600;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    tr:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* Cards and Grid */
+    .card {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 14px 0;
+      background: var(--bg-secondary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Enhanced Progress Bars with Gradients */
+    .bar {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      height: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .barfill {
+      height: 12px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--chart-baseline), #f57c00);
+      transition: width var(--anim-slow) cubic-bezier(0.4, 0, 0.2, 1);
+      animation: barGrow var(--anim-slow) ease;
+    }
+
+    .barfill.improvement {
+      background: linear-gradient(90deg, var(--chart-improvement), #4caf50);
+    }
+
+    .barfill.regression {
+      background: linear-gradient(90deg, var(--chart-regression), #f44336);
+    }
+
+    /* Badges */
+    .small {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-info {
+      background: #e3f2fd;
+      color: var(--color-info);
+    }
+
+    .outlier-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      background: #fff3cd;
+      color: #856404;
+      margin-left: 4px;
+      font-weight: 600;
+    }
+
+    .quality-badge {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      animation: pulse 2s ease infinite;
+    }
+
+    .quality-good {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .quality-warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .quality-poor {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* Data Quality Grid */
+    .data-quality-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }
+
+    .quality-item {
+      padding: 20px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      border-left: 4px solid var(--border-color);
+      transition: all var(--anim-fast) ease;
+    }
+
+    .quality-item:hover {
+      transform: translateX(4px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .quality-item.excellent { border-left-color: var(--color-success); }
+    .quality-item.good { border-left-color: #f9ab00; }
+    .quality-item.fair { border-left-color: var(--color-warning); }
+    .quality-item.poor { border-left-color: var(--color-error); }
+
+    .issue-list {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .issue-list li {
+      margin: 6px 0;
+      color: var(--text-secondary);
+    }
+
+    /* Info boxes */
+    .info-box {
+      margin: 16px 0;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border-left: 4px solid var(--color-info);
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .warning-box {
+      margin: 16px 0;
+      padding: 16px;
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Scroll to top button */
+    .scroll-top-btn {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      color: var(--text-primary);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-lg);
+      transition: all var(--anim-fast) ease;
+      z-index: 999;
+    }
+
+    .scroll-top-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .scroll-top-btn.visible {
+      display: flex;
+      animation: fadeIn var(--anim-normal) ease;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes barGrow {
+      from { width: 0; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+
+    /* ============================================================================
+       PREMIUM ANIMATIONS - Advanced Effects
+       ============================================================================ */
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    @keyframes glow-pulse {
+      0%, 100% {
+        filter: brightness(1);
+        opacity: 1;
+      }
+      50% {
+        filter: brightness(1.2);
+        opacity: 0.9;
+      }
+    }
+
+    @keyframes bounceIn {
+      0% {
+        transform: scale(0.3);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+      }
+      70% {
+        transform: scale(0.9);
+        opacity: 0.9;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes gradient-shift {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    @keyframes ripple {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes rotateIn {
+      from {
+        transform: rotate(-180deg) scale(0);
+        opacity: 0;
+      }
+      to {
+        transform: rotate(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .comparison { grid-template-columns: 1fr; }
+      .comparison-arrow { transform: rotate(90deg); }
+      .data-quality-grid { grid-template-columns: 1fr; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .header-right { width: 100%; justify-content: flex-end; }
+      .scroll-top-btn { bottom: 16px; right: 16px; }
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 16px; }
+      .executive-summary { padding: 20px; }
+      .big-status { font-size: 36px; }
+      .comparison-value { font-size: 24px; }
+      h1 { font-size: 20px; }
+    }
+
+    /* Print styles */
+    @media print {
+      .header-right, .scroll-top-btn, .section-header {
+        display: none !important;
+      }
+      .section-content {
+        max-height: none !important;
+        opacity: 1 !important;
+        display: block !important;
+      }
+      body {
+        background: white;
+        color: black;
+      }
+      .section, .executive-summary {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sticky Header with Controls -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Performance Regression Report</h1>
+      <div class="meta">Generated: 2026-01-25 14:08:08 UTC | Mode: PR</div>
+    </div>
+    <div class="header-right">
+      <!-- Theme Toggle -->
+      <button class="icon-btn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+      </button>
+
+      <!-- Export Dropdown -->
+      <div class="export-dropdown" id="export-dropdown">
+        <button class="control-btn" onclick="toggleExportMenu()">
+          📥 Export ▼
+        </button>
+        <div class="export-menu">
+          <button onclick="exportJSON()">📄 Export JSON</button>
+          <button onclick="exportCSV()">📊 Export CSV</button>
+          <button onclick="window.print()">🖨️ Print / PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- EXECUTIVE SUMMARY - Simple & Clear for Everyone -->
+    <div class="executive-summary">
+      <div class="big-status fail">FAIL ❌</div>
+      <div class="verdict">Performance REGRESSED by 45.0ms (5.6% slower)</div>
+
+      <div class="comparison">
+        <div class="comparison-item">
+          <div class="comparison-label">Before (Baseline)</div>
+          <div class="comparison-value">802.50 ms</div>
+          <div class="small">10 measurements</div>
+        </div>
+        <div class="comparison-arrow">📉</div>
+        <div class="comparison-item">
+          <div class="comparison-label">After (Change)</div>
+          <div class="comparison-value">847.50 ms</div>
+          <div class="small">10 measurements</div>
+        </div>
+      </div>
+
+      <div class="recommendation">❌ This change should be reviewed before deployment. Performance has degraded.</div>
+
+      <div class="small" style="text-align: center; margin-top: 16px; color: var(--text-secondary);">
+        💡 Scroll down for detailed technical analysis
+      </div>
+    </div>
+
+    <!-- INTERACTIVE CHARTS - Visual Data Exploration -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('charts')">
+        <div>
+          <h2 class="section-title">📊 Interactive Charts</h2>
+          <div class="section-subtitle">Visual comparison of performance distributions</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="charts" class="section-content">
+        <div class="chart-grid">
+          <!-- Histogram Comparison Chart -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Distribution Histogram</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Compare the distribution of measurements between baseline and change. Overlapping peaks indicate similar performance.
+            </p>
+            <div class="chart-container">
+              <canvas id="histogramChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Run-by-Run Line Chart -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Run-by-Run Comparison</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Track how each paired measurement compares. The gap between lines shows performance delta.
+            </p>
+            <div class="chart-container">
+              <canvas id="lineChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Statistical Summary Comparison -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Statistical Summary</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Compare key statistics: min, quartiles (Q1/Q3), median, mean, and max values side-by-side.
+            </p>
+            <div class="chart-container">
+              <canvas id="boxPlotChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA QUALITY ASSESSMENT -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('data-quality')">
+        <div>
+          <h2 class="section-title">🔬 Data Quality Assessment</h2>
+          <div class="section-subtitle">How reliable are these measurements?</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="data-quality" class="section-content">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <span class="quality-badge quality-good">✅ High confidence in results</span>
+        </div>
+
+        <div class="data-quality-grid">
+          <!-- Baseline Quality -->
+          <div class="quality-item excellent">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px;">
+              🟢 Baseline Data: Excellent
+              <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                Score: 100/100
+              </span>
+            </h3>
+            <p style="margin: 8px 0; color: #666; font-size: 14px;">Data quality is excellent. Results are highly reliable.</p>
+            <div style="margin: 12px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">100/100</span>
+              </div>
+              <div class="bar" style="height: 8px;">
+                <div class="barfill" style="width: 100%; background: linear-gradient(90deg, #137333, #13733380);"></div>
+              </div>
+            </div>
+            <table style="font-size: 13px; margin-top: 12px;">
+              <tr><td>Samples:</td><td><strong>10</strong></td></tr>
+              <tr><td>Median:</td><td><strong>802.50 ms</strong></td></tr>
+              <tr><td>Variability (CV):</td><td><strong>0.4%</strong></td></tr>
+              <tr><td>Range:</td><td>798.00 ms - 810.00 ms</td></tr>
+              <tr><td>Outliers:</td><td>0</td></tr>
+            </table>
+            
+            
+          </div>
+
+          <!-- Change Quality -->
+          <div class="quality-item excellent">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px;">
+              🟢 Change Data: Excellent
+              <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                Score: 95/100
+              </span>
+            </h3>
+            <p style="margin: 8px 0; color: #666; font-size: 14px;">Data quality is excellent. Results are highly reliable.</p>
+            <div style="margin: 12px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">95/100</span>
+              </div>
+              <div class="bar" style="height: 8px;">
+                <div class="barfill" style="width: 95%; background: linear-gradient(90deg, #137333, #13733380);"></div>
+              </div>
+            </div>
+            <table style="font-size: 13px; margin-top: 12px;">
+              <tr><td>Samples:</td><td><strong>10</strong></td></tr>
+              <tr><td>Median:</td><td><strong>847.50 ms</strong></td></tr>
+              <tr><td>Variability (CV):</td><td><strong>0.7%</strong></td></tr>
+              <tr><td>Range:</td><td>838.00 ms - 860.00 ms</td></tr>
+              <tr><td>Outliers:</td><td>1</td></tr>
+            </table>
+            
+            <div style='margin-top: 12px;'><strong style='color: #f57c00;'>⚡ Warnings:</strong><ul class='issue-list'><li>1 outlier(s) detected. May indicate measurement noise.</li></ul></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 12px; background: #e3f2fd; border-left: 4px solid #1976d2; border-radius: 4px;">
+          <strong>💡 What does this mean?</strong><br/>
+          <ul style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
+            <li><strong>Quality Score:</strong> Starts at 100, penalties applied for issues. ≥90 = Excellent, ≥75 = Good, ≥60 = Fair, <60 = Poor.</li>
+            <li><strong>Samples:</strong> More samples = more reliable results. Aim for 10-20.</li>
+            <li><strong>Variability (CV):</strong> Lower is better. <5% is excellent, >20% is problematic.</li>
+            <li><strong>Outliers:</strong> Unusual measurements that may indicate instability.</li>
+          </ul>
+          If data quality is poor, consider re-running tests in a more stable environment or with more samples.
+        </div>
+      </div>
+    </div>
+
+    <!-- TECHNICAL DETAILS - Collapsible Sections -->
+
+    <!-- Quick Statistics -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('quick-stats')">
+        <div>
+          <h2 class="section-title">📊 Quick Statistics</h2>
+          <div class="section-subtitle">Key numbers at a glance</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="quick-stats" class="section-content">
+        <div class="grid">
+          <div class="card">
+            <h3>Summary</h3>
+            <table><tr><td>Mode</td><td>pr</td></tr><tr><td>Status</td><td>FAIL ❌</td></tr><tr><td>N (paired)</td><td>10</td></tr><tr><td>Baseline median</td><td>802.50 ms</td></tr><tr><td>Change median</td><td>847.50 ms</td></tr><tr><td>Median delta (change-baseline)</td><td>45.00 ms</td></tr><tr><td>Baseline p90</td><td>807.30 ms</td></tr><tr><td>Change p90</td><td>855.50 ms</td></tr><tr><td>p90 delta</td><td>48.20 ms</td></tr><tr><td>Positive delta fraction</td><td>100.00%</td></tr><tr><td>Gate threshold</td><td>50.19 ms</td></tr></table>
+          </div>
+          <div class="card">
+            <h3>Run distribution (relative)</h3>
+            <table>
+              <tr><th>Baseline max</th><td>810.00 ms</td></tr>
+              <tr><th>Change max</th><td>860.00 ms</td></tr>
+              <tr><th>Baseline bars</th><td><div class="bar"><div class="barfill" style="width:93.3%"></div></div> <span class="small">median</span></td></tr>
+              <tr><th>Change bars</th><td><div class="bar"><div class="barfill" style="width:98.5%"></div></div> <span class="small">median</span></td></tr>
+            </table>
+            <div class="small">Bars are scaled relative to the max single-run value across both sets.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Why Did This Pass/Fail? -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('explanation')">
+        <div>
+          <h2 class="section-title">🔍 Why Did This Fail?</h2>
+          <div class="section-subtitle">Technical explanation of the decision</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="explanation" class="section-content">
+        <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; line-height: 1.8;">
+          <strong>Decision Reason:</strong><br/>
+          FAIL: 100.0% of runs slower (&gt;= 70.0% threshold); Wilcoxon test significant (p=0.0024 &lt; 0.05)
+        </div>
+        <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+          <strong>💡 What this means:</strong><br/>
+          The performance test failed one or more checks. 
+          The tool checks multiple factors: median change, worst-case (p90) latency, consistency across runs, and statistical significance.
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Gates Configuration -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('quality-gates-config')">
+        <div>
+          <h2 class="section-title">⚙️ Quality Gate Configuration</h2>
+          <div class="section-subtitle">Data quality thresholds applied before regression detection</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="quality-gates-config" class="section-content">
+        <table>
+          <tr>
+            <th>Setting</th>
+            <th>Threshold</th>
+            <th>Observed</th>
+            <th>Status</th>
+          </tr>
+          <tr>
+            <td><strong>Quality Gates Enabled</strong></td>
+            <td>✅ Yes</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>Minimum Sample Size</strong></td>
+            <td>≥ 10 measurements</td>
+            <td>10 measurements</td>
+            <td>✅ PASS</td>
+          </tr>
+          <tr>
+            <td><strong>Maximum CV (Variability)</strong></td>
+            <td>≤ 15.0%</td>
+            <td>Baseline: 0.5%, Change: 0.7%</td>
+            <td>✅ PASS</td>
+          </tr>
+          <tr>
+            <td><strong>CV Threshold Multiplier</strong></td>
+            <td>0.5× (adaptive strictness)</td>
+            <td>Applied multiplier: 1.004×</td>
+            <td>—</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 20px; margin-bottom: 12px; font-weight: 600; color: var(--text-primary);">
+          📊 Regression Detection Thresholds
+        </div>
+        <table>
+          <tr>
+            <th>Check</th>
+            <th>Base Threshold Formula</th>
+            <th>Computed Value → Effective (After CV Multiplier)</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td><strong>Median Delta</strong></td>
+            <td>max(50.0ms, 5% of baseline)</td>
+            <td><strong>50.0ms</strong> → <strong style="color: var(--color-info);">50.2ms</strong></td>
+            <td>Absolute or relative threshold, whichever is larger</td>
+          </tr>
+          <tr>
+            <td><strong>Tail (p90) Delta</strong></td>
+            <td>max(75.0ms, 5% of baseline)</td>
+            <td><strong>75.0ms</strong> → <strong style="color: var(--color-info);">75.3ms</strong></td>
+            <td>Catches worst-case latency regressions</td>
+          </tr>
+          <tr>
+            <td><strong>Directionality</strong></td>
+            <td>≤ 70% slower runs</td>
+            <td>70% (not affected by CV)</td>
+            <td>Max fraction of runs that can be slower</td>
+          </tr>
+          <tr>
+            <td><strong>Wilcoxon p-value</strong></td>
+            <td>≥ 0.05 (significance level)</td>
+            <td>0.05 (not affected by CV)</td>
+            <td>Statistical significance threshold</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-left: 4px solid #1976d2; border-radius: 4px;">
+          <strong>💡 What are Quality Gates?</strong><br/>
+          Quality gates validate data quality <em>before</em> checking for regressions. If data is too noisy (high CV) or insufficient (too few samples), the test returns <strong>INCONCLUSIVE</strong> instead of PASS/FAIL. This prevents false positives/negatives from unreliable measurements.
+          <br/><br/>
+          <strong>CV-based Adaptive Thresholds:</strong> When variance is elevated (but acceptable), regression thresholds become stricter proportionally. Formula: effective_threshold = base_threshold × cv_multiplier
+          <br/><br/>
+          <span style="color: #2e7d32;">✅ <strong>Quality gates passed.</strong> Data quality is acceptable for regression detection.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class='section'><div class='section-header' onclick='toggleSection("wilcoxon")'><div><h2 class='section-title'>📈 Wilcoxon Statistical Test</h2><div class='section-subtitle'>Tests if the difference is statistically significant (not just random noise)</div></div><span class='toggle-icon'>▼</span></div><div id='wilcoxon' class='section-content'><table><tr><td>Wilcoxon n</td><td>10</td></tr><tr><td>Wilcoxon z</td><td>2.818</td></tr><tr><td>Wilcoxon p(greater)</td><td>0.002418</td></tr><tr><td>Wilcoxon p(two-sided)</td><td>0.004836</td></tr></table><div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> The Wilcoxon test checks if the performance difference is real or could be random variation. A p-value < 0.05 means the difference is statistically significant.</div></div></div>
+
+    <div class='section'><div class='section-header' onclick='toggleSection("bootstrap")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Range of uncertainty for the median performance change</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'><table><tr><td>Bootstrap confidence</td><td>95.0%</td></tr><tr><td>Median delta CI low</td><td>43.00 ms</td></tr><tr><td>Median delta CI high</td><td>47.00 ms</td></tr><tr><td>Bootstrap samples</td><td>5000</td></tr></table><div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> We're 95% confident the true median change is between the CI low and high values. This accounts for measurement uncertainty.</div></div></div>
+
+    
+
+    <!-- Raw Data -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('raw-data')">
+        <div>
+          <h2 class="section-title">📋 Raw Measurement Data</h2>
+          <div class="section-subtitle">Every individual measurement, side-by-side</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="raw-data" class="section-content">
+        <table>
+          <tr><th>#</th><th>Baseline</th><th>Change</th><th>Delta</th></tr>
+          <tr><td>1</td><td>800.00 ms</td><td>845.00 ms</td><td>45.00 ms</td></tr><tr><td>2</td><td>805.00 ms</td><td>850.00 ms</td><td>45.00 ms</td></tr><tr><td>3</td><td>798.00 ms</td><td>838.00 ms</td><td>40.00 ms</td></tr><tr><td>4</td><td>810.00 ms</td><td>860.00 ms <span class="outlier-badge">⚠️</span></td><td>50.00 ms</td></tr><tr><td>5</td><td>799.00 ms</td><td>842.00 ms</td><td>43.00 ms</td></tr><tr><td>6</td><td>803.00 ms</td><td>848.00 ms</td><td>45.00 ms</td></tr><tr><td>7</td><td>801.00 ms</td><td>844.00 ms</td><td>43.00 ms</td></tr><tr><td>8</td><td>807.00 ms</td><td>855.00 ms</td><td>48.00 ms</td></tr><tr><td>9</td><td>802.00 ms</td><td>849.00 ms</td><td>47.00 ms</td></tr><tr><td>10</td><td>804.00 ms</td><td>847.00 ms</td><td>43.00 ms</td></tr>
+        </table>
+        <div class="small" style="margin-top: 12px;">
+          <strong>Note:</strong> Each row shows a paired measurement. Delta = Change - Baseline.
+          Negative delta means faster (improvement), positive means slower (regression).
+          Outliers (detected using IQR method) are marked with <span class="outlier-badge">⚠️</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0; padding: 16px; color: var(--text-secondary); font-size: 12px;">
+      Generated by Performance Regression Detection Tool 🚀
+    </div>
+
+  </div>
+
+  <!-- Scroll to Top Button -->
+  <button class="scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()" aria-label="Scroll to top">
+    ↑
+  </button>
+
+  <script>
+    // ============================================================================
+    // DATA PREPARATION FOR CHARTS
+    // ============================================================================
+    const baselineData = [800.0, 805.0, 798.0, 810.0, 799.0, 803.0, 801.0, 807.0, 802.0, 804.0];
+    const changeData = [845.0, 850.0, 838.0, 860.0, 842.0, 848.0, 844.0, 855.0, 849.0, 847.0];
+    const deltaData = [45.0, 45.0, 40.0, 50.0, 43.0, 45.0, 43.0, 48.0, 47.0, 43.0];
+    const exportData = {
+  "title": "Performance Regression Report",
+  "mode": "pr",
+  "generated": "2026-01-25 14:08:08 UTC",
+  "status": {
+    "passed": false,
+    "reason": "FAIL: 100.0% of runs slower (>= 70.0% threshold); Wilcoxon test significant (p=0.0024 < 0.05)"
+  },
+  "measurements": {
+    "baseline": [
+      800.0,
+      805.0,
+      798.0,
+      810.0,
+      799.0,
+      803.0,
+      801.0,
+      807.0,
+      802.0,
+      804.0
+    ],
+    "change": [
+      845.0,
+      850.0,
+      838.0,
+      860.0,
+      842.0,
+      848.0,
+      844.0,
+      855.0,
+      849.0,
+      847.0
+    ],
+    "delta": [
+      45.0,
+      45.0,
+      40.0,
+      50.0,
+      43.0,
+      45.0,
+      43.0,
+      48.0,
+      47.0,
+      43.0
+    ]
+  },
+  "statistics": {
+    "baseline_median": 802.5,
+    "change_median": 847.5,
+    "median_delta": 45.0,
+    "baseline_p90": 807.3,
+    "change_p90": 855.5,
+    "p90_delta": 48.2,
+    "positive_fraction": 1.0
+  },
+  "data_quality": {
+    "baseline": {
+      "score": 100,
+      "verdict": "Excellent",
+      "n": 10,
+      "cv": 0.44016931241928736,
+      "outliers": 0
+    },
+    "change": {
+      "score": 95,
+      "verdict": "Excellent",
+      "n": 10,
+      "cv": 0.7073207997435693,
+      "outliers": 1
+    }
+  },
+  "details": {
+    "threshold_ms": 50.1863953969668,
+    "base_threshold_ms": 50.0,
+    "median_delta_ms": 45.0,
+    "tail_threshold_ms": 75.2795930954502,
+    "base_tail_threshold_ms": 75.0,
+    "tail_delta_ms": 48.200000000000045,
+    "positive_fraction": 1.0,
+    "baseline_cv": 0.4639791944517295,
+    "change_cv": 0.7455815878671737,
+    "cv_multiplier": 1.003727907939336,
+    "wilcoxon": {
+      "n": 10,
+      "p_greater": 0.0024181827159318477,
+      "p_two_sided": 0.0048363654318636954,
+      "z": 2.81773535768208
+    },
+    "bootstrap_ci_median": {
+      "confidence": 0.95,
+      "low": 43.0,
+      "high": 47.0,
+      "n_boot": 5000
+    }
+  }
+};
+
+    // Chart colors
+    const CHART_COLORS = {
+      baseline: '#1976d2',
+      change: '#d32f2f',
+      neutral: '#f57c00',
+    };
+
+    // ============================================================================
+    // THEME TOGGLE (DARK MODE)
+    // ============================================================================
+    function toggleTheme() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      const icon = document.getElementById('theme-icon');
+
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+
+      // Update chart colors for dark mode (only if charts are already initialized)
+      if (chartsInitialized && window.charts) {
+        Object.values(window.charts).forEach(chart => {
+          if (chart) chart.destroy();
+        });
+        initializeCharts();
+      }
+    }
+
+    // Initialize theme from localStorage or system preference
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    // ============================================================================
+    // EXPORT FUNCTIONALITY
+    // ============================================================================
+    function toggleExportMenu() {
+      const dropdown = document.getElementById('export-dropdown');
+      dropdown.classList.toggle('active');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById('export-dropdown');
+      if (!dropdown.contains(event.target)) {
+        dropdown.classList.remove('active');
+      }
+    });
+
+    function exportJSON() {
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'perf-report-data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('export-dropdown').classList.remove('active');
+      showToast('JSON exported successfully');
+    }
+
+    function exportCSV() {
+      const rows = [
+        ['Run', 'Baseline (ms)', 'Change (ms)', 'Delta (ms)']
+      ];
+
+      for (let i = 0; i < baselineData.length; i++) {
+        rows.push([
+          i + 1,
+          baselineData[i].toFixed(2),
+          changeData[i].toFixed(2),
+          deltaData[i].toFixed(2)
+        ]);
+      }
+
+      const csvContent = rows.map(row => row.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'perf-report-measurements.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('export-dropdown').classList.remove('active');
+      showToast('CSV exported successfully');
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        right: 32px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+        border: 1px solid var(--border-color);
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 2000);
+    }
+
+    // ============================================================================
+    // SECTION TOGGLE ENHANCEMENT
+    // ============================================================================
+    let chartsInitialized = false;
+
+    function toggleSection(id) {
+      const content = document.getElementById(id);
+      const section = content.parentElement;
+      content.classList.toggle('show');
+      section.classList.toggle('expanded');
+
+      // Lazy load charts when Interactive Charts section is first opened
+      if (id === 'charts' && content.classList.contains('show') && !chartsInitialized) {
+        chartsInitialized = true;
+        initializeCharts();
+      }
+    }
+
+    // ============================================================================
+    // SCROLL TO TOP BUTTON
+    // ============================================================================
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+
+    window.addEventListener('scroll', () => {
+      if (window.pageYOffset > 300) {
+        scrollTopBtn.classList.add('visible');
+      } else {
+        scrollTopBtn.classList.remove('visible');
+      }
+    });
+
+    function scrollToTop() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+
+    // ============================================================================
+    // PREMIUM INTERACTIVE COMPONENTS
+    // ============================================================================
+
+    // Ripple effect for buttons
+    function createRipple(event) {
+      const button = event.currentTarget;
+      const ripple = document.createElement('span');
+      const rect = button.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = event.clientX - rect.left - size / 2;
+      const y = event.clientY - rect.top - size / 2;
+
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.add('ripple-effect');
+
+      button.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    }
+
+    // Animated number counter
+    function animateCounter(element, start, end, duration) {
+      const startTime = performance.now();
+      const range = end - start;
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+        const current = start + range * easeOutQuart;
+
+        element.textContent = Math.round(current);
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    // Copy to clipboard with premium toast notification
+    function copyToClipboard(text, buttonElement) {
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.createElement('div');
+        toast.textContent = '✓ Copied to clipboard!';
+        toast.style.cssText = `
+          position: fixed;
+          bottom: 80px;
+          right: 32px;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 12px;
+          box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+          z-index: 10000;
+          animation: slideUp 0.3s ease, fadeIn 0.3s ease;
+          font-weight: 600;
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+          toast.style.animation = 'fadeOut 0.3s ease';
+          setTimeout(() => document.body.removeChild(toast), 300);
+        }, 2000);
+      });
+    }
+
+    // Apply ripple effect to all buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.control-btn, .icon-btn').forEach(button => {
+        button.addEventListener('click', createRipple);
+      });
+
+      // Animate quality scores on load
+      document.querySelectorAll('.comparison-value').forEach((elem, index) => {
+        const finalValue = parseFloat(elem.textContent);
+        if (!isNaN(finalValue)) {
+          elem.textContent = '0';
+          setTimeout(() => {
+            animateCounter(elem, 0, finalValue, 1200);
+          }, 300 + index * 100);
+        }
+      });
+    });
+
+    // ============================================================================
+    // CHART.JS INITIALIZATION
+    // ============================================================================
+    window.charts = {};
+
+    function getChartColors() {
+      const theme = document.documentElement.getAttribute('data-theme');
+      return {
+        gridColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        textColor: theme === 'dark' ? '#e0e0e0' : '#333',
+      };
+    }
+
+    function initializeCharts() {
+      const colors = getChartColors();
+
+      // 1. HISTOGRAM - Distribution comparison with Premium Gradients
+      const histCtx = document.getElementById('histogramChart');
+      if (histCtx) {
+        // Calculate histogram bins
+        const allData = [...baselineData, ...changeData];
+        const min = Math.min(...allData);
+        const max = Math.max(...allData);
+        const numBins = Math.min(20, Math.max(10, Math.floor(Math.sqrt(baselineData.length))));
+        const binWidth = (max - min) / numBins;
+
+        const bins = Array.from({ length: numBins }, (_, i) => min + i * binWidth);
+
+        function calculateHistogram(data) {
+          const counts = new Array(numBins).fill(0);
+          data.forEach(val => {
+            const binIndex = Math.min(numBins - 1, Math.floor((val - min) / binWidth));
+            counts[binIndex]++;
+          });
+          return counts;
+        }
+
+        const baselineHist = calculateHistogram(baselineData);
+        const changeHist = calculateHistogram(changeData);
+
+        // Create premium gradient backgrounds
+        const baselineGradient = histCtx.getContext('2d').createLinearGradient(0, 0, 0, 350);
+        baselineGradient.addColorStop(0, CHART_COLORS.baseline + 'CC');
+        baselineGradient.addColorStop(1, CHART_COLORS.baseline + '33');
+
+        const changeGradient = histCtx.getContext('2d').createLinearGradient(0, 0, 0, 350);
+        changeGradient.addColorStop(0, CHART_COLORS.change + 'CC');
+        changeGradient.addColorStop(1, CHART_COLORS.change + '33');
+
+        window.charts.histogram = new Chart(histCtx, {
+          type: 'bar',
+          data: {
+            labels: bins.map(b => b.toFixed(1)),
+            datasets: [
+              {
+                label: 'Baseline',
+                data: baselineHist,
+                backgroundColor: baselineGradient,
+                borderColor: CHART_COLORS.baseline,
+                borderWidth: 2,
+                borderRadius: 6,
+                hoverBackgroundColor: CHART_COLORS.baseline + 'EE',
+                hoverBorderWidth: 3,
+              },
+              {
+                label: 'Change',
+                data: changeHist,
+                backgroundColor: changeGradient,
+                borderColor: CHART_COLORS.change,
+                borderWidth: 2,
+                borderRadius: 6,
+                hoverBackgroundColor: CHART_COLORS.change + 'EE',
+                hoverBorderWidth: 3,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            animation: {
+              duration: 1200,
+              easing: 'easeInOutQuart',
+              delay: (context) => {
+                return context.dataIndex * 50;
+              },
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: colors.textColor,
+                  font: { size: 13, weight: '600' },
+                  padding: 15
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                titleFont: { size: 14, weight: '600' },
+                bodyFont: { size: 13 },
+                padding: 12,
+                cornerRadius: 8,
+                displayColors: true,
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderWidth: 1,
+                callbacks: {
+                  title: (items) => `Range: ${items[0].label}ms`,
+                  label: (item) => `${item.dataset.label}: ${item.parsed.y} measurements`
+                }
+              }
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                },
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Count',
+                  color: colors.textColor
+                },
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor, precision: 0 }
+              }
+            }
+          }
+        });
+      }
+
+      // 2. LINE CHART - Run-by-run comparison
+      const lineCtx = document.getElementById('lineChart');
+      if (lineCtx) {
+        const runLabels = Array.from({ length: baselineData.length }, (_, i) => (i + 1).toString());
+
+        window.charts.line = new Chart(lineCtx, {
+          type: 'line',
+          data: {
+            labels: runLabels,
+            datasets: [
+              {
+                label: 'Baseline',
+                data: baselineData,
+                borderColor: CHART_COLORS.baseline,
+                backgroundColor: CHART_COLORS.baseline + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true,
+              },
+              {
+                label: 'Change',
+                data: changeData,
+                borderColor: CHART_COLORS.change,
+                backgroundColor: CHART_COLORS.change + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                labels: { color: colors.textColor }
+              },
+              tooltip: {
+                callbacks: {
+                  title: (items) => `Run #${items[0].label}`,
+                  afterLabel: (item) => {
+                    const delta = changeData[item.dataIndex] - baselineData[item.dataIndex];
+                    return `Delta: ${delta.toFixed(2)}ms (${delta > 0 ? '+' : ''}${((delta / baselineData[item.dataIndex]) * 100).toFixed(1)}%)`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Run Number',
+                  color: colors.textColor
+                },
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                },
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor }
+              }
+            }
+          }
+        });
+      }
+
+      // 3. STATISTICAL SUMMARY - Bar chart comparison
+      const boxCtx = document.getElementById('boxPlotChart');
+      if (boxCtx) {
+        function calculateStats(data) {
+          const sorted = [...data].sort((a, b) => a - b);
+          const min = sorted[0];
+          const max = sorted[sorted.length - 1];
+          const q1 = sorted[Math.floor(sorted.length * 0.25)];
+          const median = sorted[Math.floor(sorted.length * 0.5)];
+          const q3 = sorted[Math.floor(sorted.length * 0.75)];
+          const mean = data.reduce((a, b) => a + b, 0) / data.length;
+
+          return { min, q1, median, q3, max, mean };
+        }
+
+        const baselineStats = calculateStats(baselineData);
+        const changeStats = calculateStats(changeData);
+
+        window.charts.boxplot = new Chart(boxCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Min', 'Q1 (25%)', 'Median', 'Mean', 'Q3 (75%)', 'Max'],
+            datasets: [
+              {
+                label: 'Baseline',
+                data: [
+                  baselineStats.min,
+                  baselineStats.q1,
+                  baselineStats.median,
+                  baselineStats.mean,
+                  baselineStats.q3,
+                  baselineStats.max
+                ],
+                backgroundColor: CHART_COLORS.baseline + '80',
+                borderColor: CHART_COLORS.baseline,
+                borderWidth: 2,
+              },
+              {
+                label: 'Change',
+                data: [
+                  changeStats.min,
+                  changeStats.q1,
+                  changeStats.median,
+                  changeStats.mean,
+                  changeStats.q3,
+                  changeStats.max
+                ],
+                backgroundColor: CHART_COLORS.change + '80',
+                borderColor: CHART_COLORS.change,
+                borderWidth: 2,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                labels: { color: colors.textColor }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (item) => `${item.dataset.label}: ${item.parsed.y.toFixed(2)}ms`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                },
+                grid: { color: colors.gridColor },
+                ticks: { color: colors.textColor }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // ============================================================================
+    // INITIALIZATION ON PAGE LOAD
+    // ============================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeTheme();
+      // Charts are lazy-loaded when the section is first opened
+    });
+  </script>
+</body>
+</html>

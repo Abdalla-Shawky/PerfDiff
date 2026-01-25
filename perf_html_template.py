@@ -1,153 +1,1777 @@
-from datetime import datetime
+#!/usr/bin/env python3
+"""
+HTML Template for Performance Regression Reports
+
+This module contains the HTML/CSS/JavaScript template used by perf_html_report.py
+to generate interactive performance regression reports.
+"""
+
 from html import escape
-from typing import List, Dict, Any, Optional
-import numpy as np
+from constants import (
+    ENABLE_QUALITY_GATES, MAX_CV_FOR_REGRESSION_CHECK, MIN_SAMPLES_FOR_REGRESSION,
+    CV_THRESHOLD_MULTIPLIER, MS_FLOOR, PCT_FLOOR, TAIL_MS_FLOOR, TAIL_PCT_FLOOR,
+    DIRECTIONALITY, WILCOXON_ALPHA, CHARTJS_CDN_URL,
+    ANIMATION_DURATION_FAST, ANIMATION_DURATION_NORMAL, ANIMATION_DURATION_SLOW,
+    CHART_COLOR_BASELINE, CHART_COLOR_CHANGE_IMPROVEMENT, CHART_COLOR_CHANGE_REGRESSION,
+    CHART_COLOR_NEUTRAL, LIGHT_BG_PRIMARY, LIGHT_BG_SECONDARY, LIGHT_BG_TERTIARY,
+    LIGHT_TEXT_PRIMARY, LIGHT_TEXT_SECONDARY, LIGHT_BORDER,
+    DARK_BG_PRIMARY, DARK_BG_SECONDARY, DARK_BG_TERTIARY,
+    DARK_TEXT_PRIMARY, DARK_TEXT_SECONDARY, DARK_BORDER,
+)
 
 
-def _fmt_ms(x: float) -> str:
-    return f"{x:.2f} ms"
-
-
-def _fmt_pct(x: float) -> str:
-    return f"{x * 100:.2f}%"
-
-
-def _mini_table(rows: List[List[str]]) -> str:
-    trs = []
-    for r in rows:
-        tds = "".join(f"<td>{escape(c)}</td>" for c in r)
-        trs.append(f"<tr>{tds}</tr>")
-    return "<table>" + "".join(trs) + "</table>"
-
-
-def render_html_report(
-    title: str,
-    baseline: List[float],
-    change: List[float],
-    gate_result: Dict[str, Any],
-    mode: str,
-    equivalence: Optional[Dict[str, Any]] = None,
-) -> str:
-    a = np.array(baseline, dtype=float)
-    b = np.array(change, dtype=float)
-    d = b - a
-
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    passed = gate_result["passed"]
-    status = "PASS ✅" if passed else "FAIL ❌"
-
-    base_med = float(np.median(a))
-    change_med = float(np.median(b))
-    delta_med = float(np.median(d))
-    base_p90 = float(np.quantile(a, 0.90))
-    change_p90 = float(np.quantile(b, 0.90))
-    delta_p90 = float(np.quantile(d, 0.90))
-    pos_frac = float(np.mean(d > 0))
-
-    summary_rows = [
-        ["Mode", mode],
-        ["Status", status],
-        ["Samples (paired)", str(len(d))],
-        ["Baseline median", _fmt_ms(base_med)],
-        ["Change median", _fmt_ms(change_med)],
-        ["Median delta", _fmt_ms(delta_med)],
-        ["Baseline p90", _fmt_ms(base_p90)],
-        ["Change p90", _fmt_ms(change_p90)],
-        ["p90 delta", _fmt_ms(delta_p90)],
-        ["Positive delta fraction", _fmt_pct(pos_frac)],
-    ]
-
-    details = gate_result.get("details", {})
-    if "threshold_ms" in details:
-        summary_rows.append(
-            ["Gate threshold", _fmt_ms(details["threshold_ms"])]
-        )
-
-    wilcoxon = details.get("wilcoxon")
-    wilcoxon_rows = []
-    if wilcoxon:
-        wilcoxon_rows = [
-            ["n", str(wilcoxon["n"])],
-            ["z", f'{wilcoxon["z"]:.3f}'],
-            ["p(greater)", f'{wilcoxon["p_greater"]:.6f}'],
-            ["p(two-sided)", f'{wilcoxon["p_two_sided"]:.6f}'],
-        ]
-
-    bootstrap = details.get("bootstrap_ci_median")
-    bootstrap_rows = []
-    if bootstrap:
-        bootstrap_rows = [
-            ["Confidence", f'{bootstrap["confidence"]*100:.1f}%'],
-            ["CI low", _fmt_ms(bootstrap["low"])],
-            ["CI high", _fmt_ms(bootstrap["high"])],
-            ["Bootstrap samples", str(bootstrap["n_boot"])],
-        ]
-
-    eq_rows = []
-    if equivalence:
-        eq_rows = [
-            ["Equivalent", "YES ✅" if equivalence["equivalent"] else "NO ❌"],
-            ["Margin", _fmt_ms(equivalence["margin_ms"])],
-            ["CI low", _fmt_ms(equivalence["ci_low"])],
-            ["CI high", _fmt_ms(equivalence["ci_high"])],
-        ]
-
-    run_rows = []
-    for i, (ai, bi, di) in enumerate(zip(a, b, d), start=1):
-        run_rows.append([
-            str(i),
-            _fmt_ms(ai),
-            _fmt_ms(bi),
-            _fmt_ms(di),
-        ])
+def render_template(**context) -> str:
+    """Render HTML performance regression report from template variables."""
+    # Make context variables available as local variables for f-string
+    # This allows using {title} instead of {context['title']} in the template
+    title = context['title']
+    passed = context['passed']
+    inconclusive = context['inconclusive']
+    status = context['status']
+    status_color = context['status_color']
+    now = context['now']
+    base_med = context['base_med']
+    change_med = context['change_med']
+    delta_med = context['delta_med']
+    base_p90 = context['base_p90']
+    change_p90 = context['change_p90']
+    delta_p90 = context['delta_p90']
+    pos_frac = context['pos_frac']
+    pct_change = context['pct_change']
+    simple_verdict = context['simple_verdict']
+    recommendation = context['recommendation']
+    change_icon = context['change_icon']
+    change_color = context['change_color']
+    a = context['a']
+    b = context['b']
+    d = context['d']
+    baseline_quality = context['baseline_quality']
+    change_quality = context['change_quality']
+    overall_quality_score = context['overall_quality_score']
+    overall_quality_verdict = context['overall_quality_verdict']
+    overall_quality_class = context['overall_quality_class']
+    result = context['result']
+    _fmt_ms = context['_fmt_ms']
+    _mini_table = context['_mini_table']
+    bar = context['bar']
+    escape = context['escape']
+    np = context['np']
+    summary_rows = context['summary_rows']
+    runs_rows = context['runs_rows']
+    wil_rows = context['wil_rows']
+    bci_rows = context['bci_rows']
+    eq_rows = context['eq_rows']
+    eq = context['eq']
+    mode = context['mode']
+    max_run = context['max_run']
+    baseline_data_json = context['baseline_data_json']
+    change_data_json = context['change_data_json']
+    delta_data_json = context['delta_data_json']
+    export_data_json = context['export_data_json']
+    chart_change_color = context['chart_change_color']
 
     return f"""<!doctype html>
-<html>
+<html data-theme="light">
 <head>
   <meta charset="utf-8"/>
-  <title>{escape(title)}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{escape(title)} - Perf Report</title>
+
+  <!-- Chart.js for interactive visualizations -->
+  <script src="{CHARTJS_CDN_URL}" crossorigin="anonymous"></script>
+
   <style>
-    body {{ font-family: system-ui, -apple-system, sans-serif; margin: 24px; }}
-    h1 {{ margin-bottom: 4px; }}
-    .meta {{ color: #666; margin-bottom: 20px; }}
-    .card {{ border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; margin: 16px 0; }}
-    table {{ width: 100%; border-collapse: collapse; }}
-    td, th {{ border-bottom: 1px solid #eee; padding: 8px; text-align: left; }}
-    th {{ background: #fafafa; }}
-    .status {{ font-size: 20px; font-weight: 700; }}
-    .pass {{ color: #137333; }}
-    .fail {{ color: #b3261e; }}
+    /* ============================================================================
+       CSS CUSTOM PROPERTIES (CSS Variables) FOR THEMING
+       ============================================================================ */
+    :root {{
+      /* Premium Light Mode Colors */
+      --bg-primary: #f8f9fa;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f3f5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #6c757d;
+      --border-color: #e0e0e0;
+      --accent-primary: #0066ff;
+      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+      /* Status colors with premium feel */
+      --color-success: #10b981;
+      --color-success-bg: #ecfdf5;
+      --color-error: #ef4444;
+      --color-error-bg: #fef2f2;
+      --color-warning: #f59e0b;
+      --color-warning-bg: #fffbeb;
+      --color-info: #3b82f6;
+      --color-info-bg: #eff6ff;
+
+      /* Chart colors */
+      --chart-baseline: {CHART_COLOR_BASELINE};
+      --chart-improvement: {CHART_COLOR_CHANGE_IMPROVEMENT};
+      --chart-regression: {CHART_COLOR_CHANGE_REGRESSION};
+
+      /* Animation durations */
+      --anim-fast: {ANIMATION_DURATION_FAST}ms;
+      --anim-normal: {ANIMATION_DURATION_NORMAL}ms;
+      --anim-slow: {ANIMATION_DURATION_SLOW}ms;
+
+      /* Premium Shadows with depth */
+      --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+
+      /* Spacing scale */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-6: 24px;
+      --space-8: 32px;
+
+      /* Border radius scale */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }}
+
+    /* Premium Dark Mode */
+    [data-theme="dark"] {{
+      --bg-primary: #0f1419;
+      --bg-secondary: #1a1f29;
+      --bg-tertiary: #242b38;
+      --text-primary: #f0f0f0;
+      --text-secondary: #9ca3af;
+      --border-color: #374151;
+      --accent-primary: #60a5fa;
+
+      --color-success: #34d399;
+      --color-success-bg: #064e3b;
+      --color-error: #f87171;
+      --color-error-bg: #7f1d1d;
+      --color-warning: #fbbf24;
+      --color-warning-bg: #78350f;
+      --color-info: #60a5fa;
+      --color-info-bg: #1e3a8a;
+
+      --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.4);
+      --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.5), 0 1px 2px -1px rgba(0,0,0,0.5);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.5);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5);
+    }}
+
+    /* Smooth transitions for theme changes */
+    * {{
+      transition: background-color var(--anim-normal) ease,
+                  color var(--anim-normal) ease,
+                  border-color var(--anim-normal) ease,
+                  box-shadow var(--anim-normal) ease;
+    }}
+
+    /* Disable transitions for immediate feedback on clicks */
+    *, *::before, *::after {{
+      transition-property: background-color, color, border-color, box-shadow, transform, opacity;
+    }}
+
+    /* Base styles with premium typography */
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }}
+
+    /* Import Inter font for premium typography */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Premium Header */
+    .header {{
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 20px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }}
+
+    .header-left {{
+      flex: 1;
+      min-width: 200px;
+    }}
+
+    .header-right {{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }}
+
+    h1 {{
+      margin: 0;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.5px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }}
+
+    [data-theme="dark"] h1 {{
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }}
+
+    .meta {{
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: 6px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }}
+
+    .container {{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }}
+
+    /* Premium Control Buttons */
+    .control-btn {{
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-xs);
+    }}
+
+    .control-btn:hover {{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      background: var(--bg-secondary);
+      border-color: var(--accent-primary);
+    }}
+
+    .control-btn:active {{
+      transform: translateY(0);
+      box-shadow: var(--shadow-sm);
+    }}
+
+    .icon-btn {{
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      cursor: pointer;
+      font-size: 20px;
+      border-radius: var(--radius-md);
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-xs);
+    }}
+
+    .icon-btn:hover {{
+      background: var(--bg-secondary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent-primary);
+    }}
+
+    .icon-btn:active {{
+      transform: scale(0.95);
+    }}
+
+    /* Export dropdown */
+    .export-dropdown {{
+      position: relative;
+      display: inline-block;
+    }}
+
+    .export-menu {{
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      min-width: 160px;
+      z-index: 1000;
+    }}
+
+    .export-dropdown.active .export-menu {{
+      display: block;
+      animation: fadeIn var(--anim-fast) ease;
+    }}
+
+    .export-menu button {{
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color var(--anim-fast) ease;
+    }}
+
+    .export-menu button:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    .export-menu button:first-child {{
+      border-radius: 8px 8px 0 0;
+    }}
+
+    .export-menu button:last-child {{
+      border-radius: 0 0 8px 8px;
+    }}
+
+    /* Premium Executive Summary */
+    .executive-summary {{
+      background: var(--bg-secondary);
+      border-radius: var(--radius-xl);
+      padding: 48px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-xl);
+      animation: slideUp var(--anim-slow) ease;
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+    }}
+
+    .executive-summary::before {{
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--accent-gradient);
+    }}
+
+    .big-status {{
+      font-size: 56px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      text-align: center;
+      animation: scaleIn var(--anim-normal) ease;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+    }}
+
+    .big-status.pass {{
+      color: var(--color-success);
+      text-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+    }}
+    .big-status.fail {{
+      color: var(--color-error);
+      text-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+    }}
+    .big-status.inconclusive {{
+      color: var(--color-warning);
+      text-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+    }}
+
+    .verdict {{
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-align: center;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }}
+
+    .recommendation {{
+      font-size: 16px;
+      padding: 24px 28px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-lg);
+      margin: 32px 0;
+      text-align: center;
+      line-height: 1.8;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      font-weight: 500;
+    }}
+
+    .comparison {{
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+      margin: 32px 0;
+    }}
+
+    .comparison-item {{
+      text-align: center;
+      padding: 32px 24px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border-color);
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }}
+
+    .comparison-item::before {{
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent-gradient);
+      opacity: 0;
+      transition: opacity var(--anim-fast) ease;
+    }}
+
+    .comparison-item:hover {{
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+      border-color: var(--accent-primary);
+    }}
+
+    .comparison-item:hover::before {{
+      opacity: 1;
+    }}
+
+    .comparison-label {{
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }}
+
+    .comparison-value {{
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 12px 0;
+      letter-spacing: -1px;
+    }}
+
+    .comparison-arrow {{
+      font-size: 48px;
+      color: {change_color};
+      opacity: 0.9;
+      filter: drop-shadow(0 2px 8px {change_color}40);
+    }}
+
+    /* Premium Collapsible Sections */
+    .section {{
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+      animation: fadeIn var(--anim-normal) ease;
+      transition: all var(--anim-fast) ease;
+    }}
+
+    .section:hover {{
+      box-shadow: var(--shadow-lg);
+    }}
+
+    .section-header {{
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      padding: 12px;
+      margin: -12px;
+      border-radius: var(--radius-md);
+      transition: all var(--anim-fast) ease;
+    }}
+
+    .section-header:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    .section-title {{
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+      letter-spacing: -0.3px;
+    }}
+
+    .section-subtitle {{
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      font-weight: 500;
+    }}
+
+    .toggle-icon {{
+      font-size: 24px;
+      color: var(--text-secondary);
+      transition: transform var(--anim-normal) cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--bg-tertiary);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }}
+
+    .section-content {{
+      margin-top: 24px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height var(--anim-normal) ease, opacity var(--anim-normal) ease;
+    }}
+
+    .section-content.show {{
+      max-height: 10000px;
+      opacity: 1;
+    }}
+
+    .section.expanded .toggle-icon {{
+      transform: rotate(180deg);
+      background: var(--accent-primary);
+      color: white;
+    }}
+
+    /* Charts container */
+    .chart-container {{
+      position: relative;
+      height: 350px;
+      margin: 20px 0;
+    }}
+
+    .chart-grid {{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin: 20px 0;
+    }}
+
+    /* Premium Tables */
+    table {{
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-xs);
+    }}
+
+    td, th {{
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 14px;
+    }}
+
+    th {{
+      font-weight: 700;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border-color);
+    }}
+
+    tr {{
+      transition: background-color var(--anim-fast) ease;
+    }}
+
+    tr:hover {{
+      background: var(--bg-tertiary);
+    }}
+
+    tbody tr:last-child td {{
+      border-bottom: none;
+    }}
+
+    /* Premium Cards and Grid */
+    .card {{
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 16px 0;
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+      transition: all var(--anim-fast) ease;
+    }}
+
+    .card:hover {{
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }}
+
+    .grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }}
+
+    .card h3 {{
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border-color);
+    }}
+
+    /* Enhanced Progress Bars with Gradients */
+    .bar {{
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      height: 12px;
+      overflow: hidden;
+      position: relative;
+    }}
+
+    .barfill {{
+      height: 12px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--chart-baseline), {CHART_COLOR_NEUTRAL});
+      transition: width var(--anim-slow) cubic-bezier(0.4, 0, 0.2, 1);
+      animation: barGrow var(--anim-slow) ease;
+    }}
+
+    .barfill.improvement {{
+      background: linear-gradient(90deg, var(--chart-improvement), #4caf50);
+    }}
+
+    .barfill.regression {{
+      background: linear-gradient(90deg, var(--chart-regression), #f44336);
+    }}
+
+    /* Premium Badges */
+    .small {{
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+    }}
+
+    .badge {{
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      box-shadow: var(--shadow-xs);
+    }}
+
+    .badge-info {{
+      background: var(--color-info-bg);
+      color: var(--color-info);
+      border: 1px solid var(--color-info);
+    }}
+
+    .outlier-badge {{
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      background: var(--color-warning-bg);
+      color: var(--color-warning);
+      margin-left: 6px;
+      font-weight: 700;
+      box-shadow: var(--shadow-xs);
+      border: 1px solid var(--color-warning);
+    }}
+
+    .quality-badge {{
+      display: inline-block;
+      padding: 14px 24px;
+      border-radius: var(--radius-lg);
+      font-weight: 800;
+      font-size: 16px;
+      animation: pulse 2s ease infinite;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: var(--shadow-md);
+    }}
+
+    .quality-good {{
+      background: var(--color-success-bg);
+      color: var(--color-success);
+      border: 2px solid var(--color-success);
+    }}
+
+    .quality-warning {{
+      background: var(--color-warning-bg);
+      color: var(--color-warning);
+      border: 2px solid var(--color-warning);
+    }}
+
+    .quality-poor {{
+      background: var(--color-error-bg);
+      color: var(--color-error);
+      border: 2px solid var(--color-error);
+    }}
+
+    /* Premium Data Quality Grid */
+    .data-quality-grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 20px 0;
+    }}
+
+    .quality-item {{
+      padding: 24px;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-lg);
+      border-left: 4px solid var(--border-color);
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-sm);
+    }}
+
+    .quality-item:hover {{
+      transform: translateX(6px);
+      box-shadow: var(--shadow-lg);
+      border-left-width: 6px;
+    }}
+
+    .quality-item.excellent {{
+      border-left-color: var(--color-success);
+      background: linear-gradient(to right, var(--color-success-bg), var(--bg-tertiary));
+    }}
+    .quality-item.good {{
+      border-left-color: #10b981;
+      background: linear-gradient(to right, #ecfdf5, var(--bg-tertiary));
+    }}
+    .quality-item.fair {{
+      border-left-color: var(--color-warning);
+      background: linear-gradient(to right, var(--color-warning-bg), var(--bg-tertiary));
+    }}
+    .quality-item.poor {{
+      border-left-color: var(--color-error);
+      background: linear-gradient(to right, var(--color-error-bg), var(--bg-tertiary));
+    }}
+
+    .issue-list {{
+      margin: 12px 0;
+      padding-left: 24px;
+    }}
+
+    .issue-list li {{
+      margin: 8px 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }}
+
+    /* Premium Info Boxes */
+    .info-box {{
+      margin: 20px 0;
+      padding: 20px 24px;
+      background: var(--color-info-bg);
+      border-left: 4px solid var(--color-info);
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      line-height: 1.8;
+      box-shadow: var(--shadow-sm);
+    }}
+
+    .warning-box {{
+      margin: 20px 0;
+      padding: 20px 24px;
+      background: var(--color-warning-bg);
+      border-left: 4px solid var(--color-warning);
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      line-height: 1.8;
+      box-shadow: var(--shadow-sm);
+    }}
+
+    /* Premium Scroll to Top Button */
+    .scroll-top-btn {{
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--accent-primary);
+      border: none;
+      color: white;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-xl);
+      transition: all var(--anim-fast) cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 999;
+    }}
+
+    .scroll-top-btn:hover {{
+      transform: translateY(-6px) scale(1.1);
+      box-shadow: 0 12px 32px rgba(0, 102, 255, 0.4);
+    }}
+
+    .scroll-top-btn:active {{
+      transform: translateY(-2px) scale(1.05);
+    }}
+
+    .scroll-top-btn.visible {{
+      display: flex;
+      animation: fadeIn var(--anim-normal) ease, bounce 2s ease-in-out infinite;
+    }}
+
+    @keyframes bounce {{
+      0%, 100% {{ transform: translateY(0); }}
+      50% {{ transform: translateY(-8px); }}
+    }}
+
+    /* Animations */
+    @keyframes fadeIn {{
+      from {{ opacity: 0; }}
+      to {{ opacity: 1; }}
+    }}
+
+    @keyframes slideUp {{
+      from {{
+        opacity: 0;
+        transform: translateY(20px);
+      }}
+      to {{
+        opacity: 1;
+        transform: translateY(0);
+      }}
+    }}
+
+    @keyframes scaleIn {{
+      from {{
+        opacity: 0;
+        transform: scale(0.9);
+      }}
+      to {{
+        opacity: 1;
+        transform: scale(1);
+      }}
+    }}
+
+    @keyframes barGrow {{
+      from {{ width: 0; }}
+    }}
+
+    @keyframes pulse {{
+      0%, 100% {{ opacity: 1; }}
+      50% {{ opacity: 0.8; }}
+    }}
+
+    /* Premium Responsive Design */
+    @media (max-width: 900px) {{
+      .grid {{ grid-template-columns: 1fr; }}
+      .comparison {{ grid-template-columns: 1fr; gap: 16px; }}
+      .comparison-arrow {{ transform: rotate(90deg); font-size: 36px; }}
+      .data-quality-grid {{ grid-template-columns: 1fr; }}
+      .header {{ flex-direction: column; align-items: flex-start; padding: 16px 20px; }}
+      .header-right {{ width: 100%; justify-content: flex-end; }}
+      .scroll-top-btn {{ bottom: 20px; right: 20px; width: 48px; height: 48px; }}
+      .section {{ padding: 20px; }}
+      .executive-summary {{ padding: 32px 24px; }}
+    }}
+
+    @media (max-width: 600px) {{
+      .container {{ padding: 16px; }}
+      .executive-summary {{ padding: 24px 20px; }}
+      .big-status {{ font-size: 40px; }}
+      .verdict {{ font-size: 20px; }}
+      .comparison-value {{ font-size: 32px; }}
+      .comparison-item {{ padding: 24px 16px; }}
+      h1 {{ font-size: 22px; }}
+      .section-title {{ font-size: 18px; }}
+      .card {{ padding: 16px; }}
+      .quality-badge {{ font-size: 14px; padding: 12px 20px; }}
+      .scroll-top-btn {{ bottom: 16px; right: 16px; width: 44px; height: 44px; }}
+    }}
+
+    /* Print styles */
+    @media print {{
+      .header-right, .scroll-top-btn, .section-header {{
+        display: none !important;
+      }}
+      .section-content {{
+        max-height: none !important;
+        opacity: 1 !important;
+        display: block !important;
+      }}
+      body {{
+        background: white;
+        color: black;
+      }}
+      .section, .executive-summary {{
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
+      }}
+    }}
   </style>
 </head>
 <body>
+  <!-- Sticky Header with Controls -->
+  <div class="header">
+    <div class="header-left">
+      <h1>{escape(title)}</h1>
+      <div class="meta">Generated: {escape(now)} | Mode: {mode.upper()}</div>
+    </div>
+    <div class="header-right">
+      <!-- Theme Toggle -->
+      <button class="icon-btn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <span id="theme-icon">🌙</span>
+      </button>
 
-<h1>{escape(title)}</h1>
-<div class="meta">Generated {escape(now)}</div>
+      <!-- Export Dropdown -->
+      <div class="export-dropdown" id="export-dropdown">
+        <button class="control-btn" onclick="toggleExportMenu()">
+          📥 Export ▼
+        </button>
+        <div class="export-menu">
+          <button onclick="exportJSON()">📄 Export JSON</button>
+          <button onclick="exportCSV()">📊 Export CSV</button>
+          <button onclick="window.print()">🖨️ Print / PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<div class="card">
-  <div class="status {'pass' if passed else 'fail'}">{status}</div>
-  <div>{escape(gate_result["reason"])}</div>
-</div>
+  <div class="container">
+    <!-- EXECUTIVE SUMMARY - Simple & Clear for Everyone -->
+    <div class="executive-summary">
+      <div class="big-status {'inconclusive' if inconclusive else ('pass' if passed else 'fail')}">{status}</div>
+      <div class="verdict">{escape(simple_verdict)}</div>
 
-<div class="card">
-  <h3>Summary</h3>
-  {_mini_table(summary_rows)}
-</div>
+      <div class="comparison">
+        <div class="comparison-item">
+          <div class="comparison-label">Before (Baseline)</div>
+          <div class="comparison-value">{_fmt_ms(base_med)}</div>
+          <div class="small">{len(a)} measurements</div>
+        </div>
+        <div class="comparison-arrow">{change_icon}</div>
+        <div class="comparison-item">
+          <div class="comparison-label">After (Change)</div>
+          <div class="comparison-value">{_fmt_ms(change_med)}</div>
+          <div class="small">{len(b)} measurements</div>
+        </div>
+      </div>
 
-{"<div class='card'><h3>Wilcoxon (paired)</h3>" + _mini_table(wilcoxon_rows) + "</div>" if wilcoxon_rows else ""}
+      <div class="recommendation">{escape(recommendation)}</div>
 
-{"<div class='card'><h3>Bootstrap CI (median delta)</h3>" + _mini_table(bootstrap_rows) + "</div>" if bootstrap_rows else ""}
+      <div class="small" style="text-align: center; margin-top: 16px; color: var(--text-secondary);">
+        💡 Scroll down for detailed technical analysis
+      </div>
+    </div>
 
-{"<div class='card'><h3>Equivalence (release)</h3>" + _mini_table(eq_rows) + "</div>" if eq_rows else ""}
+    <!-- INTERACTIVE CHARTS - Visual Data Exploration -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('charts')">
+        <div>
+          <h2 class="section-title">📊 Interactive Charts</h2>
+          <div class="section-subtitle">Visual comparison of performance distributions</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="charts" class="section-content">
+        <div class="chart-grid">
+          <!-- Histogram Comparison Chart -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Distribution Histogram</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Compare the distribution of measurements between baseline and change. Overlapping peaks indicate similar performance.
+            </p>
+            <div class="chart-container">
+              <canvas id="histogramChart"></canvas>
+            </div>
+          </div>
 
-<div class="card">
-  <h3>Per-run values</h3>
-  <table>
-    <tr><th>#</th><th>Baseline</th><th>Change</th><th>Delta</th></tr>
-    {''.join('<tr>' + ''.join(f'<td>{escape(c)}</td>' for c in row) + '</tr>' for row in run_rows)}
-  </table>
-</div>
+          <!-- Run-by-Run Line Chart -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Run-by-Run Comparison</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Track how each paired measurement compares. The gap between lines shows performance delta.
+            </p>
+            <div class="chart-container">
+              <canvas id="lineChart"></canvas>
+            </div>
+          </div>
 
+          <!-- Statistical Summary Comparison -->
+          <div>
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Statistical Summary</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
+              Compare key statistics: min, quartiles (Q1/Q3), median, mean, and max values side-by-side.
+            </p>
+            <div class="chart-container">
+              <canvas id="boxPlotChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA QUALITY ASSESSMENT -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('data-quality')">
+        <div>
+          <h2 class="section-title">🔬 Data Quality Assessment</h2>
+          <div class="section-subtitle">How reliable are these measurements?</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="data-quality" class="section-content">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <span class="quality-badge quality-{overall_quality_class}">{escape(overall_quality_verdict)}</span>
+        </div>
+
+        <div class="data-quality-grid">
+          <!-- Baseline Quality -->
+          <div class="quality-item {baseline_quality['verdict'].lower()}">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px;">
+              {baseline_quality['verdict_icon']} Baseline Data: {baseline_quality['verdict']}
+              <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                Score: {baseline_quality['score']}/100
+              </span>
+            </h3>
+            <p style="margin: 8px 0; color: #666; font-size: 14px;">{escape(baseline_quality['verdict_desc'])}</p>
+            <div style="margin: 12px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{baseline_quality['score']}/100</span>
+              </div>
+              <div class="bar" style="height: 8px;">
+                <div class="barfill" style="width: {baseline_quality['score']}%; background: linear-gradient(90deg, {baseline_quality['verdict_color']}, {baseline_quality['verdict_color']}80);"></div>
+              </div>
+            </div>
+            <table style="font-size: 13px; margin-top: 12px;">
+              <tr><td>Samples:</td><td><strong>{baseline_quality['n']}</strong></td></tr>
+              <tr><td>Median:</td><td><strong>{_fmt_ms(baseline_quality['median'])}</strong></td></tr>
+              <tr><td>Variability (CV):</td><td><strong>{baseline_quality['cv']:.1f}%</strong></td></tr>
+              <tr><td>Range:</td><td>{_fmt_ms(baseline_quality['min'])} - {_fmt_ms(baseline_quality['max'])}</td></tr>
+              <tr><td>Outliers:</td><td>{baseline_quality['num_outliers']}</td></tr>
+            </table>
+            {"<div style='margin-top: 12px;'><strong style='color: #b3261e;'>⚠️ Issues:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(issue)}</li>" for issue in baseline_quality['issues']) + "</ul></div>" if baseline_quality['issues'] else ""}
+            {"<div style='margin-top: 12px;'><strong style='color: #f57c00;'>⚡ Warnings:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(warning)}</li>" for warning in baseline_quality['warnings']) + "</ul></div>" if baseline_quality['warnings'] else ""}
+          </div>
+
+          <!-- Change Quality -->
+          <div class="quality-item {change_quality['verdict'].lower()}">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px;">
+              {change_quality['verdict_icon']} Change Data: {change_quality['verdict']}
+              <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                Score: {change_quality['score']}/100
+              </span>
+            </h3>
+            <p style="margin: 8px 0; color: #666; font-size: 14px;">{escape(change_quality['verdict_desc'])}</p>
+            <div style="margin: 12px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{change_quality['score']}/100</span>
+              </div>
+              <div class="bar" style="height: 8px;">
+                <div class="barfill" style="width: {change_quality['score']}%; background: linear-gradient(90deg, {change_quality['verdict_color']}, {change_quality['verdict_color']}80);"></div>
+              </div>
+            </div>
+            <table style="font-size: 13px; margin-top: 12px;">
+              <tr><td>Samples:</td><td><strong>{change_quality['n']}</strong></td></tr>
+              <tr><td>Median:</td><td><strong>{_fmt_ms(change_quality['median'])}</strong></td></tr>
+              <tr><td>Variability (CV):</td><td><strong>{change_quality['cv']:.1f}%</strong></td></tr>
+              <tr><td>Range:</td><td>{_fmt_ms(change_quality['min'])} - {_fmt_ms(change_quality['max'])}</td></tr>
+              <tr><td>Outliers:</td><td>{change_quality['num_outliers']}</td></tr>
+            </table>
+            {"<div style='margin-top: 12px;'><strong style='color: #b3261e;'>⚠️ Issues:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(issue)}</li>" for issue in change_quality['issues']) + "</ul></div>" if change_quality['issues'] else ""}
+            {"<div style='margin-top: 12px;'><strong style='color: #f57c00;'>⚡ Warnings:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(warning)}</li>" for warning in change_quality['warnings']) + "</ul></div>" if change_quality['warnings'] else ""}
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 12px; background: #e3f2fd; border-left: 4px solid #1976d2; border-radius: 4px;">
+          <strong>💡 What does this mean?</strong><br/>
+          <ul style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
+            <li><strong>Quality Score:</strong> Starts at 100, penalties applied for issues. ≥90 = Excellent, ≥75 = Good, ≥60 = Fair, <60 = Poor.</li>
+            <li><strong>Samples:</strong> More samples = more reliable results. Aim for 10-20.</li>
+            <li><strong>Variability (CV):</strong> Lower is better. <5% is excellent, >20% is problematic.</li>
+            <li><strong>Outliers:</strong> Unusual measurements that may indicate instability.</li>
+          </ul>
+          If data quality is poor, consider re-running tests in a more stable environment or with more samples.
+        </div>
+      </div>
+    </div>
+
+    <!-- TECHNICAL DETAILS - Collapsible Sections -->
+
+    <!-- Quick Statistics -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('quick-stats')">
+        <div>
+          <h2 class="section-title">📊 Quick Statistics</h2>
+          <div class="section-subtitle">Key numbers at a glance</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="quick-stats" class="section-content">
+        <div class="grid">
+          <div class="card">
+            <h3>Summary</h3>
+            {_mini_table(summary_rows)}
+          </div>
+          <div class="card">
+            <h3>Run distribution (relative)</h3>
+            <table>
+              <tr><th>Baseline max</th><td>{_fmt_ms(float(np.max(a)))}</td></tr>
+              <tr><th>Change max</th><td>{_fmt_ms(float(np.max(b)))}</td></tr>
+              <tr><th>Baseline bars</th><td>{bar(float(np.median(a)), max_run)} <span class="small">median</span></td></tr>
+              <tr><th>Change bars</th><td>{bar(float(np.median(b)), max_run)} <span class="small">median</span></td></tr>
+            </table>
+            <div class="small">Bars are scaled relative to the max single-run value across both sets.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Why Did This Pass/Fail? -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('explanation')">
+        <div>
+          <h2 class="section-title">🔍 Why Did This {'Pass' if passed else 'Fail'}?</h2>
+          <div class="section-subtitle">Technical explanation of the decision</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="explanation" class="section-content">
+        <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; line-height: 1.8;">
+          <strong>Decision Reason:</strong><br/>
+          {escape(result.get("reason", ""))}
+        </div>
+        <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+          <strong>💡 What this means:</strong><br/>
+          {'The performance test passed all checks. ' if passed else 'The performance test failed one or more checks. '}
+          The tool checks multiple factors: median change, worst-case (p90) latency, consistency across runs, and statistical significance.
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Gates Configuration -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('quality-gates-config')">
+        <div>
+          <h2 class="section-title">⚙️ Quality Gate Configuration</h2>
+          <div class="section-subtitle">Data quality thresholds applied before regression detection</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="quality-gates-config" class="section-content">
+        <table>
+          <tr>
+            <th>Setting</th>
+            <th>Threshold</th>
+            <th>Observed</th>
+            <th>Status</th>
+          </tr>
+          <tr>
+            <td><strong>Quality Gates Enabled</strong></td>
+            <td>{'✅ Yes' if ENABLE_QUALITY_GATES else '❌ No (permissive mode)'}</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><strong>Minimum Sample Size</strong></td>
+            <td>≥ {MIN_SAMPLES_FOR_REGRESSION} measurements</td>
+            <td>{len(a)} measurements</td>
+            <td>{'✅ PASS' if len(a) >= MIN_SAMPLES_FOR_REGRESSION else '❌ FAIL'}</td>
+          </tr>
+          <tr>
+            <td><strong>Maximum CV (Variability)</strong></td>
+            <td>≤ {MAX_CV_FOR_REGRESSION_CHECK}%</td>
+            <td>Baseline: {result['details'].get('baseline_cv', 0):.1f}%, Change: {result['details'].get('change_cv', 0):.1f}%</td>
+            <td>{'✅ PASS' if max(result['details'].get('baseline_cv', 0), result['details'].get('change_cv', 0)) <= MAX_CV_FOR_REGRESSION_CHECK else '❌ FAIL'}</td>
+          </tr>
+          <tr>
+            <td><strong>CV Threshold Multiplier</strong></td>
+            <td>{CV_THRESHOLD_MULTIPLIER}× (adaptive strictness)</td>
+            <td>Applied multiplier: {result['details'].get('cv_multiplier', 1.0):.3f}×</td>
+            <td>—</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 20px; margin-bottom: 12px; font-weight: 600; color: var(--text-primary);">
+          📊 Regression Detection Thresholds
+        </div>
+        <table>
+          <tr>
+            <th>Check</th>
+            <th>Base Threshold Formula</th>
+            <th>Computed Value → Effective (After CV Multiplier)</th>
+            <th>Description</th>
+          </tr>
+          <tr>
+            <td><strong>Median Delta</strong></td>
+            <td>max({MS_FLOOR}ms, {PCT_FLOOR*100:.0f}% of baseline)</td>
+            <td><strong>{result['details'].get('base_threshold_ms', MS_FLOOR):.1f}ms</strong> → <strong style="color: var(--color-info);">{result['details'].get('threshold_ms', MS_FLOOR):.1f}ms</strong></td>
+            <td>Absolute or relative threshold, whichever is larger</td>
+          </tr>
+          <tr>
+            <td><strong>Tail (p90) Delta</strong></td>
+            <td>max({TAIL_MS_FLOOR}ms, {TAIL_PCT_FLOOR*100:.0f}% of baseline)</td>
+            <td><strong>{result['details'].get('base_tail_threshold_ms', TAIL_MS_FLOOR):.1f}ms</strong> → <strong style="color: var(--color-info);">{result['details'].get('tail_threshold_ms', TAIL_MS_FLOOR):.1f}ms</strong></td>
+            <td>Catches worst-case latency regressions</td>
+          </tr>
+          <tr>
+            <td><strong>Directionality</strong></td>
+            <td>≤ {DIRECTIONALITY*100:.0f}% slower runs</td>
+            <td>{DIRECTIONALITY*100:.0f}% (not affected by CV)</td>
+            <td>Max fraction of runs that can be slower</td>
+          </tr>
+          <tr>
+            <td><strong>Wilcoxon p-value</strong></td>
+            <td>≥ {WILCOXON_ALPHA} (significance level)</td>
+            <td>{WILCOXON_ALPHA} (not affected by CV)</td>
+            <td>Statistical significance threshold</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 16px; padding: 12px; background: {'#fff3cd' if inconclusive else '#f8f9fa'}; border-left: 4px solid {'#ffc107' if inconclusive else '#1976d2'}; border-radius: 4px;">
+          <strong>💡 What are Quality Gates?</strong><br/>
+          Quality gates validate data quality <em>before</em> checking for regressions. If data is too noisy (high CV) or insufficient (too few samples), the test returns <strong>INCONCLUSIVE</strong> instead of PASS/FAIL. This prevents false positives/negatives from unreliable measurements.
+          <br/><br/>
+          <strong>CV-based Adaptive Thresholds:</strong> When variance is elevated (but acceptable), regression thresholds become stricter proportionally. Formula: effective_threshold = base_threshold × cv_multiplier
+          <br/><br/>
+          {'<span style="color: #d32f2f;">⚠️ <strong>Quality gate failed!</strong> Data rejected as too unreliable. Fix measurement methodology and re-test. See MEASUREMENT_GUIDE.md</span>' if inconclusive else '<span style="color: #2e7d32;">✅ <strong>Quality gates passed.</strong> Data quality is acceptable for regression detection.</span>'}
+        </div>
+      </div>
+    </div>
+
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"wilcoxon\")'><div><h2 class='section-title'>📈 Wilcoxon Statistical Test</h2><div class='section-subtitle'>Tests if the difference is statistically significant (not just random noise)</div></div><span class='toggle-icon'>▼</span></div><div id='wilcoxon' class='section-content'>" + _mini_table(wil_rows) + "<div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> The Wilcoxon test checks if the performance difference is real or could be random variation. A p-value < 0.05 means the difference is statistically significant.</div></div></div>" if wil_rows else ""}
+
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"bootstrap\")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Range of uncertainty for the median performance change</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'>" + _mini_table(bci_rows) + "<div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> We're 95% confident the true median change is between the CI low and high values. This accounts for measurement uncertainty.</div></div></div>" if bci_rows else ""}
+
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"equivalence\")'><div><h2 class='section-title'>⚖️ Equivalence Test (Release Mode)</h2><div class='section-subtitle'>Checks if performance is 'close enough' to baseline</div></div><span class='toggle-icon'>▼</span></div><div id='equivalence' class='section-content'>" + _mini_table(eq_rows) + "<div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> In release mode, we test if the new version is equivalent to the old (within a margin). This is more permissive than regression testing.</div></div></div>" if eq_rows else ""}
+
+    <!-- Raw Data -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('raw-data')">
+        <div>
+          <h2 class="section-title">📋 Raw Measurement Data</h2>
+          <div class="section-subtitle">Every individual measurement, side-by-side</div>
+        </div>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div id="raw-data" class="section-content">
+        <table>
+          <tr><th>#</th><th>Baseline</th><th>Change</th><th>Delta</th></tr>
+          {''.join('<tr>' + ''.join(f'<td>{c}</td>' for c in row) + '</tr>' for row in runs_rows)}
+        </table>
+        <div class="small" style="margin-top: 12px;">
+          <strong>Note:</strong> Each row shows a paired measurement. Delta = Change - Baseline.
+          Negative delta means faster (improvement), positive means slower (regression).
+          Outliers (detected using IQR method) are marked with <span class="outlier-badge">⚠️</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0; padding: 16px; color: var(--text-secondary); font-size: 12px;">
+      Generated by Performance Regression Detection Tool 🚀
+    </div>
+
+  </div>
+
+  <!-- Scroll to Top Button -->
+  <button class="scroll-top-btn" id="scrollTopBtn" onclick="scrollToTop()" aria-label="Scroll to top">
+    ↑
+  </button>
+
+  <script>
+    // ============================================================================
+    // DATA PREPARATION FOR CHARTS
+    // ============================================================================
+    const baselineData = {baseline_data_json};
+    const changeData = {change_data_json};
+    const deltaData = {delta_data_json};
+    const exportData = {export_data_json};
+
+    // Chart colors
+    const CHART_COLORS = {{
+      baseline: '{CHART_COLOR_BASELINE}',
+      change: '{chart_change_color}',
+      neutral: '{CHART_COLOR_NEUTRAL}',
+    }};
+
+    // ============================================================================
+    // THEME TOGGLE (DARK MODE)
+    // ============================================================================
+    function toggleTheme() {{
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      const icon = document.getElementById('theme-icon');
+
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+
+      // Update chart colors for dark mode (only if charts are already initialized)
+      if (chartsInitialized && window.charts) {{
+        Object.values(window.charts).forEach(chart => {{
+          if (chart) chart.destroy();
+        }});
+        initializeCharts();
+      }}
+    }}
+
+    // Initialize theme from localStorage or system preference
+    function initializeTheme() {{
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }}
+
+    // ============================================================================
+    // EXPORT FUNCTIONALITY
+    // ============================================================================
+    function toggleExportMenu() {{
+      const dropdown = document.getElementById('export-dropdown');
+      dropdown.classList.toggle('active');
+    }}
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {{
+      const dropdown = document.getElementById('export-dropdown');
+      if (!dropdown.contains(event.target)) {{
+        dropdown.classList.remove('active');
+      }}
+    }});
+
+    function exportJSON() {{
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], {{ type: 'application/json' }});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'perf-report-data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('export-dropdown').classList.remove('active');
+      showToast('JSON exported successfully');
+    }}
+
+    function exportCSV() {{
+      const rows = [
+        ['Run', 'Baseline (ms)', 'Change (ms)', 'Delta (ms)']
+      ];
+
+      for (let i = 0; i < baselineData.length; i++) {{
+        rows.push([
+          i + 1,
+          baselineData[i].toFixed(2),
+          changeData[i].toFixed(2),
+          deltaData[i].toFixed(2)
+        ]);
+      }}
+
+      const csvContent = rows.map(row => row.join(',')).join('\\n');
+      const blob = new Blob([csvContent], {{ type: 'text/csv' }});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'perf-report-measurements.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      document.getElementById('export-dropdown').classList.remove('active');
+      showToast('CSV exported successfully');
+    }}
+
+    function showToast(message) {{
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        right: 32px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: var(--shadow-lg);
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+        border: 1px solid var(--border-color);
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {{
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }}, 2000);
+    }}
+
+    // ============================================================================
+    // SECTION TOGGLE ENHANCEMENT
+    // ============================================================================
+    let chartsInitialized = false;
+
+    function toggleSection(id) {{
+      const content = document.getElementById(id);
+      const section = content.parentElement;
+      content.classList.toggle('show');
+      section.classList.toggle('expanded');
+
+      // Lazy load charts when Interactive Charts section is first opened
+      if (id === 'charts' && content.classList.contains('show') && !chartsInitialized) {{
+        chartsInitialized = true;
+        initializeCharts();
+      }}
+    }}
+
+    // ============================================================================
+    // SCROLL TO TOP BUTTON
+    // ============================================================================
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+
+    window.addEventListener('scroll', () => {{
+      if (window.pageYOffset > 300) {{
+        scrollTopBtn.classList.add('visible');
+      }} else {{
+        scrollTopBtn.classList.remove('visible');
+      }}
+    }});
+
+    function scrollToTop() {{
+      window.scrollTo({{
+        top: 0,
+        behavior: 'smooth'
+      }});
+    }}
+
+    // ============================================================================
+    // CHART.JS INITIALIZATION
+    // ============================================================================
+    window.charts = {{}};
+
+    function getChartColors() {{
+      const theme = document.documentElement.getAttribute('data-theme');
+      return {{
+        gridColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        textColor: theme === 'dark' ? '#e0e0e0' : '#333',
+      }};
+    }}
+
+    function initializeCharts() {{
+      const colors = getChartColors();
+
+      // 1. HISTOGRAM - Distribution comparison
+      const histCtx = document.getElementById('histogramChart');
+      if (histCtx) {{
+        // Calculate histogram bins
+        const allData = [...baselineData, ...changeData];
+        const min = Math.min(...allData);
+        const max = Math.max(...allData);
+        const numBins = Math.min(20, Math.max(10, Math.floor(Math.sqrt(baselineData.length))));
+        const binWidth = (max - min) / numBins;
+
+        const bins = Array.from({{ length: numBins }}, (_, i) => min + i * binWidth);
+
+        function calculateHistogram(data) {{
+          const counts = new Array(numBins).fill(0);
+          data.forEach(val => {{
+            const binIndex = Math.min(numBins - 1, Math.floor((val - min) / binWidth));
+            counts[binIndex]++;
+          }});
+          return counts;
+        }}
+
+        const baselineHist = calculateHistogram(baselineData);
+        const changeHist = calculateHistogram(changeData);
+
+        window.charts.histogram = new Chart(histCtx, {{
+          type: 'bar',
+          data: {{
+            labels: bins.map(b => b.toFixed(1)),
+            datasets: [
+              {{
+                label: 'Baseline',
+                data: baselineHist,
+                backgroundColor: CHART_COLORS.baseline + '80',
+                borderColor: CHART_COLORS.baseline,
+                borderWidth: 1.5,
+              }},
+              {{
+                label: 'Change',
+                data: changeHist,
+                backgroundColor: CHART_COLORS.change + '80',
+                borderColor: CHART_COLORS.change,
+                borderWidth: 1.5,
+              }}
+            ]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+              mode: 'index',
+              intersect: false,
+            }},
+            plugins: {{
+              legend: {{
+                labels: {{ color: colors.textColor }}
+              }},
+              tooltip: {{
+                callbacks: {{
+                  title: (items) => `Range: ${{items[0].label}}ms`,
+                  label: (item) => `${{item.dataset.label}}: ${{item.parsed.y}} measurements`
+                }}
+              }}
+            }},
+            scales: {{
+              x: {{
+                title: {{
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }},
+              y: {{
+                title: {{
+                  display: true,
+                  text: 'Count',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor, precision: 0 }}
+              }}
+            }}
+          }}
+        }});
+      }}
+
+      // 2. LINE CHART - Run-by-run comparison
+      const lineCtx = document.getElementById('lineChart');
+      if (lineCtx) {{
+        const runLabels = Array.from({{ length: baselineData.length }}, (_, i) => (i + 1).toString());
+
+        window.charts.line = new Chart(lineCtx, {{
+          type: 'line',
+          data: {{
+            labels: runLabels,
+            datasets: [
+              {{
+                label: 'Baseline',
+                data: baselineData,
+                borderColor: CHART_COLORS.baseline,
+                backgroundColor: CHART_COLORS.baseline + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true,
+              }},
+              {{
+                label: 'Change',
+                data: changeData,
+                borderColor: CHART_COLORS.change,
+                backgroundColor: CHART_COLORS.change + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true,
+              }}
+            ]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+              mode: 'index',
+              intersect: false,
+            }},
+            plugins: {{
+              legend: {{
+                labels: {{ color: colors.textColor }}
+              }},
+              tooltip: {{
+                callbacks: {{
+                  title: (items) => `Run #${{items[0].label}}`,
+                  afterLabel: (item) => {{
+                    const delta = changeData[item.dataIndex] - baselineData[item.dataIndex];
+                    return `Delta: ${{delta.toFixed(2)}}ms (${{delta > 0 ? '+' : ''}}${{((delta / baselineData[item.dataIndex]) * 100).toFixed(1)}}%)`;
+                  }}
+                }}
+              }}
+            }},
+            scales: {{
+              x: {{
+                title: {{
+                  display: true,
+                  text: 'Run Number',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }},
+              y: {{
+                title: {{
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }}
+            }}
+          }}
+        }});
+      }}
+
+      // 3. STATISTICAL SUMMARY - Bar chart comparison
+      const boxCtx = document.getElementById('boxPlotChart');
+      if (boxCtx) {{
+        function calculateStats(data) {{
+          const sorted = [...data].sort((a, b) => a - b);
+          const min = sorted[0];
+          const max = sorted[sorted.length - 1];
+          const q1 = sorted[Math.floor(sorted.length * 0.25)];
+          const median = sorted[Math.floor(sorted.length * 0.5)];
+          const q3 = sorted[Math.floor(sorted.length * 0.75)];
+          const mean = data.reduce((a, b) => a + b, 0) / data.length;
+
+          return {{ min, q1, median, q3, max, mean }};
+        }}
+
+        const baselineStats = calculateStats(baselineData);
+        const changeStats = calculateStats(changeData);
+
+        window.charts.boxplot = new Chart(boxCtx, {{
+          type: 'bar',
+          data: {{
+            labels: ['Min', 'Q1 (25%)', 'Median', 'Mean', 'Q3 (75%)', 'Max'],
+            datasets: [
+              {{
+                label: 'Baseline',
+                data: [
+                  baselineStats.min,
+                  baselineStats.q1,
+                  baselineStats.median,
+                  baselineStats.mean,
+                  baselineStats.q3,
+                  baselineStats.max
+                ],
+                backgroundColor: CHART_COLORS.baseline + '80',
+                borderColor: CHART_COLORS.baseline,
+                borderWidth: 2,
+              }},
+              {{
+                label: 'Change',
+                data: [
+                  changeStats.min,
+                  changeStats.q1,
+                  changeStats.median,
+                  changeStats.mean,
+                  changeStats.q3,
+                  changeStats.max
+                ],
+                backgroundColor: CHART_COLORS.change + '80',
+                borderColor: CHART_COLORS.change,
+                borderWidth: 2,
+              }}
+            ]
+          }},
+          options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {{
+              mode: 'index',
+              intersect: false,
+            }},
+            plugins: {{
+              legend: {{
+                labels: {{ color: colors.textColor }}
+              }},
+              tooltip: {{
+                callbacks: {{
+                  label: (item) => `${{item.dataset.label}}: ${{item.parsed.y.toFixed(2)}}ms`
+                }}
+              }}
+            }},
+            scales: {{
+              x: {{
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }},
+              y: {{
+                title: {{
+                  display: true,
+                  text: 'Performance (ms)',
+                  color: colors.textColor
+                }},
+                grid: {{ color: colors.gridColor }},
+                ticks: {{ color: colors.textColor }}
+              }}
+            }}
+          }}
+        }});
+      }}
+    }}
+
+    // ============================================================================
+    // INITIALIZATION ON PAGE LOAD
+    // ============================================================================
+    document.addEventListener('DOMContentLoaded', function() {{
+      initializeTheme();
+      // Charts are lazy-loaded when the section is first opened
+    }});
+  </script>
 </body>
 </html>
 """
