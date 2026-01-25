@@ -1224,8 +1224,20 @@ def render_html_report(
           <div class="quality-item {baseline_quality['verdict'].lower()}">
             <h3 style="margin: 0 0 8px 0; font-size: 16px;">
               {baseline_quality['verdict_icon']} Baseline Data: {baseline_quality['verdict']}
+              <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                Score: {baseline_quality['score']}/100
+              </span>
             </h3>
             <p style="margin: 8px 0; color: #666; font-size: 14px;">{escape(baseline_quality['verdict_desc'])}</p>
+            <div style="margin: 12px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{baseline_quality['score']}/100</span>
+              </div>
+              <div class="bar" style="height: 8px;">
+                <div class="barfill" style="width: {baseline_quality['score']}%; background: linear-gradient(90deg, {baseline_quality['verdict_color']}, {baseline_quality['verdict_color']}80);"></div>
+              </div>
+            </div>
             <table style="font-size: 13px; margin-top: 12px;">
               <tr><td>Samples:</td><td><strong>{baseline_quality['n']}</strong></td></tr>
               <tr><td>Median:</td><td><strong>{_fmt_ms(baseline_quality['median'])}</strong></td></tr>
@@ -1241,8 +1253,20 @@ def render_html_report(
           <div class="quality-item {change_quality['verdict'].lower()}">
             <h3 style="margin: 0 0 8px 0; font-size: 16px;">
               {change_quality['verdict_icon']} Change Data: {change_quality['verdict']}
+              <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                Score: {change_quality['score']}/100
+              </span>
             </h3>
             <p style="margin: 8px 0; color: #666; font-size: 14px;">{escape(change_quality['verdict_desc'])}</p>
+            <div style="margin: 12px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{change_quality['score']}/100</span>
+              </div>
+              <div class="bar" style="height: 8px;">
+                <div class="barfill" style="width: {change_quality['score']}%; background: linear-gradient(90deg, {change_quality['verdict_color']}, {change_quality['verdict_color']}80);"></div>
+              </div>
+            </div>
             <table style="font-size: 13px; margin-top: 12px;">
               <tr><td>Samples:</td><td><strong>{change_quality['n']}</strong></td></tr>
               <tr><td>Median:</td><td><strong>{_fmt_ms(change_quality['median'])}</strong></td></tr>
@@ -1258,6 +1282,7 @@ def render_html_report(
         <div style="margin-top: 16px; padding: 12px; background: #e3f2fd; border-left: 4px solid #1976d2; border-radius: 4px;">
           <strong>💡 What does this mean?</strong><br/>
           <ul style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
+            <li><strong>Quality Score:</strong> Starts at 100, penalties applied for issues. ≥90 = Excellent, ≥75 = Good, ≥60 = Fair, <60 = Poor.</li>
             <li><strong>Samples:</strong> More samples = more reliable results. Aim for 10-20.</li>
             <li><strong>Variability (CV):</strong> Lower is better. <5% is excellent, >20% is problematic.</li>
             <li><strong>Outliers:</strong> Unusual measurements that may indicate instability.</li>
