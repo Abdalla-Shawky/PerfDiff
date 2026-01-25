@@ -303,6 +303,88 @@ LIGHT_BORDER = "#e5e5e5"          # Border color
 
 
 # ==============================================================================
+# MAIN BRANCH HEALTH MONITORING (main_health.py)
+# ==============================================================================
+
+# Control Chart Parameters
+# Baseline window size for computing median and MAD
+# Uses last N points (excluding latest) as baseline for control limits
+HEALTH_WINDOW = 30
+
+# Number of robust standard deviations (sigma) for control chart bounds
+# control_limit = baseline_median ± k * robust_sigma
+# 4.0 is conservative (wider bounds, fewer false positives)
+HEALTH_CONTROL_K = 4.0
+
+# Minimum MAD value to prevent division by zero
+# When data has zero variance, this floor prevents numerical issues
+HEALTH_MIN_MAD = 1e-9
+
+# Default direction for control chart monitoring
+# "regression" = only alert on increases (performance degradation)
+# "both" = alert on increases or decreases (any significant change)
+HEALTH_DIRECTION = "regression"
+
+# EWMA (Exponentially Weighted Moving Average) Parameters
+# Smoothing parameter for EWMA (0 < alpha <= 1)
+# Higher alpha = more weight on recent observations (more responsive)
+# Lower alpha = more smoothing (less responsive to noise)
+# 0.25 is a good balance for detecting sustained trends
+HEALTH_EWMA_ALPHA = 0.25
+
+# Number of robust standard deviations for EWMA bounds
+# 3.0 is more sensitive than control chart (detects smaller sustained shifts)
+HEALTH_EWMA_K = 3.0
+
+# Step-Fit (Changepoint Detection) Parameters
+# Number of recent points to scan for changepoint
+# Set to None to automatically scan the entire series (recommended for finding exact commit)
+# Set to a number (e.g., 120) to scan only the last N points (faster for large datasets)
+HEALTH_STEP_SCAN_BACK = None  # None = scan entire series dynamically
+
+# Minimum segment size on each side of changepoint
+# Ensures sufficient data before/after split for reliable median estimation
+HEALTH_STEP_MIN_SEGMENT = 10
+
+# Minimum score threshold for changepoint detection
+# score = |median_after - median_before| / robust_sigma
+# 4.0 is conservative (avoids false positives in noisy data)
+HEALTH_STEP_SCORE_K = 4.0
+
+# Percentage-based thresholds for practical significance
+# These provide dual-threshold detection: statistical (sigma-based) OR percentage-based
+# Useful for detecting practically significant changes in high-variability data
+# Set to None to disable percentage-based detection
+
+# Step change percentage threshold
+# Triggers alert if change ≥ this percentage, even if statistical score is low
+# Example: 20.0 means ≥20% performance degradation triggers alert
+HEALTH_STEP_PCT_THRESHOLD = 20.0
+
+# EWMA drift percentage threshold
+# Triggers alert if EWMA drifts ≥ this percentage from baseline median
+# Example: 15.0 means ≥15% drift from baseline triggers alert
+HEALTH_EWMA_PCT_THRESHOLD = 15.0
+
+# Robust Statistics Constants
+# Scaling factor for converting MAD to robust standard deviation
+# For normally distributed data, robust_sigma = 1.4826 * MAD
+# This constant makes MAD comparable to standard deviation
+MAD_TO_SIGMA_SCALE = 1.4826
+
+# Outlier Detection Parameters
+# Enable/disable outlier detection and trimmed mean calculation
+# Set to False to disable outlier detection, visual marking, and quality penalties
+# When disabled, trimmed mean = regular mean (no outlier exclusion)
+HEALTH_OUTLIER_DETECTION_ENABLED = False
+
+# Sigma multiplier for rolling MAD outlier detection
+# 3.5 is more lenient than control chart (k=4.0) to avoid over-flagging
+# Used for visual marking and quality scoring, NOT for exclusion
+HEALTH_OUTLIER_K = 3.5
+
+
+# ==============================================================================
 # EXIT CODES
 # ==============================================================================
 
