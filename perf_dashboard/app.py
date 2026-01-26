@@ -36,9 +36,35 @@ DATASET_ID = os.getenv('BQ_DATASET_ID', 'performance')
 TABLE_ID = os.getenv('BQ_TABLE_ID', 'benchmark_results')
 GITHUB_REPO_URL = os.getenv('GITHUB_REPO_URL', 'https://github.com/your-org/your-repo')
 
+# Validate configuration
+def _validate_configuration():
+    """Validate critical configuration values and warn about placeholders."""
+    warnings = []
+
+    if PROJECT_ID == 'your-project-id':
+        warnings.append("⚠️  GCP_PROJECT_ID is using placeholder value 'your-project-id'")
+
+    if 'your-org' in GITHUB_REPO_URL or 'your-repo' in GITHUB_REPO_URL:
+        warnings.append("⚠️  GITHUB_REPO_URL is using placeholder value")
+
+    if warnings:
+        print("\n" + "="*80)
+        print("CONFIGURATION WARNINGS:")
+        for warning in warnings:
+            print(f"  {warning}")
+        print("\nThe application will run in MOCK MODE with generated test data.")
+        print("Set environment variables to use real BigQuery data:")
+        print("  export GCP_PROJECT_ID='your-actual-project-id'")
+        print("  export GITHUB_REPO_URL='https://github.com/your-org/your-repo'")
+        print("="*80 + "\n")
+        return False
+    return True
+
+_config_valid = _validate_configuration()
+
 # Initialize BigQuery client
 bq_client = None
-if BQ_AVAILABLE:
+if BQ_AVAILABLE and _config_valid:
     try:
         bq_client = bigquery.Client(project=PROJECT_ID)
         print(f"✅ BigQuery client initialized for project: {PROJECT_ID}")
@@ -46,7 +72,10 @@ if BQ_AVAILABLE:
         print(f"⚠️  BigQuery client initialization failed: {e}")
         print("Running in mock mode - using generated data")
 else:
-    print("BigQuery not available - running in mock mode")
+    if not BQ_AVAILABLE:
+        print("BigQuery not available - running in mock mode")
+    else:
+        print("Invalid configuration - running in mock mode")
 
 
 def _convert_medians_to_bq_format(
@@ -474,10 +503,27 @@ def get_performance_data():
     try:
         # Parse request
         data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid request body'}), 400
+
         platform = data.get('platform', 'ios')
         start_date = data.get('startDate', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
         end_date = data.get('endDate', datetime.now().strftime('%Y-%m-%d'))
         trace_name = data.get('traceName', 'homeTabStartToInteractive')
+
+        # Validate input parameters
+        if not isinstance(platform, str) or platform not in ['ios', 'android']:
+            return jsonify({'error': 'Invalid platform. Must be "ios" or "android"'}), 400
+
+        if not isinstance(trace_name, str):
+            return jsonify({'error': 'Invalid trace name'}), 400
+
+        # Validate date formats
+        try:
+            datetime.fromisoformat(start_date)
+            datetime.fromisoformat(end_date)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
         print(f"📊 Fetching data: platform={platform}, dates={start_date} to {end_date}, trace={trace_name}")
 
@@ -597,10 +643,27 @@ def generate_regression_details():
     try:
         # Parse request (same as /api/performance-data)
         data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid request body'}), 400
+
         platform = data.get('platform', 'ios')
         start_date = data.get('startDate', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
         end_date = data.get('endDate', datetime.now().strftime('%Y-%m-%d'))
         trace_name = data.get('traceName', 'homeTabStartToInteractive')
+
+        # Validate input parameters
+        if not isinstance(platform, str) or platform not in ['ios', 'android']:
+            return jsonify({'error': 'Invalid platform. Must be "ios" or "android"'}), 400
+
+        if not isinstance(trace_name, str):
+            return jsonify({'error': 'Invalid trace name'}), 400
+
+        # Validate date formats
+        try:
+            datetime.fromisoformat(start_date)
+            datetime.fromisoformat(end_date)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
         print(f"📊 Generating regression details: platform={platform}, dates={start_date} to {end_date}, trace={trace_name}")
 
@@ -705,13 +768,30 @@ def generate_regression_details():
 def serve_report(filename):
     """Serve generated HTML reports."""
     try:
-        filepath = os.path.join('generated_reports', filename)
+        # Security: Prevent path traversal attacks
+        # Only allow alphanumeric, underscores, hyphens, and dots
+        import re
+        if not re.match(r'^[\w\-\.]+$', filename):
+            return jsonify({'error': 'Invalid filename'}), 400
+
+        # Use basename to strip any directory components
+        safe_filename = os.path.basename(filename)
+
+        # Ensure the file is actually in the generated_reports directory
+        reports_dir = os.path.abspath('generated_reports')
+        filepath = os.path.abspath(os.path.join(reports_dir, safe_filename))
+
+        # Verify the resolved path is still within reports directory
+        if not filepath.startswith(reports_dir):
+            return jsonify({'error': 'Invalid file path'}), 400
+
         if not os.path.exists(filepath):
             return jsonify({'error': 'Report not found'}), 404
 
         return send_file(filepath, mimetype='text/html')
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Error serving report: {e}")
+        return jsonify({'error': 'Failed to serve report'}), 500
 
 
 @app.route('/api/available-traces')
