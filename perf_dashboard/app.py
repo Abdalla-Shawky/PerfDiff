@@ -17,13 +17,9 @@ except Exception as e:
     BQ_AVAILABLE = False
 
 import os
-import sys
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import json
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from main_health import assess_main_health
@@ -595,9 +591,9 @@ def _generate_commit_history_section(commits, regression_index, trace_name, plat
     return html
 
 
-@app.route('/api/detailed-report', methods=['POST'])
-def generate_detailed_report():
-    """Generate detailed main_health HTML report."""
+@app.route('/api/regression-details', methods=['POST'])
+def generate_regression_details():
+    """Generate regression details HTML report."""
     try:
         # Parse request (same as /api/performance-data)
         data = request.get_json()
@@ -606,7 +602,7 @@ def generate_detailed_report():
         end_date = data.get('endDate', datetime.now().strftime('%Y-%m-%d'))
         trace_name = data.get('traceName', 'homeTabStartToInteractive')
 
-        print(f"📊 Generating detailed report: platform={platform}, dates={start_date} to {end_date}, trace={trace_name}")
+        print(f"📊 Generating regression details: platform={platform}, dates={start_date} to {end_date}, trace={trace_name}")
 
         # Query data (reuse existing function)
         bq_data = query_bigquery(platform, start_date, end_date, trace_name)
@@ -614,7 +610,7 @@ def generate_detailed_report():
         if not bq_data or len(bq_data) < 10:
             return jsonify({
                 'error': 'Insufficient data',
-                'message': 'Need at least 10 data points for detailed analysis'
+                'message': 'Need at least 10 data points for regression analysis'
             }), 400
 
         # Extract time series (same as run_regression_analysis)
@@ -649,7 +645,7 @@ def generate_detailed_report():
         else:
             return jsonify({
                 'error': 'main_health module not available',
-                'message': 'Cannot generate detailed report without main_health'
+                'message': 'Cannot generate regression details without main_health'
             }), 500
 
         # Generate HTML using main_health_template
@@ -658,7 +654,7 @@ def generate_detailed_report():
         except ImportError:
             return jsonify({
                 'error': 'main_health_template module not available',
-                'message': 'Cannot generate detailed report without main_health_template'
+                'message': 'Cannot generate regression details without main_health_template'
             }), 500
 
         html_content = render_health_template(
@@ -687,7 +683,7 @@ def generate_detailed_report():
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(html_content)
 
-        print(f"✅ Generated report: {filepath}")
+        print(f"✅ Generated regression details: {filepath}")
 
         return jsonify({
             'success': True,
@@ -696,12 +692,12 @@ def generate_detailed_report():
         })
 
     except Exception as e:
-        print(f"❌ Error generating detailed report: {e}")
+        print(f"❌ Error generating regression details: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
             'error': str(e),
-            'message': 'Failed to generate detailed report'
+            'message': 'Failed to generate regression details'
         }), 500
 
 

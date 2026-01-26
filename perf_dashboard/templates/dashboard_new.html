@@ -741,10 +741,10 @@
           </a>`;
         }
 
-        // Add "View Detailed Report" button
-        const detailedReportButton = `
-            <button onclick="viewDetailedReport()"
-                    id="detailedReportBtn"
+        // Add "View Regression Details" button
+        const regressionDetailsButton = `
+            <button onclick="viewRegressionDetails()"
+                    id="regressionDetailsBtn"
                     style="display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; margin-left: 12px;
                     padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     border: none; border-radius: 8px; color: #fff; cursor: pointer;
@@ -756,7 +756,7 @@
                     <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5V2zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.482a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1H4z"/>
                     <path d="M4.5 5.5A.5.5 0 0 1 5 5h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0 2A.5.5 0 0 1 5 7h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zm0 2A.5.5 0 0 1 5 9h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5z"/>
                 </svg>
-                📊 View Detailed Report
+                📊 View Regression Details
             </button>
         `;
 
@@ -769,7 +769,7 @@
                 ${analysis.reason} | Delta: +${delta}ms | Z-score: ${zScore}
                 ${regressionType === 'creep' ? ' | Gradual degradation over time' : ' | Sudden performance drop'}
                 ${commitLink}
-                ${detailedReportButton}
+                ${regressionDetailsButton}
               </div>
             </div>
           </div>
@@ -777,9 +777,9 @@
       }
     }
 
-    // View detailed report
-    async function viewDetailedReport() {
-      const btn = document.getElementById('detailedReportBtn');
+    // View regression details
+    async function viewRegressionDetails() {
+      const btn = document.getElementById('regressionDetailsBtn');
       const originalText = btn.innerHTML;
 
       // Show loading state
@@ -788,7 +788,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="animation: spin 1s linear infinite;">
           <circle cx="12" cy="12" r="10" stroke-width="3" stroke-dasharray="31.4 31.4" />
         </svg>
-        Generating Report...
+        Generating Details...
       `;
 
       try {
@@ -796,7 +796,7 @@
         const endDate = document.getElementById('endDate').value;
         const traceName = document.getElementById('traceSelect').value;
 
-        const response = await fetch('/api/detailed-report', {
+        const response = await fetch('/api/regression-details', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -813,10 +813,10 @@
           // Open report in new tab
           window.open(result.report_url, '_blank');
         } else {
-          alert(`Error: ${result.message || 'Failed to generate report'}`);
+          alert(`Error: ${result.message || 'Failed to generate regression details'}`);
         }
       } catch (error) {
-        alert(`Failed to generate detailed report: ${error.message}`);
+        alert(`Failed to generate regression details: ${error.message}`);
       } finally {
         // Restore button state
         btn.disabled = false;
