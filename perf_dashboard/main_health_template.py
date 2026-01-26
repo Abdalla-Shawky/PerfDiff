@@ -32,6 +32,7 @@ def render_health_template(
     control = report.control
     ewma = report.ewma
     stepfit = report.stepfit
+    trend = report.trend
 
     # Filter series to show only 20 before and 20 after regression point
     display_series = series
@@ -606,6 +607,9 @@ def render_health_template(
 
         <!-- EWMA Results -->
         {_render_ewma(ewma) if ewma else ''}
+
+        <!-- Linear Trend Results -->
+        {_render_trend(trend) if trend else ''}
 
         <!-- Step-Fit Results -->
         {_render_stepfit(stepfit) if stepfit else ''}
@@ -1396,6 +1400,70 @@ def _render_stepfit(stepfit: Any) -> str:
         <div class="alert-reason-box {reason_class}">
             <strong>{reason_title}:</strong>
             {stepfit.reason}
+        </div>
+
+        {content}
+    </div>
+    """
+
+
+def _render_trend(trend: Any) -> str:
+    """Render linear trend detection results."""
+    if trend.alert:
+        alert_class = "badge-warning"
+        alert_text = "TREND DETECTED"
+        reason_class = "alert-reason-danger"
+        reason_title = "⚠️ Alert Reason"
+    else:
+        alert_class = "badge-info"
+        alert_text = "NO TREND"
+        reason_class = "alert-reason-success"
+        reason_title = "✓ Status"
+
+    content = f"""
+    <div class="metric-grid">
+        <div class="metric">
+            <div class="metric-label">Total Change</div>
+            <div class="metric-value" style="color: {'var(--danger)' if trend.total_change_pct > 0 else 'var(--success)'};">{trend.total_change_pct:+.2f}<span class="metric-unit"> %</span></div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Slope</div>
+            <div class="metric-value">{trend.slope:.4f}<span class="metric-unit"> ms/point</span></div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">Slope %</div>
+            <div class="metric-value">{trend.slope_pct_per_point:.4f}<span class="metric-unit"> %/point</span></div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">R² (Fit Quality)</div>
+            <div class="metric-value">{trend.r_squared:.4f}<span class="metric-unit"></span></div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">p-value</div>
+            <div class="metric-value">{trend.p_value:.6f}<span class="metric-unit"></span></div>
+        </div>
+    </div>
+    """
+
+    explanation = """
+        <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+            Detects gradual linear trends using regression analysis.
+            Alerts when total change is <strong>≥5%</strong> OR slope is <strong>≥3%/point</strong> with good fit (R² ≥ 0.7) and statistical significance (p ≤ 0.05).
+        </p>
+    """
+
+    return f"""
+    <div class="card">
+        <div class="card-title">
+            📈 Linear Trend (Gradual Creep Detection)
+            <span class="badge {alert_class}">{alert_text}</span>
+        </div>
+
+        {explanation}
+
+        <div class="alert-reason-box {reason_class}">
+            <strong>{reason_title}:</strong>
+            {trend.reason}
         </div>
 
         {content}

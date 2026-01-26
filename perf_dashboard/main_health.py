@@ -189,10 +189,22 @@ class StepFitResult:
 
 
 @dataclass(frozen=True)
+class LinearTrendResult:
+    alert: bool
+    reason: str
+    slope: float                        # ms per data point
+    slope_pct_per_point: float          # percentage increase per point
+    total_change_pct: float             # total percentage change across series
+    r_squared: float                    # goodness of fit (0-1)
+    p_value: float                      # statistical significance
+
+
+@dataclass(frozen=True)
 class HealthReport:
     control: Optional[ControlChartResult]
     ewma: Optional[EwmaResult]
     stepfit: Optional[StepFitResult]
+    trend: Optional[LinearTrendResult]
     overall_alert: bool
     details: Dict[str, Any]
 
@@ -555,22 +567,184 @@ def step_fit(
 
 
 # -----------------------------
+# Linear trend detection
+# -----------------------------
+
+def detect_linear_trend(
+    series: List[float],
+    slope_pct_threshold: float = 3.0,    # % increase per point
+    total_pct_threshold: float = 5.0,    # total % increase threshold
+    min_r_squared: float = 0.7,          # minimum goodness of fit
+    p_value_threshold: float = 0.05,     # significance level
+) -> LinearTrendResult:
+    """
+    Detect gradual linear trends using linear regression.
+
+    This complements EWMA/Control Chart by detecting gradual creep patterns
+    that don't trigger threshold-based alerts.
+
+    Args:
+        series: Time series data
+        slope_pct_threshold: Alert if slope exceeds this % per point
+        total_pct_threshold: Alert if total change exceeds this %
+        min_r_squared: Minimum R² for good linear fit (0-1)
+        p_value_threshold: Maximum p-value for statistical significance
+
+    Returns:
+        LinearTrendResult with alert status and statistics
+    """
+    from scipy import stats
+
+    if len(series) < 3:
+        return LinearTrendResult(
+            alert=False,
+            reason="Insufficient data for trend detection (n<3)",
+            slope=0.0,
+            slope_pct_per_point=0.0,
+            total_change_pct=0.0,
+            r_squared=0.0,
+            p_value=1.0,
+        )
+
+    # Perform linear regression
+    x = np.arange(len(series))
+    y = np.array(series)
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+
+    # Calculate statistics
+    r_squared = r_value ** 2
+    first_value = series[0]
+    last_value = series[-1]
+
+    # Slope as percentage per point
+    slope_pct_per_point = (slope / first_value * 100) if first_value != 0 else 0
+
+    # Total change percentage
+    total_change_pct = ((last_value - first_value) / first_value * 100) if first_value != 0 else 0
+
+    # Determine if alert should be raised
+    alert = False
+    reason_parts = []
+
+    # Check if slope is positive and significant
+    if slope > 0:
+        # Check statistical significance
+        if p_value > p_value_threshold:
+            reason_parts.append(f"not significant (p={p_value:.4f})")
+
+        # Check goodness of fit
+        if r_squared < min_r_squared:
+            reason_parts.append(f"poor fit (R²={r_squared:.3f})")
+
+        # Check slope threshold
+        if abs(slope_pct_per_point) >= slope_pct_threshold:
+            reason_parts.append(f"slope {slope_pct_per_point:.2f}%/pt ≥ {slope_pct_threshold}%")
+            if p_value <= p_value_threshold and r_squared >= min_r_squared:
+                alert = True
+
+        # Check total change threshold
+        if total_change_pct >= total_pct_threshold:
+            reason_parts.append(f"total Δ {total_change_pct:.1f}% ≥ {total_pct_threshold}%")
+            if p_value <= p_value_threshold and r_squared >= min_r_squared:
+                alert = True
+    else:
+        reason_parts.append(f"negative/flat slope ({slope:.4f} ms/pt)")
+
+    # Build reason string
+    if alert:
+        reason = f"TREND DETECTED: {', '.join(reason_parts)}"
+    else:
+        if not reason_parts:
+            reason = "OK: no significant upward trend"
+        else:
+            reason = f"OK: {', '.join(reason_parts)}"
+
+    return LinearTrendResult(
+        alert=alert,
+        reason=reason,
+        slope=float(slope),
+        slope_pct_per_point=float(slope_pct_per_point),
+        total_change_pct=float(total_change_pct),
+        r_squared=float(r_squared),
+        p_value=float(p_value),
+    )
+
+
+# -----------------------------
 # Combined "main health" report
 # -----------------------------
 
+def _calculate_adaptive_parameters(series_length: int) -> dict:
+    """
+    Calculate adaptive parameters based on series length.
+
+    For short series: Use smaller windows and lower thresholds
+    For long series: Use standard parameters
+
+    Args:
+        series_length: Number of data points in the series
+
+    Returns:
+        Dictionary with optimal window, ewma_pct_threshold, and step_min_segment
+    """
+    if series_length < 15:
+        # Very short series (10-14 points)
+        # Challenge: Almost no stable baseline possible
+        # Note: window must be >= 5 due to control_chart_median_mad constraint
+        return {
+            'window': 5,
+            'ewma_pct_threshold': 3.0,  # 3% drift
+            'step_min_segment': 3,
+            'description': 'Very short series - aggressive detection'
+        }
+    elif series_length < 30:
+        # Short series (15-29 points)
+        return {
+            'window': 5,
+            'ewma_pct_threshold': 5.0,  # 5% drift
+            'step_min_segment': 4,
+            'description': 'Short series - sensitive detection'
+        }
+    elif series_length < 50:
+        # Medium series (30-49 points)
+        return {
+            'window': 10,
+            'ewma_pct_threshold': 8.0,  # 8% drift
+            'step_min_segment': 5,
+            'description': 'Medium series - balanced detection'
+        }
+    elif series_length < 100:
+        # Long series (50-99 points)
+        return {
+            'window': 20,
+            'ewma_pct_threshold': 12.0,  # 12% drift
+            'step_min_segment': 8,
+            'description': 'Long series - standard detection'
+        }
+    else:
+        # Very long series (100+ points)
+        return {
+            'window': 30,
+            'ewma_pct_threshold': 15.0,  # Default
+            'step_min_segment': 10,
+            'description': 'Very long series - conservative detection'
+        }
+
+
 def assess_main_health(
     series: List[float],
-    window: int = HEALTH_WINDOW,
+    window: Optional[int] = None,
     abs_floor: float = MS_FLOOR,
     pct_floor: float = PCT_FLOOR,
     k_mad: float = HEALTH_CONTROL_K,
     ewma_alpha: float = HEALTH_EWMA_ALPHA,
     ewma_k: float = HEALTH_EWMA_K,
-    ewma_pct_threshold: Optional[float] = HEALTH_EWMA_PCT_THRESHOLD,
+    ewma_pct_threshold: Optional[float] = None,
     step_scan_back: Optional[int] = HEALTH_STEP_SCAN_BACK,
-    step_min_segment: int = HEALTH_STEP_MIN_SEGMENT,
+    step_min_segment: Optional[int] = None,
     step_score_k: float = HEALTH_STEP_SCORE_K,
     step_pct_threshold: Optional[float] = HEALTH_STEP_PCT_THRESHOLD,
+    adaptive: bool = True,
 ) -> HealthReport:
     """
     Runs:
@@ -580,9 +754,40 @@ def assess_main_health(
     and produces a unified report.
 
     Args:
-      ewma_pct_threshold: EWMA drift percentage threshold (e.g., 15.0 for 15%)
+      window: Baseline window size. If None and adaptive=True, calculated automatically.
+      ewma_pct_threshold: EWMA drift percentage threshold (e.g., 15.0 for 15%).
+                         If None and adaptive=True, calculated automatically.
+      step_min_segment: Minimum segment size for step detection.
+                       If None and adaptive=True, calculated automatically.
       step_pct_threshold: Step change percentage threshold (e.g., 20.0 for 20%)
+      adaptive: If True (default), automatically calculates window, ewma_pct_threshold,
+               and step_min_segment based on series length. Set to False to use
+               explicit parameter values or constants from constants.py.
     """
+    # Apply adaptive parameters if enabled
+    if adaptive:
+        adaptive_params = _calculate_adaptive_parameters(len(series))
+
+        # Override with adaptive values if not explicitly provided
+        if window is None:
+            window = adaptive_params['window']
+        if ewma_pct_threshold is None:
+            ewma_pct_threshold = adaptive_params['ewma_pct_threshold']
+        if step_min_segment is None:
+            step_min_segment = adaptive_params['step_min_segment']
+
+        print(f"📊 Adaptive mode: {adaptive_params['description']}")
+        print(f"   Series length: {len(series)}, Window: {window}, "
+              f"EWMA threshold: {ewma_pct_threshold}%, Min segment: {step_min_segment}")
+    else:
+        # Non-adaptive mode: use defaults from constants if not provided
+        if window is None:
+            window = HEALTH_WINDOW
+        if ewma_pct_threshold is None:
+            ewma_pct_threshold = HEALTH_EWMA_PCT_THRESHOLD
+        if step_min_segment is None:
+            step_min_segment = HEALTH_STEP_MIN_SEGMENT
+
     control = control_chart_median_mad(
         series, window=window, k=k_mad,
         abs_floor=abs_floor, pct_floor=pct_floor
@@ -600,7 +805,15 @@ def assess_main_health(
         step_pct_threshold=step_pct_threshold
     )
 
-    overall_alert = bool((control and control.alert) or (ewma and ewma.alert) or (step and step.found))
+    # Detect linear trends (gradual creep)
+    trend = detect_linear_trend(series)
+
+    overall_alert = bool(
+        (control and control.alert) or
+        (ewma and ewma.alert) or
+        (step and step.found) or
+        (trend and trend.alert)
+    )
 
     details: Dict[str, Any] = {
         "n_points": len(series),
@@ -619,6 +832,7 @@ def assess_main_health(
         control=control,
         ewma=ewma,
         stepfit=step,
+        trend=trend,
         overall_alert=overall_alert,
         details=details
     )

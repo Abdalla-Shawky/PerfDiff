@@ -359,9 +359,11 @@ def run_regression_analysis(data: List[Dict[str, Any]], trace_name: str) -> Dict
         try:
             report = assess_main_health(series)
 
-            # Extract control chart results
+            # Extract all detection results
             control = report.control if report else None
+            ewma = report.ewma if report else None
             stepfit = report.stepfit if report else None
+            trend = report.trend if report else None
 
             # Determine regression index and type
             regression_index = None
@@ -370,15 +372,26 @@ def run_regression_analysis(data: List[Dict[str, Any]], trace_name: str) -> Dict
             regression_commit = None
             regression_commit_url = None
 
-            if control and control.alert:
-                # Check if step-fit found a changepoint
+            # Check for any alert condition
+            if report.overall_alert and (control and control.alert or ewma and ewma.alert or trend and trend.alert):
+                # Determine regression type and index based on which detector triggered
                 if stepfit and stepfit.found:
                     regression_index = stepfit.change_index
                     regression_type = 'step'
-                else:
+                elif trend and trend.alert:
+                    # For gradual trends, use the last point as regression index
+                    regression_index = len(series) - 1
+                    regression_type = 'trend'
+                elif ewma and ewma.alert:
+                    regression_index = len(series) - 1
+                    regression_type = 'creep'
+                elif control and control.alert:
                     # Use last point for spike detection
                     regression_index = len(series) - 1
-                    regression_type = 'step'
+                    regression_type = 'spike'
+                else:
+                    regression_index = len(series) - 1
+                    regression_type = 'unknown'
 
                 # Get commit information from the data
                 if regression_index is not None and regression_index < len(data):
@@ -390,13 +403,39 @@ def run_regression_analysis(data: List[Dict[str, Any]], trace_name: str) -> Dict
                     if regression_commit and regression_commit != 'unknown':
                         regression_commit_url = f"{GITHUB_REPO_URL}/commit/{regression_commit}"
 
+                # Build reason string based on which detector triggered
+                if trend and trend.alert:
+                    reason = trend.reason
+                    delta = round(series[-1] - series[0], 2) if series else 0
+                    current_value = round(series[-1], 2) if series else 0
+                    baseline_median = round(series[0], 2) if series else 0
+                    z_score = 0  # Not applicable for trend detection
+                elif ewma and ewma.alert:
+                    reason = ewma.reason
+                    delta = round(ewma.value - ewma.ewma, 2) if ewma else 0
+                    current_value = round(ewma.value, 2) if ewma else 0
+                    baseline_median = round(ewma.ewma, 2) if ewma else 0
+                    z_score = 0  # Not applicable for EWMA
+                elif control and control.alert:
+                    reason = control.reason
+                    delta = round(control.value - control.baseline_median, 2)
+                    z_score = round(control.robust_z, 2)
+                    baseline_median = round(control.baseline_median, 2)
+                    current_value = round(control.value, 2)
+                else:
+                    reason = "Regression detected"
+                    delta = 0
+                    z_score = 0
+                    baseline_median = 0
+                    current_value = 0
+
                 return {
                     'alert': True,
-                    'reason': control.reason,
-                    'delta': round(control.value - control.baseline_median, 2),
-                    'z_score': round(control.robust_z, 2),
-                    'baseline_median': round(control.baseline_median, 2),
-                    'current_value': round(control.value, 2),
+                    'reason': reason,
+                    'delta': delta,
+                    'z_score': z_score,
+                    'baseline_median': baseline_median,
+                    'current_value': current_value,
                     'regression_index': regression_index,
                     'regression_type': regression_type,
                     'regression_date': regression_date,
@@ -698,10 +737,16 @@ def generate_regression_details():
             report = assess_main_health(series)
             overall_status = "ALERT" if report.overall_alert else "OK"
 
-            # Try to get regression index from step-fit first, then control chart
+            # Try to get regression index from different detectors
             regression_index = None
             if report.stepfit and report.stepfit.found:
                 regression_index = report.stepfit.change_index
+            elif report.trend and report.trend.alert:
+                # For trend detection, regression is at the last point
+                regression_index = len(series) - 1
+            elif report.ewma and report.ewma.alert:
+                # For EWMA creep, regression is at the last point
+                regression_index = len(series) - 1
             elif report.control and report.control.alert:
                 # For spike detection, regression is at the last point
                 regression_index = len(series) - 1

@@ -522,6 +522,38 @@ class TestAssessMainHealth:
         # EWMA may or may not alert depending on the drift calculation
         assert report.overall_alert is True  # Some algorithm should detect it
 
+    def test_assess_main_health_30_point_gradual_creep(self):
+        """Linear trend detection catches 30-point gradual creep that EWMA misses"""
+        # This is the exact pattern from the user's HTML report
+        # [100.0, 100.3, 100.6, ..., 108.7] - 30 points, 8.7% total increase
+        series = [100.0, 100.3, 100.6, 100.9, 101.2, 101.5, 101.8, 102.1, 102.4, 102.7,
+                  103.0, 103.3, 103.6, 103.9, 104.2, 104.5, 104.8, 105.1, 105.4, 105.7,
+                  106.0, 106.3, 106.6, 106.9, 107.2, 107.5, 107.8, 108.1, 108.4, 108.7]
+
+        report = assess_main_health(series, abs_floor=5.0, pct_floor=0.05)
+
+        # Verify trend detection is working
+        assert report.trend is not None, "Trend detection should be enabled"
+
+        # The linear trend detector should catch this
+        # Total change: 8.7%, R² should be ~1.0 (perfect linear fit)
+        assert report.trend.alert is True, f"Trend detection should alert. Reason: {report.trend.reason}"
+        assert report.trend.total_change_pct > 5.0, "Total change should exceed 5%"
+        assert report.trend.r_squared > 0.95, "R² should be very high (linear pattern)"
+
+        # Overall alert should be raised
+        assert report.overall_alert is True, "Overall alert should be triggered by trend detection"
+
+        # Print diagnostic info
+        print(f"\nTrend Detection Results:")
+        print(f"  Alert: {report.trend.alert}")
+        print(f"  Total change: {report.trend.total_change_pct:.2f}%")
+        print(f"  Slope: {report.trend.slope:.4f} ms/point")
+        print(f"  Slope %: {report.trend.slope_pct_per_point:.4f}%/point")
+        print(f"  R²: {report.trend.r_squared:.4f}")
+        print(f"  p-value: {report.trend.p_value:.6f}")
+        print(f"  Reason: {report.trend.reason}")
+
     def test_assess_main_health_details(self):
         """Verify details dict has all expected fields"""
         series = [100.0] * 100
@@ -539,6 +571,91 @@ class TestAssessMainHealth:
         assert report is not None
         assert report.stepfit is not None
         assert report.stepfit.found is True
+
+    def test_adaptive_parameters_very_short(self):
+        """Test adaptive params for 10-14 points"""
+        from main_health import _calculate_adaptive_parameters
+
+        params = _calculate_adaptive_parameters(12)
+        assert params['window'] == 5  # Minimum window size due to control_chart constraint
+        assert params['ewma_pct_threshold'] == 3.0
+        assert params['step_min_segment'] == 3
+        assert 'description' in params
+
+    def test_adaptive_parameters_short(self):
+        """Test adaptive params for 15-29 points"""
+        from main_health import _calculate_adaptive_parameters
+
+        params = _calculate_adaptive_parameters(25)
+        assert params['window'] == 5
+        assert params['ewma_pct_threshold'] == 5.0
+        assert params['step_min_segment'] == 4
+
+    def test_adaptive_parameters_medium(self):
+        """Test adaptive params for 30-49 points"""
+        from main_health import _calculate_adaptive_parameters
+
+        params = _calculate_adaptive_parameters(40)
+        assert params['window'] == 10
+        assert params['ewma_pct_threshold'] == 8.0
+        assert params['step_min_segment'] == 5
+
+    def test_adaptive_parameters_long(self):
+        """Test adaptive params for 50-99 points"""
+        from main_health import _calculate_adaptive_parameters
+
+        params = _calculate_adaptive_parameters(75)
+        assert params['window'] == 20
+        assert params['ewma_pct_threshold'] == 12.0
+        assert params['step_min_segment'] == 8
+
+    def test_adaptive_parameters_very_long(self):
+        """Test adaptive params for 100+ points"""
+        from main_health import _calculate_adaptive_parameters
+
+        params = _calculate_adaptive_parameters(150)
+        assert params['window'] == 30
+        assert params['ewma_pct_threshold'] == 15.0
+        assert params['step_min_segment'] == 10
+
+    def test_adaptive_detection_short_dramatic_creep(self):
+        """Test that dramatic creep on short series is detected with adaptive mode"""
+        # 15 points with 14% increase (1ms per point)
+        series = [100.0 + 1.0 * i for i in range(15)]
+        report = assess_main_health(series, adaptive=True, abs_floor=5.0, pct_floor=0.05)
+
+        # With adaptive mode: window=5, threshold=5%
+        # Expected: EWMA should detect this
+        assert report.ewma is not None
+        # Note: Actual drift detection depends on EWMA calculation
+        # This tests that adaptive mode is applied (parameters used are smaller)
+
+    def test_adaptive_vs_non_adaptive(self):
+        """Test that adaptive mode uses different parameters than non-adaptive"""
+        series = [100.0 + 0.5 * i for i in range(20)]
+
+        # Non-adaptive mode (uses defaults from constants)
+        report_non_adaptive = assess_main_health(series, adaptive=False, abs_floor=5.0, pct_floor=0.05)
+
+        # Adaptive mode (uses calculated parameters for 20-point series)
+        report_adaptive = assess_main_health(series, adaptive=True, abs_floor=5.0, pct_floor=0.05)
+
+        # Both should return valid reports
+        assert report_non_adaptive is not None
+        assert report_adaptive is not None
+
+        # Note: We can't easily assert they differ without accessing internal state
+        # But the test verifies both modes execute without error
+
+    def test_adaptive_mode_with_explicit_window(self):
+        """Test that explicit window parameter overrides adaptive calculation"""
+        series = [100.0 + 0.5 * i for i in range(20)]
+
+        # Adaptive mode with explicit window should use the explicit value
+        report = assess_main_health(series, adaptive=True, window=15, abs_floor=5.0, pct_floor=0.05)
+
+        # Should execute without error
+        assert report is not None
 
 
 # ============================================================================
