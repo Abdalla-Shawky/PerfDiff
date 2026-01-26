@@ -666,7 +666,8 @@ def generate_detailed_report():
             report=report,
             overall_status=overall_status,
             regression_index=regression_index,
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.utcnow().isoformat(),
+            trace_name=trace_name
         )
 
         # Add custom metadata section with commit history

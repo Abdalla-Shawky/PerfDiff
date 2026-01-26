@@ -14,6 +14,7 @@ def render_health_template(
     overall_status: str,  # "ALERT" or "OK"
     regression_index: Optional[int],
     timestamp: str,
+    trace_name: str = "Performance Trace",
 ) -> str:
     """
     Render the main health monitoring HTML report.
@@ -24,6 +25,7 @@ def render_health_template(
         overall_status: "ALERT" or "OK"
         regression_index: Index where regression started (None if no regression)
         timestamp: Report generation timestamp
+        trace_name: Name of the trace being analyzed
     """
 
     # Extract data from report
@@ -34,6 +36,9 @@ def render_health_template(
     # Filter series to show only 20 before and 20 after regression point
     display_series = series
     display_offset = 0
+    start_idx = 0
+    end_idx = len(series)
+
     if regression_index is not None:
         # Calculate window around regression point
         before_count = 20
@@ -51,7 +56,7 @@ def render_health_template(
     quality_score, quality_verdict, quality_issues, outlier_indices = _assess_data_quality(series, report)
 
     # Adjust outlier indices to match filtered series
-    adjusted_outlier_indices = [idx - display_offset for idx in outlier_indices if start_idx <= idx < end_idx] if regression_index is not None else outlier_indices
+    adjusted_outlier_indices = [idx - display_offset for idx in outlier_indices if start_idx <= idx < end_idx]
     outlier_indices_json = str(adjusted_outlier_indices)
 
     # Adjust regression index for filtered series
@@ -75,7 +80,7 @@ def render_health_template(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Branch Health Monitoring Report</title>
+    <title>{trace_name} Regression Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
@@ -538,7 +543,7 @@ def render_health_template(
 
     <div class="container">
         <header>
-            <h1>Main Branch Health Monitoring</h1>
+            <h1>{trace_name} Regression</h1>
             <p class="timestamp">Generated: {timestamp}</p>
         </header>
 
@@ -812,7 +817,7 @@ def render_health_template(
             backgroundColor: 'rgba(0, 102, 255, 0.1)'  // Keep fill blue throughout
         }}];
 
-        {_render_chart_baseline(control, len(series))}
+        {_render_chart_baseline(control, len(display_series))}
 
         // Horizontal crosshair plugin
         let mouseY = null;
