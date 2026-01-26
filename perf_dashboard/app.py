@@ -4,7 +4,7 @@ Performance Traces Dashboard - Flask Backend
 Integrates with BigQuery and main_health algorithm
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 from flask_cors import CORS
 
 try:
@@ -336,15 +336,47 @@ def run_regression_analysis(data: List[Dict[str, Any]], trace_name: str) -> Dict
 
             # Extract control chart results
             control = report.control if report else None
+            stepfit = report.stepfit if report else None
+
+            # Determine regression index and type
+            regression_index = None
+            regression_type = None
+            regression_date = None
+            regression_commit = None
+            regression_commit_url = None
 
             if control and control.alert:
+                # Check if step-fit found a changepoint
+                if stepfit and stepfit.found:
+                    regression_index = stepfit.change_index
+                    regression_type = 'step'
+                else:
+                    # Use last point for spike detection
+                    regression_index = len(series) - 1
+                    regression_type = 'step'
+
+                # Get commit information from the data
+                if regression_index is not None and regression_index < len(data):
+                    regression_date = dates[regression_index] if regression_index < len(dates) else None
+                    build_info = data[regression_index].get('build', {})
+                    regression_commit = build_info.get('commit_hash', 'unknown')
+
+                    # Generate GitHub URL from configured repo
+                    if regression_commit and regression_commit != 'unknown':
+                        regression_commit_url = f"{GITHUB_REPO_URL}/commit/{regression_commit}"
+
                 return {
                     'alert': True,
                     'reason': control.reason,
                     'delta': round(control.value - control.baseline_median, 2),
                     'z_score': round(control.robust_z, 2),
                     'baseline_median': round(control.baseline_median, 2),
-                    'current_value': round(control.value, 2)
+                    'current_value': round(control.value, 2),
+                    'regression_index': regression_index,
+                    'regression_type': regression_type,
+                    'regression_date': regression_date,
+                    'regression_commit': regression_commit,
+                    'regression_commit_url': regression_commit_url
                 }
             else:
                 return {
@@ -485,6 +517,204 @@ def get_performance_data():
             'error': str(e),
             'message': 'Failed to fetch performance data'
         }), 500
+
+
+def _generate_commit_history_section(commits, regression_index, trace_name, platform):
+    """Generate HTML section showing before/after commits."""
+
+    if not commits or regression_index is None:
+        return ""
+
+    # Get 10 commits before and after regression point
+    before_commits = commits[max(0, regression_index - 10):regression_index]
+    after_commits = commits[regression_index:min(len(commits), regression_index + 10)]
+
+    html = f"""
+    <div style="margin: 40px; padding: 30px; background: rgba(26, 31, 41, 0.95); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        <h2 style="color: #e0e0e0; margin-bottom: 20px; font-size: 24px;">
+            📋 Commit History - {trace_name} ({platform.upper()})
+        </h2>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <!-- Before Regression -->
+            <div>
+                <h3 style="color: #4caf50; margin-bottom: 15px; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                    <span>✅</span> Before Regression ({len(before_commits)} commits)
+                </h3>
+                <div style="background: rgba(36, 43, 56, 0.9); padding: 20px; border-radius: 8px; border-left: 4px solid #4caf50;">
+    """
+
+    for i, commit in enumerate(reversed(before_commits)):
+        html += f"""
+                    <div style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+                        <div style="color: #e0e0e0; font-weight: 600; margin-bottom: 4px;">
+                            {commit['hash'][:8]} - {commit['app_version']}
+                        </div>
+                        <div style="color: #a0a0a0; font-size: 13px; display: flex; justify-content: space-between;">
+                            <span>{commit['date'][:10]}</span>
+                            <span style="color: #4caf50; font-weight: 600;">{commit['median']:.2f}ms</span>
+                        </div>
+                    </div>
+        """
+
+    html += f"""
+                </div>
+            </div>
+
+            <!-- After Regression -->
+            <div>
+                <h3 style="color: #f44336; margin-bottom: 15px; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚠️</span> After Regression ({len(after_commits)} commits)
+                </h3>
+                <div style="background: rgba(36, 43, 56, 0.9); padding: 20px; border-radius: 8px; border-left: 4px solid #f44336;">
+    """
+
+    for i, commit in enumerate(after_commits):
+        is_first = (i == 0)
+        highlight = "background: rgba(244, 67, 54, 0.2);" if is_first else ""
+        html += f"""
+                    <div style="margin-bottom: 12px; padding: 10px; {highlight} border-radius: 6px;">
+                        <div style="color: #e0e0e0; font-weight: 600; margin-bottom: 4px;">
+                            {commit['hash'][:8]} - {commit['app_version']}
+                            {"<span style='color: #f44336; margin-left: 8px;'>← REGRESSION</span>" if is_first else ""}
+                        </div>
+                        <div style="color: #a0a0a0; font-size: 13px; display: flex; justify-content: space-between;">
+                            <span>{commit['date'][:10]}</span>
+                            <span style="color: #f44336; font-weight: 600;">{commit['median']:.2f}ms</span>
+                        </div>
+                    </div>
+        """
+
+    html += """
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+    return html
+
+
+@app.route('/api/detailed-report', methods=['POST'])
+def generate_detailed_report():
+    """Generate detailed main_health HTML report."""
+    try:
+        # Parse request (same as /api/performance-data)
+        data = request.get_json()
+        platform = data.get('platform', 'ios')
+        start_date = data.get('startDate', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+        end_date = data.get('endDate', datetime.now().strftime('%Y-%m-%d'))
+        trace_name = data.get('traceName', 'homeTabStartToInteractive')
+
+        print(f"📊 Generating detailed report: platform={platform}, dates={start_date} to {end_date}, trace={trace_name}")
+
+        # Query data (reuse existing function)
+        bq_data = query_bigquery(platform, start_date, end_date, trace_name)
+
+        if not bq_data or len(bq_data) < 10:
+            return jsonify({
+                'error': 'Insufficient data',
+                'message': 'Need at least 10 data points for detailed analysis'
+            }), 400
+
+        # Extract time series (same as run_regression_analysis)
+        series = []
+        dates = []
+        commits = []
+
+        for record in bq_data:
+            for benchmark in record['benchmarks']:
+                if benchmark['metrics']['metricName'] == trace_name:
+                    series.append(benchmark['metrics']['median'])
+                    dates.append(record['build']['created_at'])
+                    commits.append({
+                        'hash': record['build'].get('commit_hash', 'unknown'),
+                        'date': record['build']['created_at'],
+                        'app_version': record['build'].get('app_version', 'N/A'),
+                        'median': benchmark['metrics']['median']
+                    })
+
+        # Run main_health analysis
+        if assess_main_health:
+            report = assess_main_health(series)
+            overall_status = "ALERT" if report.overall_alert else "OK"
+
+            # Try to get regression index from step-fit first, then control chart
+            regression_index = None
+            if report.stepfit and report.stepfit.found:
+                regression_index = report.stepfit.change_index
+            elif report.control and report.control.alert:
+                # For spike detection, regression is at the last point
+                regression_index = len(series) - 1
+        else:
+            return jsonify({
+                'error': 'main_health module not available',
+                'message': 'Cannot generate detailed report without main_health'
+            }), 500
+
+        # Generate HTML using main_health_template
+        try:
+            from main_health_template import render_health_template
+        except ImportError:
+            return jsonify({
+                'error': 'main_health_template module not available',
+                'message': 'Cannot generate detailed report without main_health_template'
+            }), 500
+
+        html_content = render_health_template(
+            series=series,
+            report=report,
+            overall_status=overall_status,
+            regression_index=regression_index,
+            timestamp=datetime.utcnow().isoformat()
+        )
+
+        # Add custom metadata section with commit history
+        # Find "before" and "after" commits (10 each around regression point)
+        commit_section = _generate_commit_history_section(
+            commits, regression_index, trace_name, platform
+        )
+
+        # Inject commit section into HTML (before closing </body>)
+        html_content = html_content.replace('</body>', f'{commit_section}</body>')
+
+        # Save to file
+        os.makedirs('generated_reports', exist_ok=True)
+        filename = f"{trace_name}_{platform}_{start_date}_{end_date}.html"
+        filepath = os.path.join('generated_reports', filename)
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+
+        print(f"✅ Generated report: {filepath}")
+
+        return jsonify({
+            'success': True,
+            'report_filename': filename,
+            'report_url': f'/api/reports/{filename}'
+        })
+
+    except Exception as e:
+        print(f"❌ Error generating detailed report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e),
+            'message': 'Failed to generate detailed report'
+        }), 500
+
+
+@app.route('/api/reports/<filename>')
+def serve_report(filename):
+    """Serve generated HTML reports."""
+    try:
+        filepath = os.path.join('generated_reports', filename)
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'Report not found'}), 404
+
+        return send_file(filepath, mimetype='text/html')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/available-traces')

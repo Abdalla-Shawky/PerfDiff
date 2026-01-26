@@ -50,3 +50,4 @@ docs
 # OS
 .DS_Store
 Thumbs.db
+generated_reports/*.html

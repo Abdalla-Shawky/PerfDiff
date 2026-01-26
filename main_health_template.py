@@ -31,14 +31,31 @@ def render_health_template(
     ewma = report.ewma
     stepfit = report.stepfit
 
-    # Prepare series data for chart
-    series_json = str(series)
+    # Filter series to show only 20 before and 20 after regression point
+    display_series = series
+    display_offset = 0
+    if regression_index is not None:
+        # Calculate window around regression point
+        before_count = 20
+        after_count = 20
+        start_idx = max(0, regression_index - before_count)
+        end_idx = min(len(series), regression_index + after_count + 1)
 
-    # Calculate quality score based on data characteristics
+        display_series = series[start_idx:end_idx]
+        display_offset = start_idx  # Track offset for correct indexing
+
+    # Prepare series data for chart
+    series_json = str(display_series)
+
+    # Calculate quality score based on full series (not filtered)
     quality_score, quality_verdict, quality_issues, outlier_indices = _assess_data_quality(series, report)
 
-    # Prepare outlier indices for chart
-    outlier_indices_json = str(outlier_indices)
+    # Adjust outlier indices to match filtered series
+    adjusted_outlier_indices = [idx - display_offset for idx in outlier_indices if start_idx <= idx < end_idx] if regression_index is not None else outlier_indices
+    outlier_indices_json = str(adjusted_outlier_indices)
+
+    # Adjust regression index for filtered series
+    adjusted_regression_index = regression_index - display_offset if regression_index is not None else None
 
     # Calculate trimmed mean (average excluding outliers)
     trimmed_mean = _calculate_trimmed_mean(series, outlier_indices)
@@ -774,7 +791,7 @@ def render_health_template(
         // Chart
         const ctx = document.getElementById('timeSeriesChart').getContext('2d');
         const series = {series_json};
-        const regressionIndex = {regression_index if regression_index is not None else 'null'};
+        const regressionIndex = {adjusted_regression_index if adjusted_regression_index is not None else 'null'};
         const outlierIndices = {outlier_indices_json};
 
         // Create datasets
@@ -921,16 +938,16 @@ def render_health_template(
                     }} : {{}},
                     zoom: {{
                         pan: {{
-                            enabled: true,
+                            enabled: false,
                             mode: 'x'
                         }},
                         zoom: {{
                             wheel: {{
-                                enabled: true,
+                                enabled: false,
                                 speed: 0.1
                             }},
                             pinch: {{
-                                enabled: true
+                                enabled: false
                             }},
                             mode: 'x'
                         }},
