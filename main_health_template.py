@@ -485,14 +485,14 @@ def render_health_template(
         <!-- Regression Location (if found) -->
         {_render_regression_alert(regression_index, stepfit) if regression_index is not None else ''}
 
-        <!-- Control Chart Results -->
-        {_render_control_chart(control) if control else ''}
-
         <!-- EWMA Results -->
         {_render_ewma(ewma) if ewma else ''}
 
         <!-- Step-Fit Results -->
         {_render_stepfit(stepfit) if stepfit else ''}
+
+        <!-- Control Chart Results -->
+        {_render_control_chart(control) if control else ''}
 
         <!-- Configuration -->
         <div class="card">
@@ -843,13 +843,16 @@ def _render_control_chart(control: Any) -> str:
     return f"""
     <div class="card">
         <div class="card-title">
-            📊 Control Chart (Spike Detection)
+            📊 Control Chart (Spike Detection For The Last Build)
             <span class="badge {alert_class}">{alert_text}</span>
         </div>
 
         <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
             Detects sudden spikes by comparing the latest value against a baseline window (last 30 points).
-            Alerts when value exceeds <strong>±4.0σ</strong> (robust sigma from MAD) AND practical threshold (50ms or 5% of baseline).
+            <strong>Delta</strong> is the absolute difference between current value and baseline median.
+            Alerts when <strong>BOTH</strong> conditions are met:<br/>
+            1. <strong>Practical threshold</strong>: Delta &gt; max(50ms, 5% of baseline)<br/>
+            2. <strong>Statistical threshold</strong>: Delta exceeds ±4.0σ (robust sigma from MAD)
         </p>
 
         <div class="alert-reason-box {reason_class}">
@@ -863,16 +866,33 @@ def _render_control_chart(control: Any) -> str:
                 <div class="metric-value">{control.baseline_median:.2f}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
-                <div class="metric-label">Baseline MAD</div>
-                <div class="metric-value">{control.baseline_mad:.2f}<span class="metric-unit"></span></div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Robust Z-Score</div>
-                <div class="metric-value">{min(control.robust_z, 99.99):.2f}<span class="metric-unit"></span></div>
-            </div>
-            <div class="metric">
                 <div class="metric-label">Current Value</div>
                 <div class="metric-value">{control.value:.2f}<span class="metric-unit"> ms</span></div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Delta (Difference)</div>
+                <div class="metric-value">{abs(control.value - control.baseline_median):.2f}<span class="metric-unit"> ms</span></div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">Practical Threshold</div>
+                <div class="metric-value">{max(50, 0.05 * control.baseline_median):.2f}<span class="metric-unit"> ms</span></div>
+            </div>
+        </div>
+
+        <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 13px;">
+            <strong style="color: var(--text-primary);">📋 Dual-Threshold Check:</strong>
+            <div style="margin-top: 8px; color: var(--text-secondary); line-height: 1.6;">
+                <div style="margin: 4px 0;">
+                    ✓ <strong>Condition 1 (Practical):</strong> Delta ({abs(control.value - control.baseline_median):.2f}ms) {'>' if abs(control.value - control.baseline_median) > max(50, 0.05 * control.baseline_median) else '≤'} Practical threshold ({max(50, 0.05 * control.baseline_median):.2f}ms)
+                    <span style="color: {'var(--success)' if abs(control.value - control.baseline_median) > max(50, 0.05 * control.baseline_median) else 'var(--danger)'}; font-weight: bold;">{'✓ PASS' if abs(control.value - control.baseline_median) > max(50, 0.05 * control.baseline_median) else '✗ FAIL'}</span>
+                </div>
+                <div style="margin: 4px 0;">
+                    ✓ <strong>Condition 2 (Statistical):</strong> Z-score ({min(control.robust_z, 99.99):.2f}) {'>' if control.robust_z > 4.0 else '≤'} 4.0σ threshold
+                    <span style="color: {'var(--success)' if control.robust_z > 4.0 else 'var(--danger)'}; font-weight: bold;">{'✓ PASS' if control.robust_z > 4.0 else '✗ FAIL'}</span>
+                </div>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--text-primary);">
+                    <strong>Result:</strong> {'Both conditions passed → ALERT 🚨' if control.alert else 'At least one condition failed → OK (no alert)'}
+                </div>
             </div>
         </div>
 
@@ -880,14 +900,27 @@ def _render_control_chart(control: Any) -> str:
             <tr>
                 <th>Metric</th>
                 <th>Value</th>
+                <th>Description</th>
             </tr>
             <tr>
-                <td>Upper Bound</td>
+                <td>Upper Bound (4.0σ)</td>
                 <td>{control.upper_bound:.2f} ms</td>
+                <td>Statistical upper limit</td>
             </tr>
             <tr>
-                <td>Lower Bound</td>
+                <td>Lower Bound (4.0σ)</td>
                 <td>{control.lower_bound:.2f} ms</td>
+                <td>Statistical lower limit</td>
+            </tr>
+            <tr>
+                <td>Baseline MAD</td>
+                <td>{control.baseline_mad:.2f} ms</td>
+                <td>Median Absolute Deviation (spread measure)</td>
+            </tr>
+            <tr>
+                <td>Robust Z-Score</td>
+                <td>{min(control.robust_z, 99.99):.2f}</td>
+                <td>How many σ from baseline (secondary metric)</td>
             </tr>
         </table>
     </div>
