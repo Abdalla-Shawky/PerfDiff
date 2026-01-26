@@ -71,7 +71,7 @@ def render_template(**context) -> str:
     chart_change_color = context['chart_change_color']
 
     return f"""<!doctype html>
-<html data-theme="light">
+<html>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -85,25 +85,26 @@ def render_template(**context) -> str:
        CSS CUSTOM PROPERTIES (CSS Variables) FOR THEMING
        ============================================================================ */
     :root {{
-      /* Premium Light Mode Colors */
-      --bg-primary: #f8f9fa;
-      --bg-secondary: #ffffff;
-      --bg-tertiary: #f1f3f5;
-      --text-primary: #1a1a1a;
-      --text-secondary: #6c757d;
-      --border-color: #e0e0e0;
+      /* Emerge Tools Dark Theme */
+      --bg-primary: rgba(15, 20, 25, 0.85);
+      --bg-secondary: rgba(26, 31, 41, 0.95);
+      --bg-tertiary: rgba(36, 43, 56, 0.9);
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --card-bg: rgba(26, 31, 41, 0.8);
       --accent-primary: #0066ff;
       --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
-      /* Status colors with premium feel */
-      --color-success: #10b981;
-      --color-success-bg: #ecfdf5;
-      --color-error: #ef4444;
-      --color-error-bg: #fef2f2;
-      --color-warning: #f59e0b;
-      --color-warning-bg: #fffbeb;
-      --color-info: #3b82f6;
-      --color-info-bg: #eff6ff;
+      /* Status colors for dark theme */
+      --color-success: #4caf50;
+      --color-success-bg: rgba(27, 94, 32, 0.8);
+      --color-error: #f44336;
+      --color-error-bg: rgba(183, 28, 28, 0.8);
+      --color-warning: #ff9800;
+      --color-warning-bg: rgba(230, 81, 0, 0.8);
+      --color-info: #2196f3;
+      --color-info-bg: rgba(1, 87, 155, 0.8);
 
       /* Chart colors */
       --chart-baseline: {CHART_COLOR_BASELINE};
@@ -115,12 +116,12 @@ def render_template(**context) -> str:
       --anim-normal: {ANIMATION_DURATION_NORMAL}ms;
       --anim-slow: {ANIMATION_DURATION_SLOW}ms;
 
-      /* Premium Shadows with depth */
-      --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.05);
-      --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
-      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
-      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+      /* Shadows with glow for dark theme */
+      --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.3);
+      --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.3), 0 0 10px rgba(120, 119, 198, 0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 0 15px rgba(120, 119, 198, 0.15);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 0 20px rgba(120, 119, 198, 0.2);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.5), 0 0 25px rgba(120, 119, 198, 0.25);
 
       /* Spacing scale */
       --space-1: 4px;
@@ -137,31 +138,6 @@ def render_template(**context) -> str:
       --radius-xl: 20px;
     }}
 
-    /* Premium Dark Mode */
-    [data-theme="dark"] {{
-      --bg-primary: #0f1419;
-      --bg-secondary: #1a1f29;
-      --bg-tertiary: #242b38;
-      --text-primary: #f0f0f0;
-      --text-secondary: #9ca3af;
-      --border-color: #374151;
-      --accent-primary: #60a5fa;
-
-      --color-success: #34d399;
-      --color-success-bg: #064e3b;
-      --color-error: #f87171;
-      --color-error-bg: #7f1d1d;
-      --color-warning: #fbbf24;
-      --color-warning-bg: #78350f;
-      --color-info: #60a5fa;
-      --color-info-bg: #1e3a8a;
-
-      --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.4);
-      --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.5), 0 1px 2px -1px rgba(0,0,0,0.5);
-      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.5);
-      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.5);
-      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5);
-    }}
 
     /* Smooth transitions for theme changes */
     * {{
@@ -181,12 +157,14 @@ def render_template(**context) -> str:
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: var(--bg-primary);
+      background: #000000;  /* Emerge Tools style - pure black background */
       color: var(--text-primary);
       line-height: 1.6;
       font-size: 15px;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      position: relative;
+      overflow-x: hidden;
     }}
 
     /* Import Inter font for premium typography */
@@ -930,9 +908,41 @@ def render_template(**context) -> str:
       .scroll-top-btn {{ bottom: 16px; right: 16px; width: 44px; height: 44px; }}
     }}
 
+    /* =========================
+       Animated Background (Emerge Tools Style)
+       ========================= */
+    #meteor-canvas {{
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }}
+
+    .gradient-overlay {{
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.3), transparent),
+        radial-gradient(ellipse 60% 80% at 80% 50%, rgba(157, 78, 221, 0.2), transparent);
+    }}
+
+    /* Glass morphism effect on sections */
+    .section, .executive-summary, .header {{
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }}
+
     /* Print styles */
     @media print {{
-      .header-right, .scroll-top-btn, .section-header {{
+      .header-right, .scroll-top-btn, .section-header, #meteor-canvas, .gradient-overlay {{
         display: none !important;
       }}
       .section-content {{
@@ -953,6 +963,10 @@ def render_template(**context) -> str:
   </style>
 </head>
 <body>
+  <!-- Animated Background Canvas (Emerge Tools Style) -->
+  <canvas id="meteor-canvas"></canvas>
+  <div class="gradient-overlay"></div>
+
   <!-- Sticky Header with Controls -->
   <div class="header">
     <div class="header-left">
@@ -960,11 +974,6 @@ def render_template(**context) -> str:
       <div class="meta">Generated: {escape(now)} | Mode: {mode.upper()}</div>
     </div>
     <div class="header-right">
-      <!-- Theme Toggle -->
-      <button class="icon-btn" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
-        <span id="theme-icon">🌙</span>
-      </button>
-
       <!-- Export Dropdown -->
       <div class="export-dropdown" id="export-dropdown">
         <button class="control-btn" onclick="toggleExportMenu()">
@@ -1323,6 +1332,147 @@ def render_template(**context) -> str:
   </button>
 
   <script>
+    // ==========================================
+    // Animated Meteor Background (Emerge Tools Style)
+    // ==========================================
+    (function initMeteorCanvas() {{
+      const canvas = document.getElementById('meteor-canvas');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Meteor particles
+      const meteors = [];
+      const stars = [];
+
+      // Create background stars
+      function createStars() {{
+        for (let i = 0; i < 150; i++) {{
+          stars.push({{
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 1.5,
+            opacity: Math.random() * 0.5 + 0.3,
+            twinkleSpeed: Math.random() * 0.02
+          }});
+        }}
+      }}
+
+      // Meteor class
+      class Meteor {{
+        constructor() {{
+          this.reset();
+        }}
+
+        reset() {{
+          // Start from random position in top-left area
+          this.x = Math.random() * width - 200;
+          this.y = Math.random() * height * 0.3 - 200;
+
+          // Angle roughly towards bottom-right (like Emerge Tools)
+          const angle = Math.random() * 0.3 + 0.3; // 0.3 to 0.6 radians (~17-34 degrees)
+          this.speedX = Math.cos(angle) * (Math.random() * 3 + 3);
+          this.speedY = Math.sin(angle) * (Math.random() * 3 + 3);
+
+          this.length = Math.random() * 80 + 60;
+          this.opacity = Math.random() * 0.5 + 0.5;
+          this.thickness = Math.random() * 2 + 1;
+
+          this.life = 1;
+          this.decay = Math.random() * 0.005 + 0.005;
+        }}
+
+        update() {{
+          this.x += this.speedX;
+          this.y += this.speedY;
+          this.life -= this.decay;
+
+          // Reset if dead or off-screen
+          if (this.life <= 0 || this.x > width + 100 || this.y > height + 100) {{
+            this.reset();
+          }}
+        }}
+
+        draw() {{
+          ctx.save();
+
+          const grad = ctx.createLinearGradient(
+            this.x, this.y,
+            this.x - this.length * Math.cos(0.4),
+            this.y - this.length * Math.sin(0.4)
+          );
+
+          grad.addColorStop(0, `rgba(255, 255, 255, ${{this.opacity * this.life}})`);
+          grad.addColorStop(0.5, `rgba(200, 180, 255, ${{this.opacity * this.life * 0.5}})`);
+          grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = this.thickness;
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);
+          ctx.lineTo(
+            this.x - this.length * Math.cos(0.4),
+            this.y - this.length * Math.sin(0.4)
+          );
+          ctx.stroke();
+
+          ctx.restore();
+        }}
+      }}
+
+      // Initialize
+      createStars();
+      for (let i = 0; i < 8; i++) {{
+        meteors.push(new Meteor());
+      }}
+
+      // Animation loop
+      function animate() {{
+        // Clear with black background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw stars
+        stars.forEach((star, i) => {{
+          star.opacity += Math.sin(Date.now() * star.twinkleSpeed + i) * 0.01;
+          star.opacity = Math.max(0.1, Math.min(0.8, star.opacity));
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${{star.opacity}})`;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
+        }});
+
+        // Update and draw meteors
+        meteors.forEach(meteor => {{
+          meteor.update();
+          meteor.draw();
+        }});
+
+        requestAnimationFrame(animate);
+      }}
+
+      // Handle resize
+      window.addEventListener('resize', () => {{
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        stars.length = 0;
+        createStars();
+      }});
+
+      // Start animation
+      animate();
+    }})();
+
     // ============================================================================
     // DATA PREPARATION FOR CHARTS
     // ============================================================================
@@ -1337,38 +1487,6 @@ def render_template(**context) -> str:
       change: '{chart_change_color}',
       neutral: '{CHART_COLOR_NEUTRAL}',
     }};
-
-    // ============================================================================
-    // THEME TOGGLE (DARK MODE)
-    // ============================================================================
-    function toggleTheme() {{
-      const html = document.documentElement;
-      const currentTheme = html.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      const icon = document.getElementById('theme-icon');
-
-      html.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-
-      // Update chart colors for dark mode (only if charts are already initialized)
-      if (chartsInitialized && window.charts) {{
-        Object.values(window.charts).forEach(chart => {{
-          if (chart) chart.destroy();
-        }});
-        initializeCharts();
-      }}
-    }}
-
-    // Initialize theme from localStorage or system preference
-    function initializeTheme() {{
-      const savedTheme = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-
-      document.documentElement.setAttribute('data-theme', theme);
-      document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
-    }}
 
     // ============================================================================
     // EXPORT FUNCTIONALITY
@@ -1768,7 +1886,6 @@ def render_template(**context) -> str:
     // INITIALIZATION ON PAGE LOAD
     // ============================================================================
     document.addEventListener('DOMContentLoaded', function() {{
-      initializeTheme();
       // Charts are lazy-loaded when the section is first opened
     }});
   </script>

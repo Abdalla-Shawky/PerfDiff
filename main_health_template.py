@@ -69,58 +69,40 @@ def render_health_template(
 
     <style>
         :root {{
-            /* Premium Color Palette */
-            --bg-primary: #f8f9fa;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f1f3f5;
-            --text-primary: #1a1a1a;
-            --text-secondary: #6c757d;
+            /* Emerge Tools Dark Theme */
+            --bg-primary: rgba(15, 20, 25, 0.85);
+            --bg-secondary: rgba(26, 31, 41, 0.95);
+            --bg-tertiary: rgba(36, 43, 56, 0.9);
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(26, 31, 41, 0.8);
+
             --accent-primary: #0066ff;
             --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
-            --success: #2e7d32;
-            --success-bg: #e8f5e9;
-            --success-text: #2e7d32;
-            --danger: #d32f2f;
-            --danger-bg: #ffebee;
-            --danger-text: #d32f2f;
-            --warning: #f57c00;
-            --warning-bg: #fff3e0;
-            --warning-text: #f57c00;
-            --info: #0288d1;
-            --info-bg: #e1f5fe;
-            --info-text: #0288d1;
+            --success: #4caf50;
+            --success-bg: rgba(27, 94, 32, 0.8);
+            --success-text: #ffffff;
+            --danger: #f44336;
+            --danger-bg: rgba(183, 28, 28, 0.8);
+            --danger-text: #ffffff;
+            --warning: #ff9800;
+            --warning-bg: rgba(230, 81, 0, 0.8);
+            --warning-text: #ffffff;
+            --info: #2196f3;
+            --info-bg: rgba(1, 87, 155, 0.8);
+            --info-text: #ffffff;
 
-            /* Shadows */
-            --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+            /* Shadows with glow for dark theme */
+            --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.3), 0 0 10px rgba(120, 119, 198, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 0 15px rgba(120, 119, 198, 0.15);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 0 20px rgba(120, 119, 198, 0.2);
 
             /* Typography */
             --font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }}
 
-        [data-theme="dark"] {{
-            --bg-primary: #0f1419;
-            --bg-secondary: #1a1f29;
-            --bg-tertiary: #242b38;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-
-            /* Dark mode color adjustments - muted colors for better design */
-            --success: #4caf50;
-            --success-bg: #1b5e20;
-            --success-text: #ffffff;
-            --danger: #f44336;
-            --danger-bg: #b71c1c;
-            --danger-text: #ffffff;
-            --warning: #ff9800;
-            --warning-bg: #e65100;
-            --warning-text: #ffffff;
-            --info: #2196f3;
-            --info-bg: #01579b;
-            --info-text: #ffffff;
-        }}
 
         * {{
             margin: 0;
@@ -130,12 +112,14 @@ def render_health_template(
 
         body {{
             font-family: var(--font-family);
-            background: var(--bg-primary);
+            background: #000000;  /* Emerge Tools style - pure black background */
             color: var(--text-primary);
             padding: 20px;
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            position: relative;
+            overflow-x: hidden;
         }}
 
         .container {{
@@ -411,24 +395,6 @@ def render_health_template(
             transition: width 0.3s ease;
         }}
 
-        .dark-mode-toggle {{
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--bg-secondary);
-            border: none;
-            padding: 12px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 20px;
-            box-shadow: var(--shadow-md);
-            transition: transform 0.2s;
-        }}
-
-        .dark-mode-toggle:hover {{
-            transform: scale(1.1);
-        }}
-
         /* Zoom controls */
         .zoom-controls {{
             position: absolute;
@@ -511,13 +477,47 @@ def render_health_template(
             padding: 0 24px 24px 24px;
         }}
 
+        /* =========================
+           Animated Background (Emerge Tools Style)
+           ========================= */
+        #meteor-canvas {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }}
+
+        .gradient-overlay {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.3), transparent),
+                radial-gradient(ellipse 60% 80% at 80% 50%, rgba(157, 78, 221, 0.2), transparent);
+        }}
+
+        /* Glass morphism effect on cards */
+        header, .card, .status-banner {{
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+
         @media print {{
-            .dark-mode-toggle {{ display: none; }}
+            #meteor-canvas, .gradient-overlay {{ display: none; }}
         }}
     </style>
 </head>
 <body>
-    <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
+    <!-- Animated Background Canvas (Emerge Tools Style) -->
+    <canvas id="meteor-canvas"></canvas>
+    <div class="gradient-overlay"></div>
 
     <div class="container">
         <header>
@@ -630,18 +630,146 @@ def render_health_template(
     </div>
 
     <script>
-        // Dark mode toggle
-        function toggleDarkMode() {{
-            const body = document.body;
-            const currentTheme = body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        }}
+        // ==========================================
+        // Animated Meteor Background (Emerge Tools Style)
+        // ==========================================
+        (function initMeteorCanvas() {{
+            const canvas = document.getElementById('meteor-canvas');
+            if (!canvas) return;
 
-        // Load saved theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.body.setAttribute('data-theme', savedTheme);
+            const ctx = canvas.getContext('2d');
+            let width = window.innerWidth;
+            let height = window.innerHeight;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // Meteor particles
+            const meteors = [];
+            const stars = [];
+
+            // Create background stars
+            function createStars() {{
+                for (let i = 0; i < 150; i++) {{
+                    stars.push({{
+                        x: Math.random() * width,
+                        y: Math.random() * height,
+                        size: Math.random() * 1.5,
+                        opacity: Math.random() * 0.5 + 0.3,
+                        twinkleSpeed: Math.random() * 0.02
+                    }});
+                }}
+            }}
+
+            // Meteor class
+            class Meteor {{
+                constructor() {{
+                    this.reset();
+                }}
+
+                reset() {{
+                    // Start from random position in top-left area
+                    this.x = Math.random() * width - 200;
+                    this.y = Math.random() * height * 0.3 - 200;
+
+                    // Angle roughly towards bottom-right (like Emerge Tools)
+                    const angle = Math.random() * 0.3 + 0.3; // 0.3 to 0.6 radians (~17-34 degrees)
+                    this.speedX = Math.cos(angle) * (Math.random() * 3 + 3);
+                    this.speedY = Math.sin(angle) * (Math.random() * 3 + 3);
+
+                    this.length = Math.random() * 80 + 60;
+                    this.opacity = Math.random() * 0.5 + 0.5;
+                    this.thickness = Math.random() * 2 + 1;
+
+                    this.life = 1;
+                    this.decay = Math.random() * 0.005 + 0.005;
+                }}
+
+                update() {{
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    this.life -= this.decay;
+
+                    // Reset if dead or off-screen
+                    if (this.life <= 0 || this.x > width + 100 || this.y > height + 100) {{
+                        this.reset();
+                    }}
+                }}
+
+                draw() {{
+                    ctx.save();
+
+                    const grad = ctx.createLinearGradient(
+                        this.x, this.y,
+                        this.x - this.length * Math.cos(0.4),
+                        this.y - this.length * Math.sin(0.4)
+                    );
+
+                    grad.addColorStop(0, `rgba(255, 255, 255, ${{this.opacity * this.life}})`);
+                    grad.addColorStop(0.5, `rgba(200, 180, 255, ${{this.opacity * this.life * 0.5}})`);
+                    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                    ctx.strokeStyle = grad;
+                    ctx.lineWidth = this.thickness;
+                    ctx.lineCap = 'round';
+
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(
+                        this.x - this.length * Math.cos(0.4),
+                        this.y - this.length * Math.sin(0.4)
+                    );
+                    ctx.stroke();
+
+                    ctx.restore();
+                }}
+            }}
+
+            // Initialize
+            createStars();
+            for (let i = 0; i < 8; i++) {{
+                meteors.push(new Meteor());
+            }}
+
+            // Animation loop
+            function animate() {{
+                // Clear with black background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(0, 0, width, height);
+
+                // Draw stars
+                stars.forEach((star, i) => {{
+                    star.opacity += Math.sin(Date.now() * star.twinkleSpeed + i) * 0.01;
+                    star.opacity = Math.max(0.1, Math.min(0.8, star.opacity));
+
+                    ctx.fillStyle = `rgba(255, 255, 255, ${{star.opacity}})`;
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }});
+
+                // Update and draw meteors
+                meteors.forEach(meteor => {{
+                    meteor.update();
+                    meteor.draw();
+                }});
+
+                requestAnimationFrame(animate);
+            }}
+
+            // Handle resize
+            window.addEventListener('resize', () => {{
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+                stars.length = 0;
+                createStars();
+            }});
+
+            // Start animation
+            animate();
+        }})();
 
         // Chart
         const ctx = document.getElementById('timeSeriesChart').getContext('2d');
