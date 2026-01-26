@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import sys
+import os
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Dict, Any
 
 import numpy as np
+
+# Add parent directory to path for shared modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from constants import (
     MS_FLOOR,
