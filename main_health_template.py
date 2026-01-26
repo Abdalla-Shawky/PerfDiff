@@ -60,6 +60,7 @@ def render_health_template(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Main Branch Health Monitoring Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -486,26 +487,13 @@ def render_health_template(
             pointStyle: (ctx) => outlierIndices.includes(ctx.dataIndex) ? 'triangle' : 'circle',
             pointBackgroundColor: (ctx) => {{
                 if (outlierIndices.includes(ctx.dataIndex)) return '#f57c00';  // Orange for outliers
-                if (regressionIndex !== null && ctx.dataIndex >= regressionIndex) return '#d32f2f';  // Red after regression
-                return '#0066ff';  // Blue normal
+                return '#0066ff';  // Blue for all other points
             }},
             pointHoverRadius: 5,
             tension: 0.1,
             fill: true,
-            segment: {{
-                borderColor: ctx => {{
-                    if (regressionIndex !== null) {{
-                        return ctx.p0.parsed.x >= regressionIndex ? '#d32f2f' : '#0066ff';
-                    }}
-                    return '#0066ff';
-                }},
-                backgroundColor: ctx => {{
-                    if (regressionIndex !== null) {{
-                        return ctx.p0.parsed.x >= regressionIndex ? 'rgba(211, 47, 47, 0.1)' : 'rgba(0, 102, 255, 0.1)';
-                    }}
-                    return 'rgba(0, 102, 255, 0.1)';
-                }}
-            }}
+            borderColor: '#0066ff',  // Keep line blue throughout
+            backgroundColor: 'rgba(0, 102, 255, 0.1)'  // Keep fill blue throughout
         }}];
 
         {_render_chart_baseline(control, len(series))}
@@ -524,7 +512,31 @@ def render_health_template(
                     tooltip: {{
                         mode: 'index',
                         intersect: false
-                    }}
+                    }},
+                    annotation: regressionIndex !== null ? {{
+                        annotations: {{
+                            regressionLine: {{
+                                type: 'line',
+                                xMin: regressionIndex,
+                                xMax: regressionIndex,
+                                borderColor: '#d32f2f',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                label: {{
+                                    display: true,
+                                    content: `Regression at ${{regressionIndex}}`,
+                                    position: 'start',
+                                    backgroundColor: 'rgba(211, 47, 47, 0.9)',
+                                    color: '#fff',
+                                    font: {{
+                                        size: 11,
+                                        weight: 'bold'
+                                    }},
+                                    padding: 4
+                                }}
+                            }}
+                        }}
+                    }} : {{}}
                 }},
                 scales: {{
                     x: {{
