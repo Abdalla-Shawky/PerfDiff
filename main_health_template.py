@@ -45,7 +45,7 @@ def render_health_template(
 
     # Determine status colors
     if overall_status == "ALERT":
-        status_color = "#d32f2f"
+        status_color = "#FFFFFF"
         status_bg = "#ffebee"
         status_icon = "🚨"
     else:
@@ -78,12 +78,16 @@ def render_health_template(
 
             --success: #2e7d32;
             --success-bg: #e8f5e9;
+            --success-text: #2e7d32;
             --danger: #d32f2f;
             --danger-bg: #ffebee;
+            --danger-text: #d32f2f;
             --warning: #f57c00;
             --warning-bg: #fff3e0;
+            --warning-text: #f57c00;
             --info: #0288d1;
             --info-bg: #e1f5fe;
+            --info-text: #0288d1;
 
             /* Shadows */
             --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
@@ -100,10 +104,20 @@ def render_health_template(
             --bg-tertiary: #242b38;
             --text-primary: #e0e0e0;
             --text-secondary: #a0a0a0;
-            --success-bg: #1b3a1d;
-            --danger-bg: #3a1d1d;
-            --warning-bg: #3a2d1d;
-            --info-bg: #1d2a3a;
+
+            /* Dark mode color adjustments - muted colors for better design */
+            --success: #4caf50;
+            --success-bg: #1b5e20;
+            --success-text: #ffffff;
+            --danger: #f44336;
+            --danger-bg: #b71c1c;
+            --danger-text: #ffffff;
+            --warning: #ff9800;
+            --warning-bg: #e65100;
+            --warning-text: #ffffff;
+            --info: #2196f3;
+            --info-bg: #01579b;
+            --info-text: #ffffff;
         }}
 
         * {{
@@ -153,23 +167,43 @@ def render_health_template(
         }}
 
         .status-banner {{
-            background: {status_bg};
-            border-left: 4px solid {status_color};
             padding: 24px;
             border-radius: 8px;
             margin-bottom: 30px;
             box-shadow: var(--shadow-sm);
         }}
 
-        .status-banner h2 {{
-            color: {status_color};
+        .status-banner.alert {{
+            background: var(--danger-bg);
+            border-left: 4px solid var(--danger);
+        }}
+
+        .status-banner.ok {{
+            background: var(--success-bg);
+            border-left: 4px solid var(--success);
+        }}
+
+        .status-banner.alert h2 {{
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 8px;
+            color: var(--danger-text);
         }}
 
-        .status-banner p {{
-            color: var(--text-primary);
+        .status-banner.ok h2 {{
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--success-text);
+        }}
+
+        .status-banner.alert p {{
+            color: var(--danger-text);
+            font-size: 16px;
+        }}
+
+        .status-banner.ok p {{
+            color: var(--success-text);
             font-size: 16px;
         }}
 
@@ -208,22 +242,22 @@ def render_health_template(
 
         .badge-success {{
             background: var(--success-bg);
-            color: var(--success);
+            color: var(--success-text);
         }}
 
         .badge-danger {{
             background: var(--danger-bg);
-            color: var(--danger);
+            color: var(--danger-text);
         }}
 
         .badge-warning {{
             background: var(--warning-bg);
-            color: var(--warning);
+            color: var(--warning-text);
         }}
 
         .badge-info {{
             background: var(--info-bg);
-            color: var(--info);
+            color: var(--info-text);
         }}
 
         .metric-grid {{
@@ -276,6 +310,46 @@ def render_health_template(
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 12px;
             margin-top: 12px;
+        }}
+
+        .alert-reason-box {{
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+            font-size: 14px;
+            line-height: 1.6;
+        }}
+
+        .alert-reason-box strong {{
+            display: block;
+            font-size: 15px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }}
+
+        .alert-reason-danger {{
+            background: var(--danger-bg);
+            border-left-color: var(--danger);
+            color: var(--danger-text);
+        }}
+
+        .alert-reason-success {{
+            background: var(--success-bg);
+            border-left-color: var(--success);
+            color: var(--success-text);
+        }}
+
+        .alert-reason-warning {{
+            background: var(--warning-bg);
+            border-left-color: var(--warning);
+            color: var(--warning-text);
+        }}
+
+        .alert-reason-info {{
+            background: var(--info-bg);
+            border-left-color: var(--info);
+            color: var(--info-text);
         }}
 
         .chart-container {{
@@ -359,7 +433,7 @@ def render_health_template(
             <p class="timestamp">Generated: {timestamp}</p>
         </header>
 
-        <div class="status-banner">
+        <div class="status-banner {'alert' if overall_status == 'ALERT' else 'ok'}">
             <h2>{status_icon} {overall_status}</h2>
             <p>
                 {_get_status_message(overall_status, regression_index)}
@@ -763,12 +837,24 @@ def _render_control_chart(control: Any) -> str:
     """Render control chart results."""
     alert_class = "badge-danger" if control.alert else "badge-success"
     alert_text = "ALERT" if control.alert else "OK"
+    reason_class = "alert-reason-danger" if control.alert else "alert-reason-success"
+    reason_title = "⚠️ Alert Reason" if control.alert else "✓ Status"
 
     return f"""
     <div class="card">
         <div class="card-title">
             📊 Control Chart (Spike Detection)
             <span class="badge {alert_class}">{alert_text}</span>
+        </div>
+
+        <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+            Detects sudden spikes by comparing the latest value against a baseline window (last 30 points).
+            Alerts when value exceeds <strong>±4.0σ</strong> (robust sigma from MAD) AND practical threshold (50ms or 5% of baseline).
+        </p>
+
+        <div class="alert-reason-box {reason_class}">
+            <strong>{reason_title}:</strong>
+            {control.reason}
         </div>
 
         <div class="metric-grid">
@@ -803,10 +889,6 @@ def _render_control_chart(control: Any) -> str:
                 <td>Lower Bound</td>
                 <td>{control.lower_bound:.2f} ms</td>
             </tr>
-            <tr>
-                <td>Details</td>
-                <td style="font-family: monospace; font-size: 12px;">{control.reason}</td>
-            </tr>
         </table>
     </div>
     """
@@ -816,12 +898,24 @@ def _render_ewma(ewma: Any) -> str:
     """Render EWMA results."""
     alert_class = "badge-danger" if ewma.alert else "badge-success"
     alert_text = "ALERT" if ewma.alert else "OK"
+    reason_class = "alert-reason-danger" if ewma.alert else "alert-reason-success"
+    reason_title = "⚠️ Alert Reason" if ewma.alert else "✓ Status"
 
     return f"""
     <div class="card">
         <div class="card-title">
             📉 EWMA (Trend Detection)
             <span class="badge {alert_class}">{alert_text}</span>
+        </div>
+
+        <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+            Detects gradual performance creep using exponentially weighted moving average (α=0.25).
+            Alerts when EWMA exceeds <strong>±3.0σ</strong> bounds OR drifts <strong>≥15%</strong> from baseline median.
+        </p>
+
+        <div class="alert-reason-box {reason_class}">
+            <strong>{reason_title}:</strong>
+            {ewma.reason}
         </div>
 
         <div class="metric-grid">
@@ -842,10 +936,6 @@ def _render_ewma(ewma: Any) -> str:
                 <div class="metric-value">{ewma.lower_bound:.2f}<span class="metric-unit"> ms</span></div>
             </div>
         </div>
-
-        <p style="margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
-            {ewma.reason}
-        </p>
     </div>
     """
 
@@ -855,9 +945,13 @@ def _render_stepfit(stepfit: Any) -> str:
     if stepfit.found:
         alert_class = "badge-warning"
         alert_text = "CHANGEPOINT FOUND"
+        reason_class = "alert-reason-danger"
+        reason_title = "⚠️ Alert Reason"
     else:
         alert_class = "badge-info"
         alert_text = "NO CHANGEPOINT"
+        reason_class = "alert-reason-success"
+        reason_title = "✓ Status"
 
     content = ""
     if stepfit.found:
@@ -886,6 +980,13 @@ def _render_stepfit(stepfit: Any) -> str:
         </div>
         """
 
+    explanation = """
+        <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+            Finds the exact commit where performance changed by testing every possible split point.
+            Alerts when change score exceeds <strong>4.0σ</strong> OR percentage change is <strong>≥20%</strong>.
+        </p>
+    """
+
     return f"""
     <div class="card">
         <div class="card-title">
@@ -893,11 +994,14 @@ def _render_stepfit(stepfit: Any) -> str:
             <span class="badge {alert_class}">{alert_text}</span>
         </div>
 
-        {content}
+        {explanation}
 
-        <p style="margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
+        <div class="alert-reason-box {reason_class}">
+            <strong>{reason_title}:</strong>
             {stepfit.reason}
-        </p>
+        </div>
+
+        {content}
     </div>
     """
 

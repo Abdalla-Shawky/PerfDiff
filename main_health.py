@@ -106,6 +106,44 @@ def detect_outliers_rolling(
     return outlier_indices
 
 
+def detect_outliers_in_window(
+    window_data: np.ndarray,
+    k_outlier: float = HEALTH_OUTLIER_K,
+    min_mad: float = HEALTH_MIN_MAD,
+) -> List[int]:
+    """
+    Detect outliers within a single window of data.
+
+    Args:
+        window_data: Array of values within the window
+        k_outlier: Sigma multiplier for outlier threshold
+        min_mad: Minimum MAD to prevent division by zero
+
+    Returns:
+        List of indices (within the window) that are outliers
+
+    Example:
+        >>> window = np.array([100, 100, 500, 100, 100])
+        >>> outliers = detect_outliers_in_window(window)
+        >>> outliers
+        [2]  # Index 2 (value 500) is an outlier
+    """
+    if not HEALTH_OUTLIER_DETECTION_ENABLED or len(window_data) < 3:
+        return []
+
+    window_median = float(np.median(window_data))
+    window_mad = max(mad(window_data), min_mad)
+    sigma = robust_sigma_from_mad(window_mad)
+
+    outlier_indices = []
+    for i, val in enumerate(window_data):
+        z_score = abs(val - window_median) / sigma if sigma > 0 else 0
+        if z_score > k_outlier:
+            outlier_indices.append(i)
+
+    return outlier_indices
+
+
 # -----------------------------
 # Models
 # -----------------------------
@@ -254,11 +292,17 @@ def ewma_monitor(
     pct_floor: float = PCT_FLOOR,
     min_mad: float = HEALTH_MIN_MAD,
     direction: str = HEALTH_DIRECTION,
+    ewma_pct_threshold: Optional[float] = HEALTH_EWMA_PCT_THRESHOLD,
 ) -> Optional[EwmaResult]:
     """
-    EWMA on the median-only series.
-    Uses baseline median/MAD from last window points (excluding latest),
-    computes EWMA through the series, and alerts when EWMA crosses bounds.
+    EWMA on the median-only series with outlier filtering.
+
+    Uses baseline median/MAD from last window points (excluding latest) to set bounds,
+    detects outliers across the full series using rolling window approach, then
+    computes EWMA through the entire series while skipping detected outliers.
+
+    Outliers are detected using MAD-based z-score (k=3.5σ) and excluded from the
+    exponential smoothing to prevent skewed trend detection.
 
     This is a practical EWMA; it uses sigma from robust MAD, not classic EWMA variance.
     """
@@ -291,10 +335,29 @@ def ewma_monitor(
     base_mad = max(mad(baseline), min_mad)
     sigma = robust_sigma_from_mad(base_mad)
 
-    # EWMA state (use baseline median as initial state)
+    # Detect outliers in the full series using rolling window approach
+    # This catches outliers after the initial window period
+    outlier_indices_rolling = detect_outliers_rolling(
+        series, window=window, k_outlier=HEALTH_OUTLIER_K, min_mad=min_mad
+    )
+
+    # Also detect outliers within the baseline window itself
+    # This catches outliers in the early part where rolling detection doesn't reach
+    outlier_indices_baseline = detect_outliers_in_window(baseline)
+    # Convert baseline indices to full series indices
+    baseline_start = len(x) - window - 1
+    outlier_indices_baseline_adjusted = [baseline_start + i for i in outlier_indices_baseline]
+
+    # Combine both outlier sets
+    outlier_set = set(outlier_indices_rolling) | set(outlier_indices_baseline_adjusted)
+
+    # Compute EWMA over the full series (skipping outliers)
+    # Initialize with baseline median for stability
     s = base_med
-    for v in baseline:  # Compute EWMA from baseline only, not including latest
-        s = alpha * float(v) + (1.0 - alpha) * s
+    for i, v in enumerate(x):
+        # Skip outliers when computing EWMA to avoid skewing the trend
+        if i not in outlier_set:
+            s = alpha * float(v) + (1.0 - alpha) * s
 
     # Bounds around baseline median (robust)
     upper = base_med + k * sigma
@@ -314,8 +377,8 @@ def ewma_monitor(
         raise ValueError("direction must be 'regression' or 'both'")
 
     # Practical drift alarm (percentage-based, only upward for regression)
-    drift_alarm = (HEALTH_EWMA_PCT_THRESHOLD is not None and
-                  ewma_drift_pct >= HEALTH_EWMA_PCT_THRESHOLD and
+    drift_alarm = (ewma_pct_threshold is not None and
+                  ewma_drift_pct >= ewma_pct_threshold and
                   s > base_med)
 
     # Dual criteria: trigger if EITHER condition met
@@ -327,7 +390,7 @@ def ewma_monitor(
         if statistical_alarm:
             reason += f" (exceeds bounds=[{lower:.2f}, {upper:.2f}])"
         if drift_alarm:
-            reason += f" (drift={ewma_drift_pct:.1f}%≥{HEALTH_EWMA_PCT_THRESHOLD}%)"
+            reason += f" (drift={ewma_drift_pct:.1f}%≥{ewma_pct_threshold}%)"
     else:
         reason = (
             f"OK: ewma={s:.2f}, value={value:.2f}, "
@@ -356,6 +419,8 @@ def step_fit(
     abs_floor: float = MS_FLOOR,
     pct_floor: float = PCT_FLOOR,
     score_k: float = HEALTH_STEP_SCORE_K,
+    min_mad: float = HEALTH_MIN_MAD,
+    step_pct_threshold: Optional[float] = HEALTH_STEP_PCT_THRESHOLD,
 ) -> Optional[StepFitResult]:
     """
     Simple step-fit for median-only data.
@@ -369,6 +434,8 @@ def step_fit(
 
     Args:
       scan_back: Number of recent points to scan. None = scan entire series (recommended for exact commit detection)
+      min_mad: Minimum MAD to prevent division by zero
+      step_pct_threshold: Percentage change threshold for practical alarm (e.g., 20.0 for 20%)
     """
     # Parameter validation
     if scan_back is not None and scan_back <= 0:
@@ -400,7 +467,7 @@ def step_fit(
         return None
 
     # Robust sigma across scan window
-    sigma = robust_sigma_from_mad(max(mad(x), 1e-9))
+    sigma = robust_sigma_from_mad(max(mad(x), min_mad))
     base_med = float(np.median(x))
 
     best_score = -1.0
@@ -449,8 +516,8 @@ def step_fit(
 
     # Dual criteria: statistical (score-based) OR practical (percentage-based)
     statistical_alarm = best_score >= score_k
-    practical_alarm = (HEALTH_STEP_PCT_THRESHOLD is not None and
-                      pct_change >= HEALTH_STEP_PCT_THRESHOLD)
+    practical_alarm = (step_pct_threshold is not None and
+                      pct_change >= step_pct_threshold)
 
     found = statistical_alarm or practical_alarm
 
@@ -460,7 +527,7 @@ def step_fit(
         if statistical_alarm:
             reason += f" (score={best_score:.2f}≥{score_k})"
         if practical_alarm:
-            reason += f" ({pct_change:.1f}%≥{HEALTH_STEP_PCT_THRESHOLD}%)"
+            reason += f" ({pct_change:.1f}%≥{step_pct_threshold}%)"
         reason += f", scan_window=[{start},{end})"
     else:
         reason = (
@@ -494,9 +561,11 @@ def assess_main_health(
     k_mad: float = HEALTH_CONTROL_K,
     ewma_alpha: float = HEALTH_EWMA_ALPHA,
     ewma_k: float = HEALTH_EWMA_K,
+    ewma_pct_threshold: Optional[float] = HEALTH_EWMA_PCT_THRESHOLD,
     step_scan_back: Optional[int] = HEALTH_STEP_SCAN_BACK,
     step_min_segment: int = HEALTH_STEP_MIN_SEGMENT,
     step_score_k: float = HEALTH_STEP_SCORE_K,
+    step_pct_threshold: Optional[float] = HEALTH_STEP_PCT_THRESHOLD,
 ) -> HealthReport:
     """
     Runs:
@@ -504,6 +573,10 @@ def assess_main_health(
       - ewma_monitor
       - step_fit (only to help triage; run always if enough data)
     and produces a unified report.
+
+    Args:
+      ewma_pct_threshold: EWMA drift percentage threshold (e.g., 15.0 for 15%)
+      step_pct_threshold: Step change percentage threshold (e.g., 20.0 for 20%)
     """
     control = control_chart_median_mad(
         series, window=window, k=k_mad,
@@ -512,12 +585,14 @@ def assess_main_health(
 
     ewma = ewma_monitor(
         series, window=window, alpha=ewma_alpha, k=ewma_k,
-        abs_floor=abs_floor, pct_floor=pct_floor
+        abs_floor=abs_floor, pct_floor=pct_floor,
+        ewma_pct_threshold=ewma_pct_threshold
     )
 
     step = step_fit(
         series, scan_back=step_scan_back, min_segment=step_min_segment,
-        abs_floor=abs_floor, pct_floor=pct_floor, score_k=step_score_k
+        abs_floor=abs_floor, pct_floor=pct_floor, score_k=step_score_k,
+        step_pct_threshold=step_pct_threshold
     )
 
     overall_alert = bool((control and control.alert) or (ewma and ewma.alert) or (step and step.found))
@@ -641,16 +716,7 @@ Examples:
         print(f"Error parsing --series: {e}", file=sys.stderr)
         sys.exit(2)
 
-    # Override percentage thresholds if provided via CLI
-    if args.step_pct_threshold is not None:
-        import constants
-        constants.HEALTH_STEP_PCT_THRESHOLD = args.step_pct_threshold
-
-    if args.ewma_pct_threshold is not None:
-        import constants
-        constants.HEALTH_EWMA_PCT_THRESHOLD = args.ewma_pct_threshold
-
-    # Run health assessment
+    # Run health assessment with optional threshold overrides
     try:
         report = assess_main_health(
             series,
@@ -658,6 +724,8 @@ Examples:
             abs_floor=args.abs_floor,
             pct_floor=args.pct_floor,
             step_scan_back=args.step_scan_back,
+            ewma_pct_threshold=args.ewma_pct_threshold if args.ewma_pct_threshold is not None else HEALTH_EWMA_PCT_THRESHOLD,
+            step_pct_threshold=args.step_pct_threshold if args.step_pct_threshold is not None else HEALTH_STEP_PCT_THRESHOLD,
         )
     except Exception as e:
         print(f"Error running health assessment: {e}", file=sys.stderr)

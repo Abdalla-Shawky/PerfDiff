@@ -376,7 +376,7 @@ MAD_TO_SIGMA_SCALE = 1.4826
 # Enable/disable outlier detection and trimmed mean calculation
 # Set to False to disable outlier detection, visual marking, and quality penalties
 # When disabled, trimmed mean = regular mean (no outlier exclusion)
-HEALTH_OUTLIER_DETECTION_ENABLED = False
+HEALTH_OUTLIER_DETECTION_ENABLED = True
 
 # Sigma multiplier for rolling MAD outlier detection
 # 3.5 is more lenient than control chart (k=4.0) to avoid over-flagging
