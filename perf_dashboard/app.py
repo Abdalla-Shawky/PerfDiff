@@ -53,8 +53,96 @@ else:
     print("BigQuery not available - running in mock mode")
 
 
+def _convert_medians_to_bq_format(
+    medians: List[float],
+    platform: str,
+    trace_name: str,
+    start_date: str,
+    end_date: str
+) -> List[Dict[str, Any]]:
+    """
+    Convert simplified median array to BigQuery format.
+
+    Args:
+        medians: List of median values (e.g., [250, 252, 351, 353])
+        platform: Platform name ('ios' or 'android')
+        trace_name: Trace name
+        start_date: Start date string
+        end_date: End date string
+
+    Returns:
+        List of BigQuery-formatted records
+    """
+    from datetime import timedelta
+
+    start = datetime.fromisoformat(start_date)
+    end = datetime.fromisoformat(end_date)
+    total_days = (end - start).days
+
+    # Calculate date spacing to distribute medians across date range
+    if len(medians) > 1:
+        day_step = max(1, total_days // (len(medians) - 1))
+    else:
+        day_step = 1
+
+    records = []
+    device_model = 'iPhone 14 Pro' if platform.lower() == 'ios' else 'Pixel 7'
+    device_os = f'{platform} {"17" if platform.lower() == "ios" else "14"}'
+
+    for i, median_value in enumerate(medians):
+        # Generate date within range
+        current_date = start + timedelta(days=min(i * day_step, total_days))
+
+        # Generate runs around median (10 values)
+        # Create realistic variance: ±5% around median
+        import random
+        variance = median_value * 0.05
+        runs = []
+        for _ in range(10):
+            value = median_value + random.uniform(-variance, variance)
+            runs.append(round(value, 2))
+        runs.sort()
+
+        # Ensure median is accurate
+        actual_median = runs[len(runs) // 2]
+
+        record = {
+            'benchmarks': [{
+                'className': 'PerformanceBenchmark',
+                'name': f'{trace_name}_benchmark',
+                'metrics': {
+                    'runs': runs,
+                    'median': actual_median,
+                    'minimum': runs[0],
+                    'maximum': runs[-1],
+                    'metricName': trace_name
+                }
+            }],
+            'build': {
+                'model': device_model,
+                'id': 1000 + i,
+                'app_version': f'1.0.{i}',
+                'commit_hash': f'mock{i:04d}',
+                'device': device_os,
+                'created_at': current_date.isoformat() + 'Z',
+                'branch': 'main'
+            }
+        }
+        records.append(record)
+
+    return records
+
+
 def load_mock_data_from_file(platform: str, start_date: str, end_date: str, trace_name: str) -> List[Dict[str, Any]]:
-    """Load mock data from local JSON file."""
+    """
+    Load mock data from local JSON file.
+
+    Supports two formats:
+    1. Simplified format (array of medians): [250, 252, 351, 353, ...]
+    2. BigQuery format (array of objects): [{benchmarks: [...], build: {...}}, ...]
+
+    The simplified format is automatically converted to BigQuery format.
+    """
     mock_file_path = os.path.join(os.path.dirname(__file__), 'mock_data.json')
 
     try:
@@ -68,17 +156,31 @@ def load_mock_data_from_file(platform: str, start_date: str, end_date: str, trac
                 if platform_key in data['traces'][trace_name]:
                     trace_data = data['traces'][trace_name][platform_key]
 
-                    # Filter by date range if data exists
+                    # Check if data exists
                     if trace_data:
-                        print(f"✅ Loaded {len(trace_data)} records from mock_data.json for {trace_name}/{platform}")
+                        # Detect format: simplified (array of numbers) or BigQuery (array of objects)
+                        is_simplified_format = (
+                            isinstance(trace_data, list) and
+                            len(trace_data) > 0 and
+                            isinstance(trace_data[0], (int, float))
+                        )
 
-                        # Filter by date range
-                        start = datetime.fromisoformat(start_date)
-                        end = datetime.fromisoformat(end_date)
+                        if is_simplified_format:
+                            # Convert simplified format to BigQuery format
+                            print(f"✅ Loaded {len(trace_data)} medians from mock_data.json for {trace_name}/{platform} (simplified format)")
+                            trace_data = _convert_medians_to_bq_format(
+                                trace_data, platform, trace_name, start_date, end_date
+                            )
+                        else:
+                            print(f"✅ Loaded {len(trace_data)} records from mock_data.json for {trace_name}/{platform} (BigQuery format)")
+
+                        # Filter by date range (compare dates only, not times)
+                        start = datetime.fromisoformat(start_date).date()
+                        end = datetime.fromisoformat(end_date).date()
 
                         filtered_data = []
                         for record in trace_data:
-                            record_date = datetime.fromisoformat(record['build']['created_at'].replace('Z', '+00:00'))
+                            record_date = datetime.fromisoformat(record['build']['created_at'].replace('Z', '+00:00')).date()
                             if start <= record_date <= end:
                                 filtered_data.append(record)
 
@@ -89,6 +191,8 @@ def load_mock_data_from_file(platform: str, start_date: str, end_date: str, trac
                             print(f"⚠️  No data in date range, falling back to generated data")
     except Exception as e:
         print(f"⚠️  Error reading mock_data.json: {e}")
+        import traceback
+        traceback.print_exc()
 
     return None
 
@@ -255,15 +359,14 @@ def run_regression_analysis(data: List[Dict[str, Any]], trace_name: str) -> Dict
             print(f"⚠️  main_health analysis failed: {e}")
 
     # Fallback: Simple analysis
-    # Use first 30% of data as baseline, last 30% as recent
+    # Use first 30% of data as baseline
+    # Compare CURRENT value (last point) against baseline, like Control Chart does
     baseline_size = max(5, int(len(series) * 0.3))
     baseline = series[:baseline_size]
-    recent = series[-baseline_size:]
 
     baseline_median = sorted(baseline)[len(baseline) // 2]
-    recent_median = sorted(recent)[len(recent) // 2]
-    current_value = recent[-1]
-    delta = recent_median - baseline_median
+    current_value = series[-1]
+    delta = current_value - baseline_median
 
     # Simple threshold check
     practical_threshold = max(50, 0.05 * baseline_median)
