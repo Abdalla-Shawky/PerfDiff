@@ -1,0 +1,62 @@
+{
+  "comment": "Mock BigQuery data for performance traces dashboard",
+  "instructions": "Add your performance data here. The structure matches BigQuery output.",
+  "traces": {
+    "homeTabStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "pickupListStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "shopListStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "shopDetailStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "menuStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "cartStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "checkoutStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "orderTrackingStartToInteractive": {
+      "ios": [],
+      "android": []
+    }
+  },
+  "example_data_format": {
+    "benchmarks": [
+      {
+        "className": "PerformanceBenchmark",
+        "name": "homeTabStartToInteractive_benchmark",
+        "metrics": {
+          "runs": [245.2, 248.1, 250.3, 252.7, 254.1, 256.8, 258.2, 260.5, 262.1, 264.3],
+          "median": 255.45,
+          "minimum": 245.2,
+          "maximum": 264.3,
+          "metricName": "homeTabStartToInteractive"
+        }
+      }
+    ],
+    "build": {
+      "model": "iPhone 14 Pro",
+      "id": 1001,
+      "app_version": "1.0.1",
+      "commit_hash": "a1b2c3d4e5f6",
+      "device": "ios 17",
+      "created_at": "2025-01-15T10:30:00Z",
+      "branch": "main"
+    }
+  }
+}

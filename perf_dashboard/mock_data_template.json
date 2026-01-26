@@ -1,0 +1,146 @@
+{
+  "comment": "TEMPLATE: Copy this structure to mock_data.json and fill with your actual performance data",
+  "instructions": [
+    "1. Copy the 'traces' section below to mock_data.json",
+    "2. Add your performance data for each trace/platform combination",
+    "3. Each array should contain build records with benchmarks",
+    "4. The dashboard will automatically use this data when you select a trace",
+    "5. Date format: ISO 8601 with Z suffix (e.g., '2025-01-15T10:30:00Z')",
+    "6. Commit hash: Your actual git commit hash",
+    "7. Runs: Array of 10 measurement values (sorted)",
+    "8. Median: Middle value of runs array"
+  ],
+  "traces": {
+    "homeTabStartToInteractive": {
+      "ios": [
+        {
+          "benchmarks": [
+            {
+              "className": "PerformanceBenchmark",
+              "name": "homeTabStartToInteractive_benchmark",
+              "metrics": {
+                "runs": [240.2, 245.1, 247.3, 249.7, 251.1, 253.8, 255.2, 257.5, 259.1, 261.3],
+                "median": 252.45,
+                "minimum": 240.2,
+                "maximum": 261.3,
+                "metricName": "homeTabStartToInteractive"
+              }
+            }
+          ],
+          "build": {
+            "model": "iPhone 14 Pro",
+            "id": 1001,
+            "app_version": "1.0.1",
+            "commit_hash": "abc1001",
+            "device": "ios 17",
+            "created_at": "2025-01-13T10:00:00Z",
+            "branch": "main"
+          }
+        },
+        {
+          "benchmarks": [
+            {
+              "className": "PerformanceBenchmark",
+              "name": "homeTabStartToInteractive_benchmark",
+              "metrics": {
+                "runs": [242.1, 246.3, 248.5, 250.2, 252.7, 254.3, 256.1, 258.4, 260.2, 262.5],
+                "median": 253.5,
+                "minimum": 242.1,
+                "maximum": 262.5,
+                "metricName": "homeTabStartToInteractive"
+              }
+            }
+          ],
+          "build": {
+            "model": "iPhone 14 Pro",
+            "id": 1002,
+            "app_version": "1.0.2",
+            "commit_hash": "abc1002",
+            "device": "ios 17",
+            "created_at": "2025-01-14T10:00:00Z",
+            "branch": "main"
+          }
+        },
+        {
+          "benchmarks": [
+            {
+              "className": "PerformanceBenchmark",
+              "name": "homeTabStartToInteractive_benchmark",
+              "metrics": {
+                "runs": [341.2, 345.3, 347.5, 349.2, 351.7, 353.3, 355.1, 357.4, 359.2, 361.5],
+                "median": 352.5,
+                "minimum": 341.2,
+                "maximum": 361.5,
+                "metricName": "homeTabStartToInteractive"
+              }
+            }
+          ],
+          "build": {
+            "model": "iPhone 14 Pro",
+            "id": 1010,
+            "app_version": "1.0.10",
+            "commit_hash": "bad1010",
+            "device": "ios 17",
+            "created_at": "2025-01-23T10:00:00Z",
+            "branch": "main"
+          },
+          "comment": "This build shows a regression - 100ms slower than baseline"
+        }
+      ],
+      "android": [
+        {
+          "benchmarks": [
+            {
+              "className": "PerformanceBenchmark",
+              "name": "homeTabStartToInteractive_benchmark",
+              "metrics": {
+                "runs": [290.5, 295.2, 297.8, 300.1, 302.5, 304.8, 306.2, 308.9, 310.5, 312.8],
+                "median": 303.65,
+                "minimum": 290.5,
+                "maximum": 312.8,
+                "metricName": "homeTabStartToInteractive"
+              }
+            }
+          ],
+          "build": {
+            "model": "Pixel 7",
+            "id": 2001,
+            "app_version": "1.0.1",
+            "commit_hash": "abc1001",
+            "device": "android 14",
+            "created_at": "2025-01-13T10:00:00Z",
+            "branch": "main"
+          }
+        }
+      ]
+    },
+    "pickupListStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "shopListStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "shopDetailStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "menuStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "cartStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "checkoutStartToInteractive": {
+      "ios": [],
+      "android": []
+    },
+    "orderTrackingStartToInteractive": {
+      "ios": [],
+      "android": []
+    }
+  }
+}

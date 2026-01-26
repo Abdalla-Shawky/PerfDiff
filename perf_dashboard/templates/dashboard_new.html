@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Traces Dashboard</title>
+
+  <!-- Chart.js for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+
+  <style>
+    :root {
+      /* Emerge Tools Dark Theme */
+      --bg-primary: rgba(15, 20, 25, 0.85);
+      --bg-secondary: rgba(26, 31, 41, 0.95);
+      --bg-tertiary: rgba(36, 43, 56, 0.9);
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0a0;
+      --border: rgba(255, 255, 255, 0.1);
+      --card-bg: rgba(26, 31, 41, 0.8);
+
+      --success: #4caf50;
+      --success-bg: rgba(27, 94, 32, 0.8);
+      --danger: #f44336;
+      --danger-bg: rgba(183, 28, 28, 0.8);
+      --warning: #ff9800;
+      --warning-bg: rgba(230, 81, 0, 0.8);
+      --info: #2196f3;
+
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 0 15px rgba(120, 119, 198, 0.15);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 0 20px rgba(120, 119, 198, 0.2);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: #000000;
+      color: var(--text-primary);
+      padding: 20px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Animated Background */
+    #meteor-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .gradient-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.3), transparent),
+        radial-gradient(ellipse 60% 80% at 80% 50%, rgba(157, 78, 221, 0.2), transparent);
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 30px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 30%, rgba(255, 255, 255, 0.5) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* Controls Section */
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      padding: 20px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select, button {
+      padding: 12px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--info);
+      box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      padding: 20px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* Chart Section */
+    .chart-section {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .chart-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      margin-top: 16px;
+    }
+
+    /* Regression Alerts */
+    .alerts-section {
+      margin-bottom: 24px;
+    }
+
+    .alert {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .alert-danger {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+    }
+
+    .alert-success {
+      background: var(--success-bg);
+      border-color: var(--success);
+    }
+
+    .alert-icon {
+      font-size: 24px;
+    }
+
+    .alert-content {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .alert-details {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Platform Tabs */
+    .platform-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .platform-tab {
+      padding: 12px 24px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .platform-tab.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: transparent;
+      color: white;
+    }
+
+    .platform-tab:hover {
+      border-color: var(--info);
+    }
+
+    /* Loading State */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border);
+      border-top-color: var(--info);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-container {
+        height: 300px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .platform-tabs {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated Background -->
+  <canvas id="meteor-canvas"></canvas>
+  <div class="gradient-overlay"></div>
+
+  <div class="container">
+    <header>
+      <h1>⚡ Performance Traces Regression Detection Dashboard</h1>
+      <p class="subtitle">Real-time performance monitoring with regression detection</p>
+    </header>
+
+    <!-- Platform Selection -->
+    <div class="platform-tabs">
+      <div class="platform-tab active" data-platform="ios" onclick="selectPlatform('ios')">
+        🍎 iOS
+      </div>
+      <div class="platform-tab" data-platform="android" onclick="selectPlatform('android')">
+        🤖 Android
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="control-group">
+        <label>Start Date</label>
+        <input type="date" id="startDate">
+      </div>
+
+      <div class="control-group">
+        <label>End Date</label>
+        <input type="date" id="endDate">
+      </div>
+
+      <div class="control-group">
+        <label>Trace</label>
+        <select id="traceSelect">
+          <option value="homeTabStartToInteractive" selected>Home Tab Start to Interactive</option>
+          <option value="pickupListStartToInteractive">Pickup List Start to Interactive</option>
+          <option value="shopListStartToInteractive">Shop List Start to Interactive</option>
+          <option value="shopDetailStartToInteractive">Shop Detail Start to Interactive</option>
+          <option value="menuStartToInteractive">Menu Start to Interactive</option>
+          <option value="cartStartToInteractive">Cart Start to Interactive</option>
+          <option value="checkoutStartToInteractive">Checkout Start to Interactive</option>
+          <option value="orderTrackingStartToInteractive">Order Tracking Start to Interactive</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label>Action</label>
+        <button id="analyzeBtn" onclick="fetchAndAnalyzeData()">
+          🔍 Analyze Data
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <!-- Populated dynamically -->
+    </div>
+
+    <!-- Regression Alerts -->
+    <div class="alerts-section" id="alertsSection">
+      <!-- Populated dynamically -->
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <div class="chart-title" id="chartTitle">Performance Over Time</div>
+        <button id="resetZoomBtn" onclick="resetChartZoom()" style="padding: 8px 16px; font-size: 12px; background: var(--bg-tertiary); display: none;">
+          🔍 Reset Zoom
+        </button>
+      </div>
+      <div class="chart-container">
+        <canvas id="perfChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // Animated Meteor Background (Emerge Tools Style)
+    // ==========================================
+    (function initMeteorCanvas() {
+      const canvas = document.getElementById('meteor-canvas');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Meteor particles
+      const meteors = [];
+      const stars = [];
+
+      // Create background stars
+      function createStars() {
+        for (let i = 0; i < 150; i++) {
+          stars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 1.5,
+            opacity: Math.random() * 0.5 + 0.3,
+            twinkleSpeed: Math.random() * 0.02
+          });
+        }
+      }
+
+      // Meteor class
+      class Meteor {
+        constructor() {
+          this.reset();
+        }
+
+        reset() {
+          // Start from random position in top-left area
+          this.x = Math.random() * width - 200;
+          this.y = Math.random() * height * 0.3 - 200;
+
+          // Angle roughly towards bottom-right (like Emerge Tools)
+          const angle = Math.random() * 0.3 + 0.3; // 0.3 to 0.6 radians (~17-34 degrees)
+          this.speedX = Math.cos(angle) * (Math.random() * 3 + 3);
+          this.speedY = Math.sin(angle) * (Math.random() * 3 + 3);
+
+          this.length = Math.random() * 80 + 60;
+          this.opacity = Math.random() * 0.5 + 0.5;
+          this.thickness = Math.random() * 2 + 1;
+
+          this.life = 1;
+          this.decay = Math.random() * 0.005 + 0.005;
+        }
+
+        update() {
+          this.x += this.speedX;
+          this.y += this.speedY;
+          this.life -= this.decay;
+
+          // Reset if dead or off-screen
+          if (this.life <= 0 || this.x > width + 100 || this.y > height + 100) {
+            this.reset();
+          }
+        }
+
+        draw() {
+          ctx.save();
+
+          const grad = ctx.createLinearGradient(
+            this.x, this.y,
+            this.x - this.length * Math.cos(0.4),
+            this.y - this.length * Math.sin(0.4)
+          );
+
+          grad.addColorStop(0, `rgba(255, 255, 255, ${this.opacity * this.life})`);
+          grad.addColorStop(0.5, `rgba(200, 180, 255, ${this.opacity * this.life * 0.5})`);
+          grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = this.thickness;
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);
+          ctx.lineTo(
+            this.x - this.length * Math.cos(0.4),
+            this.y - this.length * Math.sin(0.4)
+          );
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
+      // Initialize
+      createStars();
+      for (let i = 0; i < 8; i++) {
+        meteors.push(new Meteor());
+      }
+
+      // Animation loop
+      function animate() {
+        // Clear with black background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw stars
+        stars.forEach((star, i) => {
+          star.opacity += Math.sin(Date.now() * star.twinkleSpeed + i) * 0.01;
+          star.opacity = Math.max(0.1, Math.min(0.8, star.opacity));
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Update and draw meteors
+        meteors.forEach(meteor => {
+          meteor.update();
+          meteor.draw();
+        });
+
+        requestAnimationFrame(animate);
+      }
+
+      // Handle resize
+      window.addEventListener('resize', () => {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        stars.length = 0;
+        createStars();
+      });
+
+      // Start animation
+      animate();
+    })();
+
+    // ==========================================
+    // Dashboard State and Logic
+    // ==========================================
+
+    let currentPlatform = 'ios';
+    let perfChart = null;
+
+    // Initialize date picker with default values (last 2 weeks)
+    const today = new Date();
+    const twoWeeksAgo = new Date(today);
+    twoWeeksAgo.setDate(today.getDate() - 14);
+
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    document.getElementById('startDate').value = twoWeeksAgo.toISOString().split('T')[0];
+
+    // Platform selection
+    function selectPlatform(platform) {
+      currentPlatform = platform;
+
+      // Update active tab
+      document.querySelectorAll('.platform-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelector(`[data-platform="${platform}"]`).classList.add('active');
+
+      // Auto-fetch data for new platform
+      fetchAndAnalyzeData();
+    }
+
+    // Fetch and analyze data from backend
+    async function fetchAndAnalyzeData() {
+      const btn = document.getElementById('analyzeBtn');
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const traceName = document.getElementById('traceSelect').value;
+
+      // Validate dates
+      if (!startDate || !endDate) {
+        alert('Please select both start and end dates');
+        return;
+      }
+
+      // Disable button and show loading state
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Analyzing...';
+
+      try {
+        const response = await fetch('/api/performance-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            platform: currentPlatform,
+            startDate: startDate,
+            endDate: endDate,
+            traceName: traceName
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+          alert(`Error: ${result.message}`);
+          return;
+        }
+
+        // Render results
+        renderStats(result.analysis, result.metadata);
+        renderAlerts(result.analysis);
+        renderChart(result.data, traceName, result.analysis);
+
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        alert(`Failed to fetch data: ${error.message}`);
+      } finally {
+        // Re-enable button
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Analyze Data';
+      }
+    }
+
+    // Render stats cards
+    function renderStats(analysis, metadata) {
+      const statsGrid = document.getElementById('statsGrid');
+
+      const totalBuilds = metadata.recordCount || 0;
+      const baselineMedian = analysis.baseline_median != null ? analysis.baseline_median.toFixed(1) : 'N/A';
+      const currentValue = analysis.current_value != null ? analysis.current_value.toFixed(1) : 'N/A';
+      const delta = analysis.delta != null ? analysis.delta.toFixed(1) : 'N/A';
+      const deltaColor = analysis.delta > 0 ? 'var(--danger)' : 'var(--success)';
+      const deltaSign = analysis.delta > 0 ? '+' : '';
+
+      statsGrid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">Total Builds</div>
+          <div class="stat-value">${totalBuilds}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Baseline Median</div>
+          <div class="stat-value">${baselineMedian} ms</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Current Value</div>
+          <div class="stat-value">${currentValue} ms</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Delta</div>
+          <div class="stat-value" style="color: ${deltaColor}">
+            ${deltaSign}${delta} ms
+          </div>
+        </div>
+      `;
+    }
+
+    // Render regression alerts
+    function renderAlerts(analysis) {
+      const alertsSection = document.getElementById('alertsSection');
+
+      if (!analysis.alert) {
+        alertsSection.innerHTML = `
+          <div class="alert alert-success">
+            <div class="alert-icon">✅</div>
+            <div class="alert-content">
+              <div class="alert-title">No Regression Detected</div>
+              <div class="alert-details">${analysis.reason || 'Performance is within acceptable thresholds'}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        const delta = analysis.delta != null ? analysis.delta.toFixed(1) : 'N/A';
+        const zScore = analysis.z_score != null ? analysis.z_score.toFixed(2) : 'N/A';
+        const regressionType = analysis.regression_type || 'unknown';
+        const regressionIcon = regressionType === 'step' ? '📊' : '📈';
+        const regressionLabel = regressionType === 'step' ? 'Step Regression' : 'Creep Regression';
+        const commitHash = analysis.regression_commit || 'unknown';
+        const commitUrl = analysis.regression_commit_url;
+        const commitShort = commitHash !== 'unknown' ? commitHash.substring(0, 7) : 'unknown';
+
+        // Build commit link if available
+        let commitLink = '';
+        if (commitUrl) {
+          commitLink = `<br><a href="${commitUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 16px; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 6px; color: #fff; text-decoration: none; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(255, 255, 255, 0.25)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.15)'">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            View Commit ${commitShort}
+          </a>`;
+        }
+
+        alertsSection.innerHTML = `
+          <div class="alert alert-danger">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+              <div class="alert-title">Performance Regression Detected ${regressionIcon} ${regressionLabel}</div>
+              <div class="alert-details">
+                ${analysis.reason} | Delta: +${delta}ms | Z-score: ${zScore}
+                ${regressionType === 'creep' ? ' | Gradual degradation over time' : ' | Sudden performance drop'}
+                ${commitLink}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Render performance chart
+    function renderChart(data, traceName, analysis) {
+      // Extract time series from data
+      const labels = [];
+      const values = [];
+
+      data.forEach(record => {
+        const benchmark = record.benchmarks.find(b =>
+          b.metrics.metricName === traceName
+        );
+
+        if (benchmark) {
+          const date = new Date(record.build.created_at);
+          labels.push(date.toLocaleDateString());
+          values.push(benchmark.metrics.median);
+        }
+      });
+
+      // Destroy existing chart if it exists
+      if (perfChart) {
+        perfChart.destroy();
+      }
+
+      // Create new chart
+      const ctx = document.getElementById('perfChart').getContext('2d');
+
+      // Prepare baseline annotation if available
+      const annotations = {};
+      if (analysis.baseline_median != null) {
+        annotations.baseline = {
+          type: 'line',
+          yMin: analysis.baseline_median,
+          yMax: analysis.baseline_median,
+          borderColor: 'rgba(255, 255, 255, 0.3)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          label: {
+            content: 'Baseline',
+            enabled: true,
+            position: 'end',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            color: '#e0e0e0',
+            padding: 4
+          }
+        };
+      }
+
+      // Add vertical line for step regression
+      if (analysis.regression_type === 'step' && analysis.regression_index != null) {
+        const regressionLabel = labels[analysis.regression_index];
+        annotations.regressionLine = {
+          type: 'line',
+          xMin: regressionLabel,
+          xMax: regressionLabel,
+          borderColor: '#f44336',
+          borderWidth: 3,
+          borderDash: [8, 4],
+          label: {
+            content: '⚠️ Regression',
+            enabled: true,
+            position: 'start',
+            backgroundColor: 'rgba(244, 67, 54, 0.9)',
+            color: '#fff',
+            padding: 6,
+            font: {
+              weight: 'bold'
+            }
+          }
+        };
+      }
+
+      perfChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `${traceName} (ms)`,
+            data: values,
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#667eea',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1,
+            tension: 0.2,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          plugins: {
+            legend: {
+              display: true,
+              labels: {
+                color: '#e0e0e0',
+                font: {
+                  size: 12
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: '#fff',
+              bodyColor: '#e0e0e0',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderWidth: 1
+            },
+            annotation: {
+              annotations: annotations
+            },
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'x',
+                modifierKey: 'shift'
+              },
+              zoom: {
+                wheel: {
+                  enabled: true,
+                  speed: 0.1
+                },
+                pinch: {
+                  enabled: true
+                },
+                mode: 'x'
+              },
+              limits: {
+                x: { min: 'original', max: 'original' }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: false,
+              ticks: {
+                color: '#a0a0a0',
+                font: {
+                  size: 11
+                }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)',
+                drawBorder: false
+              }
+            },
+            x: {
+              ticks: {
+                color: '#a0a0a0',
+                font: {
+                  size: 11
+                },
+                maxRotation: 45,
+                minRotation: 45
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.05)',
+                drawBorder: false
+              }
+            }
+          }
+        }
+      });
+
+      // Update chart title
+      const platformName = currentPlatform.toUpperCase();
+      const traceDisplayName = traceName.replace(/([A-Z])/g, ' $1').trim();
+      document.getElementById('chartTitle').textContent =
+        `${traceDisplayName} - ${platformName}`;
+
+      // Show reset zoom button
+      document.getElementById('resetZoomBtn').style.display = 'block';
+    }
+
+    // Reset chart zoom
+    function resetChartZoom() {
+      if (perfChart) {
+        perfChart.resetZoom();
+      }
+    }
+
+    // Load initial data on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      // Add listener for trace selection changes
+      document.getElementById('traceSelect').addEventListener('change', () => {
+        fetchAndAnalyzeData();
+      });
+
+      // Wait for page to fully load, then fetch initial data
+      setTimeout(() => {
+        fetchAndAnalyzeData();
+      }, 500);
+    });
+  </script>
+</body>
+</html>
