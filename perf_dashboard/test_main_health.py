@@ -554,6 +554,34 @@ class TestAssessMainHealth:
         print(f"  p-value: {report.trend.p_value:.6f}")
         print(f"  Reason: {report.trend.reason}")
 
+    def test_assess_main_health_subtle_noisy_creep(self):
+        """Linear trend detection catches subtle noisy creep (1.4% over 32 points)"""
+        # Noisy zigzag pattern with consistent upward trend
+        # Pattern: alternating high/low but trending upward
+        series = [100.0, 99.9, 100.1, 100.0, 100.2, 100.1, 100.3, 100.2, 100.4, 100.3,
+                  100.5, 100.4, 100.6, 100.5, 100.7, 100.6, 100.8, 100.7, 100.9, 100.8,
+                  101.0, 100.9, 101.1, 101.0, 101.2, 101.1, 101.3, 101.2, 101.4, 101.3,
+                  101.5, 101.4]
+
+        report = assess_main_health(series, abs_floor=5.0, pct_floor=0.05)
+
+        # Verify trend detection catches this subtle pattern
+        assert report.trend is not None, "Trend detection should be enabled"
+        assert report.trend.alert is True, f"Trend should detect subtle noisy creep. Reason: {report.trend.reason}"
+
+        # Verify it's a good linear fit despite noise
+        assert report.trend.r_squared > 0.95, "R² should be high despite zigzag pattern"
+        assert report.trend.total_change_pct > 1.0, "Total change should exceed 1%"
+
+        # Overall alert should be raised
+        assert report.overall_alert is True, "Overall alert should be triggered"
+
+        print(f"\nSubtle Noisy Creep Detection Results:")
+        print(f"  Alert: {report.trend.alert}")
+        print(f"  Total change: {report.trend.total_change_pct:.2f}%")
+        print(f"  R² (despite noise): {report.trend.r_squared:.4f}")
+        print(f"  Reason: {report.trend.reason}")
+
     def test_assess_main_health_details(self):
         """Verify details dict has all expected fields"""
         series = [100.0] * 100

@@ -695,6 +695,8 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 5,
             'ewma_pct_threshold': 3.0,  # 3% drift
             'step_min_segment': 3,
+            'trend_total_pct_threshold': 2.0,  # 2% total change
+            'trend_slope_pct_threshold': 1.5,  # 1.5%/point
             'description': 'Very short series - aggressive detection'
         }
     elif series_length < 30:
@@ -703,6 +705,8 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 5,
             'ewma_pct_threshold': 5.0,  # 5% drift
             'step_min_segment': 4,
+            'trend_total_pct_threshold': 2.5,  # 2.5% total change
+            'trend_slope_pct_threshold': 1.0,  # 1.0%/point
             'description': 'Short series - sensitive detection'
         }
     elif series_length < 50:
@@ -711,6 +715,8 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 10,
             'ewma_pct_threshold': 8.0,  # 8% drift
             'step_min_segment': 5,
+            'trend_total_pct_threshold': 1.0,  # 1.0% total change (lowered for subtle noisy creep)
+            'trend_slope_pct_threshold': 0.3,  # 0.3%/point (lowered for subtle creep)
             'description': 'Medium series - balanced detection'
         }
     elif series_length < 100:
@@ -719,6 +725,8 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 20,
             'ewma_pct_threshold': 12.0,  # 12% drift
             'step_min_segment': 8,
+            'trend_total_pct_threshold': 3.0,  # 3.0% total change
+            'trend_slope_pct_threshold': 1.5,  # 1.5%/point
             'description': 'Long series - standard detection'
         }
     else:
@@ -727,6 +735,8 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 30,
             'ewma_pct_threshold': 15.0,  # Default
             'step_min_segment': 10,
+            'trend_total_pct_threshold': 5.0,  # 5.0% total change (default)
+            'trend_slope_pct_threshold': 3.0,  # 3.0%/point (default)
             'description': 'Very long series - conservative detection'
         }
 
@@ -744,6 +754,8 @@ def assess_main_health(
     step_min_segment: Optional[int] = None,
     step_score_k: float = HEALTH_STEP_SCORE_K,
     step_pct_threshold: Optional[float] = HEALTH_STEP_PCT_THRESHOLD,
+    trend_total_pct_threshold: Optional[float] = None,
+    trend_slope_pct_threshold: Optional[float] = None,
     adaptive: bool = True,
 ) -> HealthReport:
     """
@@ -775,10 +787,15 @@ def assess_main_health(
             ewma_pct_threshold = adaptive_params['ewma_pct_threshold']
         if step_min_segment is None:
             step_min_segment = adaptive_params['step_min_segment']
+        if trend_total_pct_threshold is None:
+            trend_total_pct_threshold = adaptive_params['trend_total_pct_threshold']
+        if trend_slope_pct_threshold is None:
+            trend_slope_pct_threshold = adaptive_params['trend_slope_pct_threshold']
 
         print(f"📊 Adaptive mode: {adaptive_params['description']}")
         print(f"   Series length: {len(series)}, Window: {window}, "
               f"EWMA threshold: {ewma_pct_threshold}%, Min segment: {step_min_segment}")
+        print(f"   Trend thresholds: total={trend_total_pct_threshold}%, slope={trend_slope_pct_threshold}%/pt")
     else:
         # Non-adaptive mode: use defaults from constants if not provided
         if window is None:
@@ -787,6 +804,10 @@ def assess_main_health(
             ewma_pct_threshold = HEALTH_EWMA_PCT_THRESHOLD
         if step_min_segment is None:
             step_min_segment = HEALTH_STEP_MIN_SEGMENT
+        if trend_total_pct_threshold is None:
+            trend_total_pct_threshold = 5.0  # Default
+        if trend_slope_pct_threshold is None:
+            trend_slope_pct_threshold = 3.0  # Default
 
     control = control_chart_median_mad(
         series, window=window, k=k_mad,
@@ -806,7 +827,11 @@ def assess_main_health(
     )
 
     # Detect linear trends (gradual creep)
-    trend = detect_linear_trend(series)
+    trend = detect_linear_trend(
+        series,
+        total_pct_threshold=trend_total_pct_threshold,
+        slope_pct_threshold=trend_slope_pct_threshold
+    )
 
     overall_alert = bool(
         (control and control.alert) or
