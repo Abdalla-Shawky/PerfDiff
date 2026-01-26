@@ -19,7 +19,6 @@ from constants import (
     BOOTSTRAP_N,
     SEED,
     EQUIVALENCE_MARGIN_MS,
-    TWO_SIDED_TEST_DIVISOR,
     ENABLE_QUALITY_GATES,
     MAX_CV_FOR_REGRESSION_CHECK,
     MIN_QUALITY_SCORE_FOR_REGRESSION,
@@ -33,16 +32,41 @@ from constants import (
 class GateResult:
     """Result from gate_regression check.
 
+    This class represents the outcome of a performance regression check,
+    including whether the check passed, the reason, and detailed metrics.
+
     Attributes:
-        passed: True if no regression detected, False if regression detected
-        reason: Human-readable explanation of the result
-        details: Dictionary containing all metrics and analysis details
-        inconclusive: True if data quality is too poor to make a reliable determination
+        passed: True if no regression detected, False if regression detected.
+                IMPORTANT: This is also True when inconclusive=True to avoid
+                failing CI builds on poor-quality data. Always check the
+                inconclusive flag to distinguish between genuine passes and
+                inconclusive results.
+        reason: Human-readable explanation of the result. For inconclusive
+                results, this will start with "INCONCLUSIVE:" followed by
+                the quality gate error message.
+        details: Dictionary containing all metrics and analysis details,
+                including thresholds, deltas, CV values, and statistical
+                test results.
+        inconclusive: True if data quality is too poor to make a reliable
+                     determination (e.g., insufficient samples, high variance).
+                     When True, passed will also be True to prevent build
+                     failures, but users should treat this as "cannot determine"
+                     rather than "performance is acceptable".
+
+    Examples:
+        Regression detected:
+            GateResult(passed=False, reason="FAIL: ...", details={...}, inconclusive=False)
+
+        No regression (genuine pass):
+            GateResult(passed=True, reason="PASS: ...", details={...}, inconclusive=False)
+
+        Insufficient data quality (inconclusive):
+            GateResult(passed=True, reason="INCONCLUSIVE: ...", details={...}, inconclusive=True)
     """
     passed: bool
     reason: str
     details: Dict[str, Any]
-    inconclusive: bool = False  # New field for quality gate failures
+    inconclusive: bool = False
 
 
 @dataclass
@@ -126,6 +150,49 @@ def _check_quality_gates(
     return None
 
 
+def _bootstrap_median_ci(
+    delta: np.ndarray,
+    confidence: float,
+    n_boot: int,
+    rng: np.random.Generator
+) -> tuple[float, float]:
+    """
+    Calculate bootstrap confidence interval for median delta.
+
+    Uses percentile method with specified confidence level.
+
+    Args:
+        delta: Array of paired differences (change - baseline)
+        confidence: Confidence level (e.g., 0.95 for 95% CI)
+        n_boot: Number of bootstrap resamples
+        rng: NumPy random number generator for reproducibility
+
+    Returns:
+        Tuple of (ci_low, ci_high) representing confidence interval bounds
+
+    Example:
+        >>> rng = np.random.default_rng(42)
+        >>> delta = np.array([1.2, -0.5, 2.1, 0.8, -1.0])
+        >>> ci_low, ci_high = _bootstrap_median_ci(delta, 0.95, 1000, rng)
+        >>> ci_low < np.median(delta) < ci_high
+        True
+    """
+    boot_medians = []
+    n = len(delta)
+    for _ in range(n_boot):
+        indices = rng.choice(n, size=n, replace=True)
+        boot_delta = delta[indices]
+        boot_medians.append(np.median(boot_delta))
+
+    boot_medians = np.array(boot_medians)
+    alpha = 1 - confidence
+    # Two-sided confidence interval: split alpha equally on both tails
+    ci_low = float(np.quantile(boot_medians, alpha / 2, method="linear"))
+    ci_high = float(np.quantile(boot_medians, 1 - alpha / 2, method="linear"))
+
+    return ci_low, ci_high
+
+
 def gate_regression(
     baseline: List[float],
     change: List[float],
@@ -162,6 +229,26 @@ def gate_regression(
     Returns:
         GateResult with passed status, reason, and details
     """
+    # Validate parameters
+    if ms_floor < 0:
+        raise ValueError(f"ms_floor must be non-negative, got {ms_floor}")
+    if not (0 <= pct_floor <= 1):
+        raise ValueError(f"pct_floor must be between 0 and 1, got {pct_floor}")
+    if not (0 < tail_quantile < 1):
+        raise ValueError(f"tail_quantile must be between 0 and 1 (exclusive), got {tail_quantile}")
+    if tail_ms_floor < 0:
+        raise ValueError(f"tail_ms_floor must be non-negative, got {tail_ms_floor}")
+    if not (0 <= tail_pct_floor <= 1):
+        raise ValueError(f"tail_pct_floor must be between 0 and 1, got {tail_pct_floor}")
+    if not (0 <= directionality <= 1):
+        raise ValueError(f"directionality must be between 0 and 1, got {directionality}")
+    if not (0 < wilcoxon_alpha < 1):
+        raise ValueError(f"wilcoxon_alpha must be between 0 and 1 (exclusive), got {wilcoxon_alpha}")
+    if not (0 < bootstrap_confidence < 1):
+        raise ValueError(f"bootstrap_confidence must be between 0 and 1 (exclusive), got {bootstrap_confidence}")
+    if bootstrap_n < 0:
+        raise ValueError(f"bootstrap_n must be non-negative, got {bootstrap_n}")
+
     # Use modern numpy random Generator API for better isolation
     rng = np.random.default_rng(seed)
 
@@ -172,15 +259,21 @@ def gate_regression(
         return GateResult(
             passed=False,
             reason="Baseline and change arrays must have same length",
-            details={},
+            details={
+                "baseline_length": len(a),
+                "change_length": len(b),
+            },
             inconclusive=False
         )
 
     if len(a) == 0:
         return GateResult(
             passed=False,
-            reason="Empty arrays",
-            details={},
+            reason="Empty arrays provided",
+            details={
+                "baseline_length": len(a),
+                "change_length": len(b),
+            },
             inconclusive=False
         )
 
@@ -304,24 +397,17 @@ def gate_regression(
 
     # Bootstrap CI for median delta
     if bootstrap_n > 0:
-        boot_medians = []
-        n = len(delta)
-        for _ in range(bootstrap_n):
-            indices = rng.choice(n, size=n, replace=True)
-            boot_delta = delta[indices]
-            boot_medians.append(np.median(boot_delta))
+        try:
+            ci_low, ci_high = _bootstrap_median_ci(delta, bootstrap_confidence, bootstrap_n, rng)
 
-        boot_medians = np.array(boot_medians)
-        alpha = 1 - bootstrap_confidence
-        ci_low = float(np.quantile(boot_medians, alpha / TWO_SIDED_TEST_DIVISOR, method="linear"))
-        ci_high = float(np.quantile(boot_medians, 1 - alpha / TWO_SIDED_TEST_DIVISOR, method="linear"))
-
-        details["bootstrap_ci_median"] = {
-            "confidence": bootstrap_confidence,
-            "low": ci_low,
-            "high": ci_high,
-            "n_boot": bootstrap_n,
-        }
+            details["bootstrap_ci_median"] = {
+                "confidence": bootstrap_confidence,
+                "low": ci_low,
+                "high": ci_high,
+                "n_boot": bootstrap_n,
+            }
+        except Exception as e:
+            details["bootstrap_error"] = str(e)
 
     return GateResult(passed=passed, reason=reason, details=details)
 
@@ -378,17 +464,10 @@ def equivalence_bootstrap_median(
     delta = b - a
 
     # Bootstrap CI for median delta
-    boot_medians = []
-    n = len(delta)
-    for _ in range(n_boot):
-        indices = rng.choice(n, size=n, replace=True)
-        boot_delta = delta[indices]
-        boot_medians.append(np.median(boot_delta))
-
-    boot_medians = np.array(boot_medians)
-    alpha = 1 - confidence
-    ci_low = float(np.quantile(boot_medians, alpha / 2, method="linear"))
-    ci_high = float(np.quantile(boot_medians, 1 - alpha / 2, method="linear"))
+    try:
+        ci_low, ci_high = _bootstrap_median_ci(delta, confidence, n_boot, rng)
+    except Exception as e:
+        raise RuntimeError(f"Bootstrap CI calculation failed: {e}") from e
 
     # Check if entire CI is within [-margin, margin]
     equivalent = (ci_low > -margin_ms) and (ci_high < margin_ms)

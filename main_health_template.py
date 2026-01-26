@@ -61,6 +61,8 @@ def render_health_template(
     <title>Main Branch Health Monitoring Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -358,6 +360,14 @@ def render_health_template(
             margin: 20px 0;
         }}
 
+        .chart-container canvas {{
+            cursor: grab;
+        }}
+
+        .chart-container canvas:active {{
+            cursor: grabbing;
+        }}
+
         table {{
             width: 100%;
             border-collapse: collapse;
@@ -419,6 +429,88 @@ def render_health_template(
             transform: scale(1.1);
         }}
 
+        /* Zoom controls */
+        .zoom-controls {{
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }}
+
+        .zoom-btn {{
+            background: var(--bg-secondary);
+            border: 1px solid var(--border, rgba(0,0,0,0.1));
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+            user-select: none;
+        }}
+
+        .zoom-btn:hover {{
+            background: var(--bg-tertiary);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }}
+
+        .zoom-btn:active {{
+            transform: translateY(0);
+        }}
+
+        /* Collapsible sections */
+        details {{
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }}
+
+        details:hover {{
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }}
+
+        details summary {{
+            cursor: pointer;
+            padding: 24px;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            list-style: none;
+            user-select: none;
+        }}
+
+        details summary::-webkit-details-marker {{
+            display: none;
+        }}
+
+        details summary::before {{
+            content: '▶';
+            display: inline-block;
+            width: 20px;
+            transition: transform 0.2s;
+            color: var(--text-secondary);
+        }}
+
+        details[open] summary::before {{
+            transform: rotate(90deg);
+        }}
+
+        details .details-content {{
+            padding: 0 24px 24px 24px;
+        }}
+
         @media print {{
             .dark-mode-toggle {{ display: none; }}
         }}
@@ -478,6 +570,11 @@ def render_health_template(
         <div class="card">
             <div class="card-title">📈 Time Series Analysis</div>
             <div class="chart-container">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">🔍+</button>
+                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">🔍−</button>
+                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">↺</button>
+                </div>
                 <canvas id="timeSeriesChart"></canvas>
             </div>
         </div>
@@ -572,12 +669,95 @@ def render_health_template(
 
         {_render_chart_baseline(control, len(series))}
 
+        // Horizontal crosshair plugin
+        let mouseY = null;
+        let isMouseInChart = false;
+        let isDragging = false;
+
+        const horizontalLinePlugin = {{
+            id: 'horizontalLine',
+            afterEvent(chart, args) {{
+                const {{ inChartArea }} = args;
+                const event = args.event;
+
+                // Detect dragging/panning
+                if (event.type === 'mousedown') {{
+                    isDragging = true;
+                }} else if (event.type === 'mouseup') {{
+                    isDragging = false;
+                }}
+
+                // Only show crosshair when not dragging
+                if (event.type === 'mousemove' && !isDragging) {{
+                    if (inChartArea) {{
+                        mouseY = event.y;
+                        isMouseInChart = true;
+                        // Use requestAnimationFrame to avoid blocking pan gestures
+                        requestAnimationFrame(() => chart.draw());
+                    }} else {{
+                        isMouseInChart = false;
+                        requestAnimationFrame(() => chart.draw());
+                    }}
+                }} else if (event.type === 'mouseout') {{
+                    isMouseInChart = false;
+                    isDragging = false;
+                    requestAnimationFrame(() => chart.draw());
+                }}
+            }},
+            afterDatasetsDraw(chart, args, options) {{
+                // Don't show crosshair while dragging/panning
+                if (!isMouseInChart || mouseY === null || isDragging) return;
+
+                const {{ ctx, chartArea: {{ top, bottom, left, right }}, scales: {{ y }} }} = chart;
+
+                // Check if mouseY is within chart area
+                if (mouseY < top || mouseY > bottom) return;
+
+                // Draw horizontal line
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(left, mouseY);
+                ctx.lineTo(right, mouseY);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 99, 132, 0.8)';
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.restore();
+
+                // Convert pixel Y to data value
+                const dataValue = y.getValueForPixel(mouseY);
+                const label = dataValue.toFixed(2) + ' ms';
+
+                // Draw value label on the right side
+                ctx.save();
+                ctx.font = 'bold 12px Arial';
+                const textWidth = ctx.measureText(label).width;
+                const padding = 4;
+
+                // Draw background
+                ctx.fillStyle = 'rgba(255, 99, 132, 0.9)';
+                ctx.fillRect(right - textWidth - padding * 2 - 5, mouseY - 10, textWidth + padding * 2, 20);
+
+                // Draw text
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, right - textWidth - padding - 5, mouseY);
+                ctx.restore();
+            }}
+        }};
+
         const chart = new Chart(ctx, {{
             type: 'line',
             data: {{ datasets }},
+            plugins: [horizontalLinePlugin],
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {{
+                    mode: 'index',
+                    intersect: false
+                }},
                 plugins: {{
                     legend: {{
                         display: true,
@@ -610,7 +790,26 @@ def render_health_template(
                                 }}
                             }}
                         }}
-                    }} : {{}}
+                    }} : {{}},
+                    zoom: {{
+                        pan: {{
+                            enabled: true,
+                            mode: 'x'
+                        }},
+                        zoom: {{
+                            wheel: {{
+                                enabled: true,
+                                speed: 0.1
+                            }},
+                            pinch: {{
+                                enabled: true
+                            }},
+                            mode: 'x'
+                        }},
+                        limits: {{
+                            x: {{min: 0, max: series.length - 1}}
+                        }}
+                    }}
                 }},
                 scales: {{
                     x: {{
@@ -635,6 +834,19 @@ def render_health_template(
                 }}
             }}
         }});
+
+        // Zoom control functions
+        function zoomIn() {{
+            chart.zoom(1.2);
+        }}
+
+        function zoomOut() {{
+            chart.zoom(0.8);
+        }}
+
+        function resetZoom() {{
+            chart.resetZoom();
+        }}
     </script>
 </body>
 </html>
@@ -762,27 +974,29 @@ def _render_outlier_section(outlier_indices: List[int], series: List[float]) -> 
         return ""
 
     return f"""
-    <div class="card">
-        <div class="card-title">
+    <details>
+        <summary>
             ⚠️ Outlier Analysis
             <span class="badge badge-warning">{len(outlier_indices)} OUTLIER{'S' if len(outlier_indices) > 1 else ''}</span>
+        </summary>
+
+        <div class="details-content">
+            <p>Detected {len(outlier_indices)} outlier(s) using rolling MAD method (time-series aware):</p>
+
+            <table>
+                <tr>
+                    <th>Index</th>
+                    <th>Value (ms)</th>
+                    <th>Description</th>
+                </tr>
+                {_render_outlier_rows(outlier_indices, series)}
+            </table>
+
+            <p style="margin-top: 12px; color: var(--text-secondary); font-size: 14px;">
+                💡 Note: Outliers are marked with orange triangles (▲) on the chart. These represent anomalies relative to recent baseline, not systematic changes.
+            </p>
         </div>
-
-        <p>Detected {len(outlier_indices)} outlier(s) using rolling MAD method (time-series aware):</p>
-
-        <table>
-            <tr>
-                <th>Index</th>
-                <th>Value (ms)</th>
-                <th>Description</th>
-            </tr>
-            {_render_outlier_rows(outlier_indices, series)}
-        </table>
-
-        <p style="margin-top: 12px; color: var(--text-secondary); font-size: 14px;">
-            💡 Note: Outliers are marked with orange triangles (▲) on the chart. These represent anomalies relative to recent baseline, not systematic changes.
-        </p>
-    </div>
+    </details>
     """
 
 
