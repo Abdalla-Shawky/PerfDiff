@@ -7,6 +7,7 @@ Tests all fixed issues and core functionality.
 import pytest
 import numpy as np
 from perf_regress import gate_regression, equivalence_bootstrap_median, GateResult, EquivalenceResult
+from constants import MIN_SAMPLES_FOR_REGRESSION, MAX_CV_FOR_REGRESSION_CHECK
 
 
 class TestGateRegression:
@@ -36,6 +37,29 @@ class TestGateRegression:
         assert result.passed is True
         assert "PASS:" in result.reason
 
+    def test_realistic_arrays_pass(self):
+        """Realistic, slightly noisy arrays that should pass."""
+        baseline = [245.2, 252.1, 248.7, 251.4, 249.6, 247.9, 253.3, 250.5, 246.8, 254.0, 248.9, 252.4]
+        change = [246.1, 251.8, 247.5, 252.0, 248.9, 247.1, 254.2, 249.7, 245.9, 255.1, 247.8, 251.6]
+
+        result = gate_regression(baseline, change)
+
+        assert result.inconclusive is False
+        assert result.passed is True
+        assert result.details["median_delta_ms"] < result.details["threshold_ms"]
+
+    def test_realistic_arrays_regression(self):
+        """Realistic arrays with a clear regression that should fail."""
+        baseline = [245.2, 252.1, 248.7, 251.4, 249.6, 247.9, 253.3, 250.5, 246.8, 254.0, 248.9, 252.4]
+        change = [319.5, 326.8, 322.9, 325.4, 323.7, 321.6, 327.8, 324.9, 320.7, 328.1, 323.1, 326.2]
+
+        result = gate_regression(baseline, change)
+
+        assert result.inconclusive is False
+        assert result.passed is False
+        assert result.details["median_delta_ms"] > result.details["threshold_ms"]
+        assert result.reason.startswith("FAIL:")
+
     def test_empty_arrays(self):
         """Test handling of empty arrays."""
         result = gate_regression([], [])
@@ -52,6 +76,32 @@ class TestGateRegression:
 
         assert result.passed is False
         assert "must have same length" in result.reason
+
+    def test_invalid_parameters_raise(self):
+        """Test parameter validation errors."""
+        baseline = [100.0] * 10
+        change = [100.0] * 10
+
+        with pytest.raises(ValueError, match="ms_floor must be non-negative"):
+            gate_regression(baseline, change, ms_floor=-1)
+
+        with pytest.raises(ValueError, match="pct_floor must be between 0 and 1"):
+            gate_regression(baseline, change, pct_floor=1.5)
+
+        with pytest.raises(ValueError, match="tail_quantile must be between 0 and 1"):
+            gate_regression(baseline, change, tail_quantile=1.0)
+
+        with pytest.raises(ValueError, match="directionality must be between 0 and 1"):
+            gate_regression(baseline, change, directionality=1.1)
+
+        with pytest.raises(ValueError, match="wilcoxon_alpha must be between 0 and 1"):
+            gate_regression(baseline, change, wilcoxon_alpha=0.0)
+
+        with pytest.raises(ValueError, match="bootstrap_confidence must be between 0 and 1"):
+            gate_regression(baseline, change, bootstrap_confidence=1.0)
+
+        with pytest.raises(ValueError, match="bootstrap_n must be non-negative"):
+            gate_regression(baseline, change, bootstrap_n=-10)
 
     def test_threshold_calculation(self):
         """Test that threshold is max of absolute and relative."""
@@ -101,6 +151,38 @@ class TestGateRegression:
         # Should fail because 70% >= 70%
         assert result.passed is False
         assert "70.0%" in result.reason
+
+    def test_tail_regression_only(self):
+        """Test a case where median passes but tail fails."""
+        baseline = [100.0] * 10
+        # A modest outlier increases the p90 while keeping variance acceptable
+        change = [103.0] * 9 + [133.0]
+
+        result = gate_regression(
+            baseline,
+            change,
+            ms_floor=1000.0,
+            pct_floor=0.0,
+            tail_ms_floor=1.0,
+            tail_pct_floor=0.0,
+            directionality=1.0,
+            use_wilcoxon=False,
+            bootstrap_n=0,
+        )
+
+        assert result.passed is False
+        assert "Tail delta" in result.reason
+        assert result.details["median_delta_ms"] == 3.0
+        assert result.details["tail_delta_ms"] > result.details["tail_threshold_ms"]
+
+    def test_bootstrap_disabled(self):
+        """Test that bootstrap output is omitted when disabled."""
+        baseline = [100.0] * 10
+        change = [120.0] * 10
+
+        result = gate_regression(baseline, change, bootstrap_n=0)
+
+        assert "bootstrap_ci_median" not in result.details
 
     def test_wilcoxon_with_approx_method(self):
         """Test that Wilcoxon uses approx method and provides valid z-score."""
@@ -163,6 +245,45 @@ class TestGateRegression:
 
         assert bci1["low"] == bci2["low"]
         assert bci1["high"] == bci2["high"]
+
+    def test_wilcoxon_skipped_when_all_deltas_zero(self):
+        """Test Wilcoxon is skipped cleanly when all deltas are zero."""
+        baseline = [100.0] * 10
+        change = [100.0] * 10
+
+        result = gate_regression(baseline, change, use_wilcoxon=True)
+
+        # No non-zero deltas means no Wilcoxon result should be recorded
+        assert result.passed is True
+        assert "wilcoxon" not in result.details
+
+    def test_inconclusive_on_insufficient_samples(self):
+        """Test quality gate behavior when sample size is too small."""
+        baseline = [100.0, 101.0, 99.0, 100.5, 99.5]
+        change = [100.2, 101.2, 98.8, 100.7, 99.7]
+
+        result = gate_regression(baseline, change)
+
+        assert result.passed is True
+        assert result.inconclusive is True
+        assert result.reason.startswith("INCONCLUSIVE:")
+        assert f"minimum {MIN_SAMPLES_FOR_REGRESSION}" in result.reason
+        assert result.details["sample_size"] == len(baseline)
+
+    def test_inconclusive_on_high_variance(self):
+        """Test quality gate behavior when variance is too high."""
+        # High variance but still 10 samples to avoid the sample-size gate
+        baseline = [10.0, 1000.0] * 5
+        change = [12.0, 1200.0] * 5
+
+        result = gate_regression(baseline, change)
+
+        assert result.passed is True
+        assert result.inconclusive is True
+        assert result.reason.startswith("INCONCLUSIVE:")
+        assert "HIGH VARIANCE" in result.reason
+        assert result.details["baseline_cv"] > MAX_CV_FOR_REGRESSION_CHECK
+        assert result.details["change_cv"] > MAX_CV_FOR_REGRESSION_CHECK
 
     def test_reason_string_clarity(self):
         """Test that reason strings are clear and unambiguous."""
@@ -398,6 +519,24 @@ class TestEquivalenceBootstrapMedian:
         # All should agree on equivalence (delta is 10ms, margin is 30ms)
         equivalence_values = [r.equivalent for r in results]
         assert all(equivalence_values) or not any(equivalence_values)
+
+    def test_equivalence_margin_boundary_is_strict(self):
+        """Test that CI touching the margin is NOT considered equivalent."""
+        baseline = [100.0] * 10
+        change = [130.0] * 10  # Constant delta exactly 30ms
+
+        result = equivalence_bootstrap_median(
+            baseline,
+            change,
+            margin_ms=30.0,
+            n_boot=500,
+            seed=123,
+        )
+
+        # CI will be exactly [30, 30], and the check is strict (< margin)
+        assert result.ci.ci_low == 30.0
+        assert result.ci.ci_high == 30.0
+        assert result.equivalent is False
 
 
 class TestEdgeCases:

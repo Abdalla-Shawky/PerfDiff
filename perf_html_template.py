@@ -699,6 +699,40 @@ def render_template(**context) -> str:
       border: 1px solid var(--color-warning);
     }}
 
+    /* Hint / explanation panels - use theme-aware colors for readable contrast */
+    .hint-box {{
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      line-height: 1.7;
+    }}
+
+    .hint-box.info {{
+      border-left: 4px solid var(--color-info);
+    }}
+
+    .hint-box.warning {{
+      border-left: 4px solid var(--color-warning);
+    }}
+
+    .hint-box.neutral {{
+      border-left: 4px solid var(--accent-primary);
+    }}
+
+    .hint-box strong {{
+      color: var(--text-primary);
+    }}
+
+    .hint-box ul {{
+      margin: 8px 0;
+      padding-left: 20px;
+      font-size: 14px;
+      color: var(--text-primary);
+    }}
+
     .quality-badge {{
       display: inline-block;
       padding: 14px 24px;
@@ -712,20 +746,20 @@ def render_template(**context) -> str:
     }}
 
     .quality-good {{
-      background: var(--color-success-bg);
-      color: var(--color-success);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
       border: 2px solid var(--color-success);
     }}
 
     .quality-warning {{
-      background: var(--color-warning-bg);
-      color: var(--color-warning);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
       border: 2px solid var(--color-warning);
     }}
 
     .quality-poor {{
-      background: var(--color-error-bg);
-      color: var(--color-error);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
       border: 2px solid var(--color-error);
     }}
 
@@ -754,19 +788,19 @@ def render_template(**context) -> str:
 
     .quality-item.excellent {{
       border-left-color: var(--color-success);
-      background: linear-gradient(to right, var(--color-success-bg), var(--bg-tertiary));
+      background: var(--bg-tertiary);
     }}
     .quality-item.good {{
-      border-left-color: #10b981;
-      background: linear-gradient(to right, #ecfdf5, var(--bg-tertiary));
+      border-left-color: var(--color-success);
+      background: var(--bg-tertiary);
     }}
     .quality-item.fair {{
       border-left-color: var(--color-warning);
-      background: linear-gradient(to right, var(--color-warning-bg), var(--bg-tertiary));
+      background: var(--bg-tertiary);
     }}
     .quality-item.poor {{
       border-left-color: var(--color-error);
-      background: linear-gradient(to right, var(--color-error-bg), var(--bg-tertiary));
+      background: var(--bg-tertiary);
     }}
 
     .issue-list {{
@@ -1085,14 +1119,14 @@ def render_template(**context) -> str:
                 Score: {baseline_quality['score']}/100
               </span>
             </h3>
-            <p style="margin: 8px 0; color: #666; font-size: 14px;">{escape(baseline_quality['verdict_desc'])}</p>
+            <p style="margin: 8px 0; color: var(--text-secondary); font-size: 14px;">{escape(baseline_quality['verdict_desc'])}</p>
             <div style="margin: 12px 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
                 <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{baseline_quality['score']}/100</span>
               </div>
               <div class="bar" style="height: 8px;">
-                <div class="barfill" style="width: {baseline_quality['score']}%; background: linear-gradient(90deg, {baseline_quality['verdict_color']}, {baseline_quality['verdict_color']}80);"></div>
+                <div class="barfill" style="width: {baseline_quality['score']}%; background: linear-gradient(90deg, var(--accent-primary), {baseline_quality['verdict_color']}80);"></div>
               </div>
             </div>
             <table style="font-size: 13px; margin-top: 12px;">
@@ -1114,14 +1148,14 @@ def render_template(**context) -> str:
                 Score: {change_quality['score']}/100
               </span>
             </h3>
-            <p style="margin: 8px 0; color: #666; font-size: 14px;">{escape(change_quality['verdict_desc'])}</p>
+            <p style="margin: 8px 0; color: var(--text-secondary); font-size: 14px;">{escape(change_quality['verdict_desc'])}</p>
             <div style="margin: 12px 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
                 <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{change_quality['score']}/100</span>
               </div>
               <div class="bar" style="height: 8px;">
-                <div class="barfill" style="width: {change_quality['score']}%; background: linear-gradient(90deg, {change_quality['verdict_color']}, {change_quality['verdict_color']}80);"></div>
+                <div class="barfill" style="width: {change_quality['score']}%; background: linear-gradient(90deg, var(--accent-primary), {change_quality['verdict_color']}80);"></div>
               </div>
             </div>
             <table style="font-size: 13px; margin-top: 12px;">
@@ -1136,9 +1170,9 @@ def render_template(**context) -> str:
           </div>
         </div>
 
-        <div style="margin-top: 16px; padding: 12px; background: #e3f2fd; border-left: 4px solid #1976d2; border-radius: 4px;">
+        <div class="hint-box info">
           <strong>💡 What does this mean?</strong><br/>
-          <ul style="margin: 8px 0; padding-left: 20px; font-size: 14px;">
+          <ul>
             <li><strong>Quality Score:</strong> Starts at 100, penalties applied for issues. ≥90 = Excellent, ≥75 = Good, ≥60 = Fair, <60 = Poor.</li>
             <li><strong>Samples:</strong> More samples = more reliable results. Aim for 10-20.</li>
             <li><strong>Variability (CV):</strong> Lower is better. <5% is excellent, >20% is problematic.</li>
@@ -1190,11 +1224,11 @@ def render_template(**context) -> str:
         <span class="toggle-icon">▼</span>
       </div>
       <div id="explanation" class="section-content">
-        <div style="padding: 16px; background: #f8f9fa; border-radius: 8px; line-height: 1.8;">
+        <div class="hint-box neutral" style="padding: 16px;">
           <strong>Decision Reason:</strong><br/>
           {escape(result.get("reason", ""))}
         </div>
-        <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <div class="hint-box warning">
           <strong>💡 What this means:</strong><br/>
           {'The performance test passed all checks. ' if passed else 'The performance test failed one or more checks. '}
           The tool checks multiple factors: median change, worst-case (p90) latency, consistency across runs, and statistical significance.
@@ -1281,7 +1315,7 @@ def render_template(**context) -> str:
           </tr>
         </table>
 
-        <div style="margin-top: 16px; padding: 12px; background: {'#fff3cd' if inconclusive else '#f8f9fa'}; border-left: 4px solid {'#ffc107' if inconclusive else '#1976d2'}; border-radius: 4px;">
+        <div class="hint-box {'warning' if inconclusive else 'info'}">
           <strong>💡 What are Quality Gates?</strong><br/>
           Quality gates validate data quality <em>before</em> checking for regressions. If data is too noisy (high CV) or insufficient (too few samples), the test returns <strong>INCONCLUSIVE</strong> instead of PASS/FAIL. This prevents false positives/negatives from unreliable measurements.
           <br/><br/>
@@ -1292,11 +1326,11 @@ def render_template(**context) -> str:
       </div>
     </div>
 
-    {"<div class='section'><div class='section-header' onclick='toggleSection(\"wilcoxon\")'><div><h2 class='section-title'>📈 Wilcoxon Statistical Test</h2><div class='section-subtitle'>Tests if the difference is statistically significant (not just random noise)</div></div><span class='toggle-icon'>▼</span></div><div id='wilcoxon' class='section-content'>" + _mini_table(wil_rows) + "<div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> The Wilcoxon test checks if the performance difference is real or could be random variation. A p-value < 0.05 means the difference is statistically significant.</div></div></div>" if wil_rows else ""}
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"wilcoxon\")'><div><h2 class='section-title'>📈 Wilcoxon Statistical Test</h2><div class='section-subtitle'>Tests if the difference is statistically significant (not just random noise)</div></div><span class='toggle-icon'>▼</span></div><div id='wilcoxon' class='section-content'>" + _mini_table(wil_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> The Wilcoxon test checks if the performance difference is real or could be random variation. A p-value < 0.05 means the difference is statistically significant.</div></div></div>" if wil_rows else ""}
 
-    {"<div class='section'><div class='section-header' onclick='toggleSection(\"bootstrap\")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Range of uncertainty for the median performance change</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'>" + _mini_table(bci_rows) + "<div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> We're 95% confident the true median change is between the CI low and high values. This accounts for measurement uncertainty.</div></div></div>" if bci_rows else ""}
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"bootstrap\")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Range of uncertainty for the median performance change</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'>" + _mini_table(bci_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> We're 95% confident the true median change is between the CI low and high values. This accounts for measurement uncertainty.</div></div></div>" if bci_rows else ""}
 
-    {"<div class='section'><div class='section-header' onclick='toggleSection(\"equivalence\")'><div><h2 class='section-title'>⚖️ Equivalence Test (Release Mode)</h2><div class='section-subtitle'>Checks if performance is 'close enough' to baseline</div></div><span class='toggle-icon'>▼</span></div><div id='equivalence' class='section-content'>" + _mini_table(eq_rows) + "<div class='small' style='margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;'><strong>What is this?</strong> In release mode, we test if the new version is equivalent to the old (within a margin). This is more permissive than regression testing.</div></div></div>" if eq_rows else ""}
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"equivalence\")'><div><h2 class='section-title'>⚖️ Equivalence Test (Release Mode)</h2><div class='section-subtitle'>Checks if performance is 'close enough' to baseline</div></div><span class='toggle-icon'>▼</span></div><div id='equivalence' class='section-content'>" + _mini_table(eq_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> In release mode, we test if the new version is equivalent to the old (within a margin). This is more permissive than regression testing.</div></div></div>" if eq_rows else ""}
 
     <!-- Raw Data -->
     <div class="section">
