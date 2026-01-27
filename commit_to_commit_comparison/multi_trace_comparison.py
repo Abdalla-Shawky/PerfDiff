@@ -1,7 +1,7 @@
 """Multi-trace performance comparison system.
 
 This module provides functionality to compare multiple performance traces
-between baseline and change commits, generating HTML reports for analysis.
+between baseline and target commits, generating HTML reports for analysis.
 """
 
 import json
@@ -19,15 +19,15 @@ class TraceComparison:
     """Single trace comparison result."""
     name: str
     baseline_data: List[float]
-    change_data: List[float]
+    target_data: List[float]
     gate_result: GateResult
 
     def __post_init__(self):
         """Convert data to lists if they're numpy arrays for JSON serialization."""
         if isinstance(self.baseline_data, np.ndarray):
             self.baseline_data = self.baseline_data.tolist()
-        if isinstance(self.change_data, np.ndarray):
-            self.change_data = self.change_data.tolist()
+        if isinstance(self.target_data, np.ndarray):
+            self.target_data = self.target_data.tolist()
 
 
 @dataclass
@@ -36,7 +36,7 @@ class MultiTraceResult:
     comparisons: List[TraceComparison]
     warnings: List[str]
     baseline_file: str
-    change_file: str
+    target_file: str
     timestamp: str
 
     def get_summary_stats(self) -> Dict[str, int]:
@@ -121,8 +121,8 @@ def load_traces_from_json(json_path: str) -> Tuple[Dict[str, np.ndarray], dict]:
     return traces, metadata
 
 
-def compare_traces(baseline_json: str, change_json: str) -> MultiTraceResult:
-    """Compare all traces between baseline and change files.
+def compare_traces(baseline_json: str, target_json: str) -> MultiTraceResult:
+    """Compare all traces between baseline and target files.
 
     Steps:
     1. Load both JSON files
@@ -133,57 +133,57 @@ def compare_traces(baseline_json: str, change_json: str) -> MultiTraceResult:
 
     Args:
         baseline_json: Path to baseline JSON file
-        change_json: Path to change JSON file
+        target_json: Path to target JSON file
 
     Returns:
         MultiTraceResult containing all comparisons and warnings
     """
     # Load traces from both files
     baseline_traces, baseline_meta = load_traces_from_json(baseline_json)
-    change_traces, change_meta = load_traces_from_json(change_json)
+    target_traces, target_meta = load_traces_from_json(target_json)
 
     comparisons = []
     warnings = []
 
     # Find matched traces
     baseline_names = set(baseline_traces.keys())
-    change_names = set(change_traces.keys())
-    matched_names = baseline_names & change_names
+    target_names = set(target_traces.keys())
+    matched_names = baseline_names & target_names
 
     # Warn about unmatched traces
-    baseline_only = baseline_names - change_names
-    change_only = change_names - baseline_names
+    baseline_only = baseline_names - target_names
+    target_only = target_names - baseline_names
 
     if baseline_only:
         warnings.append(
             f"⚠️ {len(baseline_only)} trace(s) only in baseline: {', '.join(sorted(baseline_only))}"
         )
 
-    if change_only:
+    if target_only:
         warnings.append(
-            f"⚠️ {len(change_only)} trace(s) only in change: {', '.join(sorted(change_only))}"
+            f"⚠️ {len(target_only)} trace(s) only in target: {', '.join(sorted(target_only))}"
         )
 
     # Compare matched traces
     for name in sorted(matched_names):
         baseline_data = baseline_traces[name]
-        change_data = change_traces[name]
+        target_data = target_traces[name]
 
         # Check if arrays have the same length
-        if len(baseline_data) != len(change_data):
+        if len(baseline_data) != len(target_data):
             warnings.append(
                 f"⚠️ Skipping trace '{name}': mismatched lengths "
-                f"(baseline: {len(baseline_data)}, change: {len(change_data)})"
+                f"(baseline: {len(baseline_data)}, target: {len(target_data)})"
             )
             continue
 
         # Run regression check
         try:
-            result = gate_regression(baseline_data, change_data)
+            result = gate_regression(baseline_data, target_data)
             comparisons.append(TraceComparison(
                 name=name,
                 baseline_data=baseline_data.tolist(),
-                change_data=change_data.tolist(),
+                target_data=target_data.tolist(),
                 gate_result=result
             ))
         except Exception as e:
@@ -193,7 +193,7 @@ def compare_traces(baseline_json: str, change_json: str) -> MultiTraceResult:
         comparisons=comparisons,
         warnings=warnings,
         baseline_file=baseline_meta['file'],
-        change_file=change_meta['file'],
+        target_file=target_meta['file'],
         timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     )
 
@@ -244,7 +244,7 @@ def generate_trace_detail_html(
     html = render_trace_detail_template(
         trace_name=trace_name,
         baseline=np.array(comparison.baseline_data),
-        change=np.array(comparison.change_data),
+        target=np.array(comparison.target_data),
         result=comparison.gate_result,
         prev_trace=prev_trace,
         next_trace=next_trace,
@@ -262,10 +262,10 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Compare multiple performance traces between baseline and change commits'
+        description='Compare multiple performance traces between baseline and target commits'
     )
     parser.add_argument('baseline', help='Baseline JSON file path')
-    parser.add_argument('change', help='Change JSON file path')
+    parser.add_argument('target', help='Target JSON file path')
     parser.add_argument('--output-dir', default='output', help='Output directory (default: output)')
 
     args = parser.parse_args()
@@ -273,10 +273,10 @@ def main():
     # Run comparison
     print(f"📊 Comparing traces...")
     print(f"  Baseline: {args.baseline}")
-    print(f"  Change: {args.change}")
+    print(f"  Target: {args.target}")
     print()
 
-    result = compare_traces(args.baseline, args.change)
+    result = compare_traces(args.baseline, args.target)
 
     # Print summary
     stats = result.get_summary_stats()

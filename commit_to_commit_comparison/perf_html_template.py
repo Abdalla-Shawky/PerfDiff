@@ -12,7 +12,7 @@ from constants import (
     CV_THRESHOLD_MULTIPLIER, MS_FLOOR, PCT_FLOOR, TAIL_MS_FLOOR, TAIL_PCT_FLOOR,
     DIRECTIONALITY, WILCOXON_ALPHA, CHARTJS_CDN_URL,
     ANIMATION_DURATION_FAST, ANIMATION_DURATION_NORMAL, ANIMATION_DURATION_SLOW,
-    CHART_COLOR_BASELINE, CHART_COLOR_CHANGE_IMPROVEMENT, CHART_COLOR_CHANGE_REGRESSION,
+    CHART_COLOR_BASELINE, CHART_COLOR_TARGET_IMPROVEMENT, CHART_COLOR_TARGET_REGRESSION,
     CHART_COLOR_NEUTRAL, LIGHT_BG_PRIMARY, LIGHT_BG_SECONDARY, LIGHT_BG_TERTIARY,
     LIGHT_TEXT_PRIMARY, LIGHT_TEXT_SECONDARY, LIGHT_BORDER,
     DARK_BG_PRIMARY, DARK_BG_SECONDARY, DARK_BG_TERTIARY,
@@ -31,10 +31,10 @@ def render_template(**context) -> str:
     status_color = context['status_color']
     now = context['now']
     base_med = context['base_med']
-    change_med = context['change_med']
+    target_med = context['target_med']
     delta_med = context['delta_med']
     base_p90 = context['base_p90']
-    change_p90 = context['change_p90']
+    target_p90 = context['target_p90']
     delta_p90 = context['delta_p90']
     pos_frac = context['pos_frac']
     pct_change = context['pct_change']
@@ -46,7 +46,7 @@ def render_template(**context) -> str:
     b = context['b']
     d = context['d']
     baseline_quality = context['baseline_quality']
-    change_quality = context['change_quality']
+    target_quality = context['target_quality']
     overall_quality_score = context['overall_quality_score']
     overall_quality_verdict = context['overall_quality_verdict']
     overall_quality_class = context['overall_quality_class']
@@ -65,10 +65,10 @@ def render_template(**context) -> str:
     mode = context['mode']
     max_run = context['max_run']
     baseline_data_json = context['baseline_data_json']
-    change_data_json = context['change_data_json']
+    target_data_json = context['target_data_json']
     delta_data_json = context['delta_data_json']
     export_data_json = context['export_data_json']
-    chart_change_color = context['chart_change_color']
+    chart_target_color = context['chart_target_color']
 
     return f"""<!doctype html>
 <html>
@@ -108,8 +108,8 @@ def render_template(**context) -> str:
 
       /* Chart colors */
       --chart-baseline: {CHART_COLOR_BASELINE};
-      --chart-improvement: {CHART_COLOR_CHANGE_IMPROVEMENT};
-      --chart-regression: {CHART_COLOR_CHANGE_REGRESSION};
+      --chart-improvement: {CHART_COLOR_TARGET_IMPROVEMENT};
+      --chart-regression: {CHART_COLOR_TARGET_REGRESSION};
 
       /* Animation durations */
       --anim-fast: {ANIMATION_DURATION_FAST}ms;
@@ -1040,8 +1040,8 @@ def render_template(**context) -> str:
         </div>
         <div class="comparison-arrow">{change_icon}</div>
         <div class="comparison-item">
-          <div class="comparison-label">After (Change)</div>
-          <div class="comparison-value">{_fmt_ms(change_med)}</div>
+          <div class="comparison-label">After (Target)</div>
+          <div class="comparison-value">{_fmt_ms(target_med)}</div>
           <div class="small">{len(b)} measurements</div>
         </div>
       </div>
@@ -1068,7 +1068,7 @@ def render_template(**context) -> str:
           <div>
             <h3 style="margin-top: 0; font-size: 16px; color: var(--text-primary);">Distribution Histogram</h3>
             <p style="font-size: 13px; color: var(--text-secondary); margin: 8px 0 16px 0;">
-              Compare the distribution of measurements between baseline and change. Overlapping peaks indicate similar performance.
+              Compare the distribution of measurements between baseline and target. Overlapping peaks indicate similar performance.
             </p>
             <div class="chart-container">
               <canvas id="histogramChart"></canvas>
@@ -1144,33 +1144,33 @@ def render_template(**context) -> str:
             {"<div style='margin-top: 12px;'><strong style='color: #f57c00;'>⚡ Warnings:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(warning)}</li>" for warning in baseline_quality['warnings']) + "</ul></div>" if baseline_quality['warnings'] else ""}
           </div>
 
-          <!-- Change Quality -->
-          <div class="quality-item {change_quality['verdict'].lower()}">
+          <!-- Target Quality -->
+          <div class="quality-item {target_quality['verdict'].lower()}">
             <h3 style="margin: 0 0 8px 0; font-size: 16px;">
-              {change_quality['verdict_icon']} Change Data: {change_quality['verdict']}
+              {target_quality['verdict_icon']} Target Data: {target_quality['verdict']}
               <span style="float: right; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
-                Score: {change_quality['score']}/100
+                Score: {target_quality['score']}/100
               </span>
             </h3>
-            <p style="margin: 8px 0; color: var(--text-secondary); font-size: 14px;">{escape(change_quality['verdict_desc'])}</p>
+            <p style="margin: 8px 0; color: var(--text-secondary); font-size: 14px;">{escape(target_quality['verdict_desc'])}</p>
             <div style="margin: 12px 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Quality Score</span>
-                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{change_quality['score']}/100</span>
+                <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">{target_quality['score']}/100</span>
               </div>
               <div class="bar" style="height: 8px;">
-                <div class="barfill" style="width: {change_quality['score']}%; background: linear-gradient(90deg, var(--accent-primary), {change_quality['verdict_color']}80);"></div>
+                <div class="barfill" style="width: {target_quality['score']}%; background: linear-gradient(90deg, var(--accent-primary), {target_quality['verdict_color']}80);"></div>
               </div>
             </div>
             <table style="font-size: 13px; margin-top: 12px;">
-              <tr><td>Samples:</td><td><strong>{change_quality['n']}</strong></td></tr>
-              <tr><td>Median:</td><td><strong>{_fmt_ms(change_quality['median'])}</strong></td></tr>
-              <tr><td>Variability (CV):</td><td><strong>{change_quality['cv']:.1f}%</strong></td></tr>
-              <tr><td>Range:</td><td>{_fmt_ms(change_quality['min'])} - {_fmt_ms(change_quality['max'])}</td></tr>
-              <tr><td>Outliers:</td><td>{change_quality['num_outliers']}</td></tr>
+              <tr><td>Samples:</td><td><strong>{target_quality['n']}</strong></td></tr>
+              <tr><td>Median:</td><td><strong>{_fmt_ms(target_quality['median'])}</strong></td></tr>
+              <tr><td>Variability (CV):</td><td><strong>{target_quality['cv']:.1f}%</strong></td></tr>
+              <tr><td>Range:</td><td>{_fmt_ms(target_quality['min'])} - {_fmt_ms(target_quality['max'])}</td></tr>
+              <tr><td>Outliers:</td><td>{target_quality['num_outliers']}</td></tr>
             </table>
-            {"<div style='margin-top: 12px;'><strong style='color: #b3261e;'>⚠️ Issues:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(issue)}</li>" for issue in change_quality['issues']) + "</ul></div>" if change_quality['issues'] else ""}
-            {"<div style='margin-top: 12px;'><strong style='color: #f57c00;'>⚡ Warnings:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(warning)}</li>" for warning in change_quality['warnings']) + "</ul></div>" if change_quality['warnings'] else ""}
+            {"<div style='margin-top: 12px;'><strong style='color: #b3261e;'>⚠️ Issues:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(issue)}</li>" for issue in target_quality['issues']) + "</ul></div>" if target_quality['issues'] else ""}
+            {"<div style='margin-top: 12px;'><strong style='color: #f57c00;'>⚡ Warnings:</strong><ul class='issue-list'>" + "".join(f"<li>{escape(warning)}</li>" for warning in target_quality['warnings']) + "</ul></div>" if target_quality['warnings'] else ""}
           </div>
         </div>
 
@@ -1208,9 +1208,9 @@ def render_template(**context) -> str:
             <h3>Run distribution (relative)</h3>
             <table>
               <tr><th>Baseline max</th><td>{_fmt_ms(float(np.max(a)))}</td></tr>
-              <tr><th>Change max</th><td>{_fmt_ms(float(np.max(b)))}</td></tr>
+              <tr><th>Target max</th><td>{_fmt_ms(float(np.max(b)))}</td></tr>
               <tr><th>Baseline bars</th><td>{bar(float(np.median(a)), max_run)} <span class="small">median</span></td></tr>
-              <tr><th>Change bars</th><td>{bar(float(np.median(b)), max_run)} <span class="small">median</span></td></tr>
+              <tr><th>Target bars</th><td>{bar(float(np.median(b)), max_run)} <span class="small">median</span></td></tr>
             </table>
             <div class="small">Bars are scaled relative to the max single-run value across both sets.</div>
           </div>
@@ -1272,8 +1272,8 @@ def render_template(**context) -> str:
           <tr>
             <td><strong>Maximum CV (Variability)</strong></td>
             <td>≤ {MAX_CV_FOR_REGRESSION_CHECK}%</td>
-            <td>Baseline: {result['details'].get('baseline_cv', 0):.1f}%, Change: {result['details'].get('change_cv', 0):.1f}%</td>
-            <td>{'✅ PASS' if max(result['details'].get('baseline_cv', 0), result['details'].get('change_cv', 0)) <= MAX_CV_FOR_REGRESSION_CHECK else '❌ FAIL'}</td>
+            <td>Baseline: {result['details'].get('baseline_cv', 0):.1f}%, Target: {result['details'].get('target_cv', 0):.1f}%</td>
+            <td>{'✅ PASS' if max(result['details'].get('baseline_cv', 0), result['details'].get('target_cv', 0)) <= MAX_CV_FOR_REGRESSION_CHECK else '❌ FAIL'}</td>
           </tr>
           <tr>
             <td><strong>CV Threshold Multiplier</strong></td>
@@ -1347,11 +1347,11 @@ def render_template(**context) -> str:
       </div>
       <div id="raw-data" class="section-content">
         <table>
-          <tr><th>#</th><th>Baseline</th><th>Change</th><th>Delta</th></tr>
+          <tr><th>#</th><th>Baseline</th><th>Target</th><th>Delta</th></tr>
           {''.join('<tr>' + ''.join(f'<td>{c}</td>' for c in row) + '</tr>' for row in runs_rows)}
         </table>
         <div class="small" style="margin-top: 12px;">
-          <strong>Note:</strong> Each row shows a paired measurement. Delta = Change - Baseline.
+          <strong>Note:</strong> Each row shows a paired measurement. Delta = Target - Baseline.
           Negative delta means faster (improvement), positive means slower (regression).
           Outliers (detected using IQR method) are marked with <span class="outlier-badge">⚠️</span>
         </div>
@@ -1515,14 +1515,14 @@ def render_template(**context) -> str:
     // DATA PREPARATION FOR CHARTS
     // ============================================================================
     const baselineData = {baseline_data_json};
-    const changeData = {change_data_json};
+    const targetData = {target_data_json};
     const deltaData = {delta_data_json};
     const exportData = {export_data_json};
 
     // Chart colors
     const CHART_COLORS = {{
       baseline: '{CHART_COLOR_BASELINE}',
-      change: '{chart_change_color}',
+      target: '{chart_target_color}',
       neutral: '{CHART_COLOR_NEUTRAL}',
     }};
 
@@ -1560,14 +1560,14 @@ def render_template(**context) -> str:
 
     function exportCSV() {{
       const rows = [
-        ['Run', 'Baseline (ms)', 'Change (ms)', 'Delta (ms)']
+        ['Run', 'Baseline (ms)', 'Target (ms)', 'Delta (ms)']
       ];
 
       for (let i = 0; i < baselineData.length; i++) {{
         rows.push([
           i + 1,
           baselineData[i].toFixed(2),
-          changeData[i].toFixed(2),
+          targetData[i].toFixed(2),
           deltaData[i].toFixed(2)
         ]);
       }}
@@ -1668,7 +1668,7 @@ def render_template(**context) -> str:
       const histCtx = document.getElementById('histogramChart');
       if (histCtx) {{
         // Calculate histogram bins
-        const allData = [...baselineData, ...changeData];
+        const allData = [...baselineData, ...targetData];
         const min = Math.min(...allData);
         const max = Math.max(...allData);
         const numBins = Math.min(20, Math.max(10, Math.floor(Math.sqrt(baselineData.length))));
@@ -1686,7 +1686,7 @@ def render_template(**context) -> str:
         }}
 
         const baselineHist = calculateHistogram(baselineData);
-        const changeHist = calculateHistogram(changeData);
+        const targetHist = calculateHistogram(targetData);
 
         window.charts.histogram = new Chart(histCtx, {{
           type: 'bar',
@@ -1701,10 +1701,10 @@ def render_template(**context) -> str:
                 borderWidth: 1.5,
               }},
               {{
-                label: 'Change',
-                data: changeHist,
-                backgroundColor: CHART_COLORS.change + '80',
-                borderColor: CHART_COLORS.change,
+                label: 'Target',
+                data: targetHist,
+                backgroundColor: CHART_COLORS.target + '80',
+                borderColor: CHART_COLORS.target,
                 borderWidth: 1.5,
               }}
             ]
@@ -1773,10 +1773,10 @@ def render_template(**context) -> str:
                 fill: true,
               }},
               {{
-                label: 'Change',
-                data: changeData,
-                borderColor: CHART_COLORS.change,
-                backgroundColor: CHART_COLORS.change + '20',
+                label: 'Target',
+                data: targetData,
+                borderColor: CHART_COLORS.target,
+                backgroundColor: CHART_COLORS.target + '20',
                 borderWidth: 2,
                 pointRadius: 4,
                 pointHoverRadius: 6,
@@ -1800,7 +1800,7 @@ def render_template(**context) -> str:
                 callbacks: {{
                   title: (items) => `Run #${{items[0].label}}`,
                   afterLabel: (item) => {{
-                    const delta = changeData[item.dataIndex] - baselineData[item.dataIndex];
+                    const delta = targetData[item.dataIndex] - baselineData[item.dataIndex];
                     return `Delta: ${{delta.toFixed(2)}}ms (${{delta > 0 ? '+' : ''}}${{((delta / baselineData[item.dataIndex]) * 100).toFixed(1)}}%)`;
                   }}
                 }}
@@ -1846,7 +1846,7 @@ def render_template(**context) -> str:
         }}
 
         const baselineStats = calculateStats(baselineData);
-        const changeStats = calculateStats(changeData);
+        const targetStats = calculateStats(targetData);
 
         window.charts.boxplot = new Chart(boxCtx, {{
           type: 'bar',
@@ -1868,17 +1868,17 @@ def render_template(**context) -> str:
                 borderWidth: 2,
               }},
               {{
-                label: 'Change',
+                label: 'Target',
                 data: [
-                  changeStats.min,
-                  changeStats.q1,
-                  changeStats.median,
-                  changeStats.mean,
-                  changeStats.q3,
-                  changeStats.max
+                  targetStats.min,
+                  targetStats.q1,
+                  targetStats.median,
+                  targetStats.mean,
+                  targetStats.q3,
+                  targetStats.max
                 ],
-                backgroundColor: CHART_COLORS.change + '80',
-                borderColor: CHART_COLORS.change,
+                backgroundColor: CHART_COLORS.target + '80',
+                borderColor: CHART_COLORS.target,
                 borderWidth: 2,
               }}
             ]

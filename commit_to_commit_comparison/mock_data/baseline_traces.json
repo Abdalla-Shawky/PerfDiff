@@ -44,7 +44,7 @@
     },
     {
       "name": "app_start_to_first_screen_durationMs",
-      "measurements": [3977, 3851, 3904, 3902, 3833, 3615, 3944, 3863, 4049, 3947, 4064]
+      "measurements": [3851, 3904, 3902, 3833, 3615, 3944, 3863, 4049, 3947, 4064]
     },
     {
       "name": "PostFirstRenderedFrame_durationMs",
@@ -80,7 +80,7 @@
     },
     {
       "name": "NewHome_domain_mapper_durationMs",
-      "measurements": [346, 458, 384, 440, 390, 431, 408, 440, 398, 439, 402, 438, 417, 439, 393, 455, 398, 430, 403, 426, 391, 451]
+      "measurements": [458, 384, 440, 390, 431, 408, 440, 398, 439, 402, 438, 417, 439, 393, 455, 398, 430, 403, 426, 391, 451]
     },
     {
       "name": "NewHome_FetchFeed_durationMs",
@@ -88,7 +88,7 @@
     },
     {
       "name": "NewHome_GraphQL_Home_durationMs",
-      "measurements": [2560, 1652, 1998, 1525, 3830, 1504, 1970, 1536, 1977, 1559, 1963, 1544, 2010, 1580, 1945, 1575, 1936, 1553, 2002, 1525, 1962, 1564]
+      "measurements": [1652, 1998, 1525, 3830, 1504, 1970, 1536, 1977, 1559, 1963, 1544, 2010, 1580, 1945, 1575, 1936, 1553, 2002, 1525, 1962, 1564]
     },
     {
       "name": "NewHome_ConvertDataToViewModel_durationMs",
@@ -100,7 +100,7 @@
     },
     {
       "name": "homeTabStartToInteractive_timeToInteractiveMs",
-      "measurements": [3156, 2638, 4508, 2410, 2442, 2630, 2452, 2624, 2385, 2640, 2626]
+      "measurements": [2638, 4508, 2410, 2442, 2630, 2452, 2624, 2385, 2640, 2626]
     },
     {
       "name": "bottomNavStartToInteractive_durationMs",
@@ -108,7 +108,7 @@
     },
     {
       "name": "AppStartToInteractive_durationMs",
-      "measurements": [8224, 7627, 9664, 7544, 7395, 7689, 7674, 7554, 7319, 7526, 7622]
+      "measurements": [7627, 9664, 7544, 7395, 7689, 7674, 7554, 7319, 7526, 7622]
     },
     {
       "name": "NewAccount_FetchData_durationMs",
@@ -132,7 +132,7 @@
     },
     {
       "name": "screen_metrics_home_timeToInteractiveMs",
-      "measurements": [3241, 2725, 4602, 2503, 2535, 2723, 2544, 2710, 2468, 2727, 2719]
+      "measurements": [2725, 4602, 2503, 2535, 2723, 2544, 2710, 2468, 2727, 2719]
     },
     {
       "name": "screen_metrics_home_frozenFrames",

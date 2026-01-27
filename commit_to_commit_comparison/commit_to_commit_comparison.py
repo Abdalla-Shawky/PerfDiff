@@ -124,7 +124,7 @@ def _calculate_cv(data: np.ndarray) -> float:
 
 def _check_quality_gates(
     baseline: np.ndarray,
-    change: np.ndarray,
+    target: np.ndarray,
     enable_gates: bool = ENABLE_QUALITY_GATES,
     max_cv: float = MAX_CV_FOR_REGRESSION_CHECK,
     min_samples: int = MIN_SAMPLES_FOR_REGRESSION,
@@ -134,7 +134,7 @@ def _check_quality_gates(
 
     Args:
         baseline: Baseline measurements
-        change: Change measurements
+        target: Target measurements
         enable_gates: Whether to enforce quality gates
         max_cv: Maximum allowed coefficient of variation (%)
         min_samples: Minimum required sample size
@@ -156,8 +156,8 @@ def _check_quality_gates(
 
     # Gate 2: Coefficient of variation
     baseline_cv = _calculate_cv(baseline)
-    change_cv = _calculate_cv(change)
-    max_observed_cv = max(baseline_cv, change_cv)
+    target_cv = _calculate_cv(target)
+    max_observed_cv = max(baseline_cv, target_cv)
 
     if max_observed_cv > max_cv:
         return (
@@ -182,7 +182,7 @@ def _bootstrap_median_ci(
     Uses percentile method with specified confidence level.
 
     Args:
-        delta: Array of paired differences (change - baseline)
+        delta: Array of paired differences (target - baseline)
         confidence: Confidence level (e.g., 0.95 for 95% CI)
         n_boot: Number of bootstrap resamples
         rng: NumPy random number generator for reproducibility
@@ -215,7 +215,7 @@ def _bootstrap_median_ci(
 
 def gate_regression(
     baseline: List[float],
-    change: List[float],
+    target: List[float],
     ms_floor: float = MS_FLOOR,
     pct_floor: float = PCT_FLOOR,
     tail_quantile: float = TAIL_QUANTILE,
@@ -233,7 +233,7 @@ def gate_regression(
 
     Args:
         baseline: Baseline measurements
-        change: Change measurements
+        target: Target measurements
         ms_floor: Absolute threshold in milliseconds for median
         pct_floor: Relative threshold as fraction for median (e.g., 0.05 = 5%)
         tail_quantile: Quantile for tail check (e.g., 0.90 = p90)
@@ -273,15 +273,15 @@ def gate_regression(
     rng = np.random.default_rng(seed)
 
     a = np.array(baseline, dtype=float)
-    b = np.array(change, dtype=float)
+    b = np.array(target, dtype=float)
 
     if len(a) != len(b):
         return GateResult(
             passed=False,
-            reason="Baseline and change arrays must have same length",
+            reason="Baseline and target arrays must have same length",
             details={
                 "baseline_length": len(a),
-                "change_length": len(b),
+                "target_length": len(b),
             },
             inconclusive=False
         )
@@ -292,7 +292,7 @@ def gate_regression(
             reason="Empty arrays provided",
             details={
                 "baseline_length": len(a),
-                "change_length": len(b),
+                "target_length": len(b),
             },
             inconclusive=False
         )
@@ -305,7 +305,7 @@ def gate_regression(
             reason=f"INCONCLUSIVE: {quality_gate_error}",
             details={
                 "baseline_cv": _calculate_cv(a),
-                "change_cv": _calculate_cv(b),
+                "target_cv": _calculate_cv(b),
                 "sample_size": len(a),
             },
             inconclusive=True
@@ -317,8 +317,8 @@ def gate_regression(
 
     # Calculate CV for adaptive thresholds
     baseline_cv = _calculate_cv(a)
-    change_cv = _calculate_cv(b)
-    max_cv = max(baseline_cv, change_cv)
+    target_cv = _calculate_cv(b)
+    max_cv = max(baseline_cv, target_cv)
 
     # Apply CV-based threshold multiplier
     # When variance is elevated (but acceptable), be more conservative
@@ -347,8 +347,8 @@ def gate_regression(
 
     # Check 2: Tail (p90) check
     baseline_tail = float(np.quantile(a, tail_quantile, method="linear"))
-    change_tail = float(np.quantile(b, tail_quantile, method="linear"))
-    tail_delta = change_tail - baseline_tail
+    target_tail = float(np.quantile(b, tail_quantile, method="linear"))
+    tail_delta = target_tail - baseline_tail
 
     # Calculate tail threshold (max of absolute and relative)
     # Similar to median threshold, uses max of absolute and relative to handle
@@ -376,7 +376,7 @@ def gate_regression(
         "tail_delta_ms": tail_delta,
         "positive_fraction": positive_fraction,
         "baseline_cv": baseline_cv,
-        "change_cv": change_cv,
+        "target_cv": target_cv,
         "cv_multiplier": cv_multiplier,
     }
 
@@ -515,7 +515,7 @@ def gate_regression(
 
 def equivalence_bootstrap_median(
     baseline: List[float],
-    change: List[float],
+    target: List[float],
     margin_ms: float = EQUIVALENCE_MARGIN_MS,
     confidence: float = BOOTSTRAP_CONFIDENCE,
     n_boot: int = BOOTSTRAP_N,
@@ -529,7 +529,7 @@ def equivalence_bootstrap_median(
 
     Args:
         baseline: Baseline measurements
-        change: Change measurements
+        target: Target measurements
         margin_ms: Equivalence margin in milliseconds
         confidence: Confidence level for bootstrap CI
         n_boot: Number of bootstrap samples
@@ -542,11 +542,11 @@ def equivalence_bootstrap_median(
         ValueError: If arrays are empty, mismatched lengths, or invalid parameters
     """
     # Input validation
-    if len(baseline) == 0 or len(change) == 0:
-        raise ValueError("Baseline and change arrays cannot be empty")
+    if len(baseline) == 0 or len(target) == 0:
+        raise ValueError("Baseline and target arrays cannot be empty")
 
-    if len(baseline) != len(change):
-        raise ValueError(f"Array length mismatch: baseline has {len(baseline)} elements, change has {len(change)} elements")
+    if len(baseline) != len(target):
+        raise ValueError(f"Array length mismatch: baseline has {len(baseline)} elements, target has {len(target)} elements")
 
     if margin_ms <= 0:
         raise ValueError(f"margin_ms must be positive, got {margin_ms}")
@@ -561,7 +561,7 @@ def equivalence_bootstrap_median(
     rng = np.random.default_rng(seed)
 
     a = np.array(baseline, dtype=float)
-    b = np.array(change, dtype=float)
+    b = np.array(target, dtype=float)
     delta = b - a
 
     # Bootstrap CI for median delta

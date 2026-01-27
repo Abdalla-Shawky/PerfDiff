@@ -21,9 +21,9 @@ class TestGateRegression:
     def test_basic_regression_detected(self):
         """Test that a clear regression is detected."""
         baseline = [800, 805, 798, 810, 799, 803, 801, 807, 802, 804]
-        change = [845, 850, 838, 860, 842, 848, 844, 855, 849, 847]
+        target = [845, 850, 838, 860, 842, 848, 844, 855, 849, 847]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert isinstance(result, GateResult)
         assert result.passed is False
@@ -34,9 +34,9 @@ class TestGateRegression:
         """Test that no regression is detected when values are similar."""
         # Use values with some negative deltas to avoid directionality failure
         baseline = [100, 102, 98, 101, 99, 103, 100, 101, 102, 100]
-        change = [99, 101, 97, 100, 98, 102, 99, 100, 101, 99]  # Mix of faster/slower
+        target = [99, 101, 97, 100, 98, 102, 99, 100, 101, 99]  # Mix of faster/slower
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert isinstance(result, GateResult)
         assert result.passed is True
@@ -46,9 +46,9 @@ class TestGateRegression:
     def test_realistic_arrays_pass(self):
         """Realistic, slightly noisy arrays that should pass."""
         baseline = [245.2, 252.1, 248.7, 251.4, 249.6, 247.9, 253.3, 250.5, 246.8, 254.0, 248.9, 252.4]
-        change = [246.1, 251.8, 247.5, 252.0, 248.9, 247.1, 254.2, 249.7, 245.9, 255.1, 247.8, 251.6]
+        target = [246.1, 251.8, 247.5, 252.0, 248.9, 247.1, 254.2, 249.7, 245.9, 255.1, 247.8, 251.6]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert result.inconclusive is False
         assert result.passed is True
@@ -57,9 +57,9 @@ class TestGateRegression:
     def test_realistic_arrays_regression(self):
         """Realistic arrays with a clear regression that should fail."""
         baseline = [245.2, 252.1, 248.7, 251.4, 249.6, 247.9, 253.3, 250.5, 246.8, 254.0, 248.9, 252.4]
-        change = [319.5, 326.8, 322.9, 325.4, 323.7, 321.6, 327.8, 324.9, 320.7, 328.1, 323.1, 326.2]
+        target = [319.5, 326.8, 322.9, 325.4, 323.7, 321.6, 327.8, 324.9, 320.7, 328.1, 323.1, 326.2]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert result.inconclusive is False
         assert result.passed is False
@@ -76,9 +76,9 @@ class TestGateRegression:
     def test_mismatched_lengths(self):
         """Test handling of mismatched array lengths."""
         baseline = [100, 200, 300]
-        change = [100, 200]
+        target = [100, 200]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert result.passed is False
         assert "must have same length" in result.reason
@@ -86,37 +86,37 @@ class TestGateRegression:
     def test_invalid_parameters_raise(self):
         """Test parameter validation errors."""
         baseline = [100.0] * 10
-        change = [100.0] * 10
+        target = [100.0] * 10
 
         with pytest.raises(ValueError, match="ms_floor must be non-negative"):
-            gate_regression(baseline, change, ms_floor=-1)
+            gate_regression(baseline, target, ms_floor=-1)
 
         with pytest.raises(ValueError, match="pct_floor must be between 0 and 1"):
-            gate_regression(baseline, change, pct_floor=1.5)
+            gate_regression(baseline, target, pct_floor=1.5)
 
         with pytest.raises(ValueError, match="tail_quantile must be between 0 and 1"):
-            gate_regression(baseline, change, tail_quantile=1.0)
+            gate_regression(baseline, target, tail_quantile=1.0)
 
         with pytest.raises(ValueError, match="directionality must be between 0 and 1"):
-            gate_regression(baseline, change, directionality=1.1)
+            gate_regression(baseline, target, directionality=1.1)
 
         with pytest.raises(ValueError, match="wilcoxon_alpha must be between 0 and 1"):
-            gate_regression(baseline, change, wilcoxon_alpha=0.0)
+            gate_regression(baseline, target, wilcoxon_alpha=0.0)
 
         with pytest.raises(ValueError, match="bootstrap_confidence must be between 0 and 1"):
-            gate_regression(baseline, change, bootstrap_confidence=1.0)
+            gate_regression(baseline, target, bootstrap_confidence=1.0)
 
         with pytest.raises(ValueError, match="bootstrap_n must be non-negative"):
-            gate_regression(baseline, change, bootstrap_n=-10)
+            gate_regression(baseline, target, bootstrap_n=-10)
 
     def test_threshold_calculation(self):
         """Test that threshold is max of absolute and relative."""
         baseline = [100] * 10
-        change = [110] * 10
+        target = [110] * 10
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             ms_floor=50.0,
             pct_floor=0.05  # 5% of 100 = 5ms
         )
@@ -128,11 +128,11 @@ class TestGateRegression:
     def test_tail_threshold_with_relative(self):
         """Test that tail threshold uses both absolute and relative."""
         baseline = [1000] * 10  # High baseline
-        change = [1100] * 10
+        target = [1100] * 10
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             tail_ms_floor=75.0,
             tail_pct_floor=0.05,  # 5% of ~1000 = 50ms
             tail_quantile=0.90
@@ -145,11 +145,11 @@ class TestGateRegression:
         """Test directionality boundary condition (>= not >)."""
         # Create data where exactly 70% are slower
         baseline = [100] * 10
-        change = [110] * 7 + [100] * 3  # Exactly 70% slower
+        target = [110] * 7 + [100] * 3  # Exactly 70% slower
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             ms_floor=0.0,  # Make threshold very low to isolate directionality
             directionality=0.70
         )
@@ -162,11 +162,11 @@ class TestGateRegression:
         """Test a case where median passes but tail fails."""
         baseline = [100.0] * 10
         # A modest outlier increases the p90 while keeping variance acceptable
-        change = [103.0] * 9 + [133.0]
+        target = [103.0] * 9 + [133.0]
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             ms_floor=1000.0,
             pct_floor=0.0,
             tail_ms_floor=1.0,
@@ -184,20 +184,20 @@ class TestGateRegression:
     def test_bootstrap_disabled(self):
         """Test that bootstrap output is omitted when disabled."""
         baseline = [100.0] * 10
-        change = [120.0] * 10
+        target = [120.0] * 10
 
-        result = gate_regression(baseline, change, bootstrap_n=0)
+        result = gate_regression(baseline, target, bootstrap_n=0)
 
         assert "bootstrap_ci_median" not in result.details
 
     def test_wilcoxon_with_approx_method(self):
         """Test that Wilcoxon uses approx method and provides valid z-score."""
         baseline = [800] * 10
-        change = [850] * 10
+        target = [850] * 10
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             use_wilcoxon=True
         )
 
@@ -215,11 +215,11 @@ class TestGateRegression:
         """Test that bootstrap CI is calculated correctly."""
         # Add some variance to get a non-trivial CI
         baseline = [100, 102, 98, 101, 99, 103, 100, 101, 102, 100]
-        change = [110, 112, 108, 111, 109, 113, 110, 111, 112, 110]
+        target = [110, 112, 108, 111, 109, 113, 110, 111, 112, 110]
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             bootstrap_n=1000,
             bootstrap_confidence=0.95
         )
@@ -239,10 +239,10 @@ class TestGateRegression:
     def test_random_seed_reproducibility(self):
         """Test that same seed produces same results."""
         baseline = [100, 105, 98, 102, 99] * 2
-        change = [110, 115, 108, 112, 109] * 2
+        target = [110, 115, 108, 112, 109] * 2
 
-        result1 = gate_regression(baseline, change, seed=42, bootstrap_n=1000)
-        result2 = gate_regression(baseline, change, seed=42, bootstrap_n=1000)
+        result1 = gate_regression(baseline, target, seed=42, bootstrap_n=1000)
+        result2 = gate_regression(baseline, target, seed=42, bootstrap_n=1000)
 
         # Results should be identical
         assert result1.passed == result2.passed
@@ -255,9 +255,9 @@ class TestGateRegression:
     def test_wilcoxon_skipped_when_all_deltas_zero(self):
         """Test Wilcoxon is skipped cleanly when all deltas are zero."""
         baseline = [100.0] * 10
-        change = [100.0] * 10
+        target = [100.0] * 10
 
-        result = gate_regression(baseline, change, use_wilcoxon=True)
+        result = gate_regression(baseline, target, use_wilcoxon=True)
 
         # No non-zero deltas means no Wilcoxon result should be recorded
         assert result.passed is True
@@ -266,9 +266,9 @@ class TestGateRegression:
     def test_inconclusive_on_insufficient_samples(self):
         """Test quality gate behavior when sample size is too small."""
         baseline = [100.0, 101.0, 99.0, 100.5, 99.5]
-        change = [100.2, 101.2, 98.8, 100.7, 99.7]
+        target = [100.2, 101.2, 98.8, 100.7, 99.7]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert result.passed is True
         assert result.inconclusive is True
@@ -280,23 +280,23 @@ class TestGateRegression:
         """Test quality gate behavior when variance is too high."""
         # High variance but still 10 samples to avoid the sample-size gate
         baseline = [10.0, 1000.0] * 5
-        change = [12.0, 1200.0] * 5
+        target = [12.0, 1200.0] * 5
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         assert result.passed is True
         assert result.inconclusive is True
         assert result.reason.startswith("INCONCLUSIVE:")
         assert "HIGH VARIANCE" in result.reason
         assert result.details["baseline_cv"] > MAX_CV_FOR_REGRESSION_CHECK
-        assert result.details["change_cv"] > MAX_CV_FOR_REGRESSION_CHECK
+        assert result.details["target_cv"] > MAX_CV_FOR_REGRESSION_CHECK
 
     def test_reason_string_clarity(self):
         """Test that reason strings are clear and unambiguous."""
         baseline = [100] * 10
-        change = [200] * 10  # Clear regression
+        target = [200] * 10  # Clear regression
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Should have clear PASS, NO CHANGE, or FAIL prefix
         assert (result.reason.startswith("PASS:") or
@@ -320,9 +320,9 @@ class TestGateRegression:
         - Result: Should PASS due to practical significance override (2.5ms < 20ms)
         """
         baseline = [2400.0, 2410.0, 2395.0, 2405.0, 2402.0, 2398.0, 2412.0, 2401.0, 2399.0, 2407.0]
-        change = [2403.0, 2412.0, 2397.0, 2408.0, 2401.0, 2400.0, 2415.0, 2404.0, 2402.0, 2409.0]
+        target = [2403.0, 2412.0, 2397.0, 2408.0, 2401.0, 2400.0, 2415.0, 2404.0, 2402.0, 2409.0]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Key assertions
         assert result.passed is True, "Should PASS due to practical significance override"
@@ -368,9 +368,9 @@ class TestGateRegression:
         """
         # Delta: 10ms on ~100ms baseline
         baseline = [100.0, 102.0, 98.0, 101.0, 99.0, 103.0, 100.0, 101.0, 102.0, 100.0]
-        change = [110.0, 112.0, 108.0, 111.0, 109.0, 113.0, 110.0, 111.0, 112.0, 110.0]
+        target = [110.0, 112.0, 108.0, 111.0, 109.0, 113.0, 110.0, 111.0, 112.0, 110.0]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Should FAIL (no override because delta is too large)
         assert result.passed is False, "Should FAIL because delta exceeds practical threshold"
@@ -396,9 +396,9 @@ class TestGateRegression:
         """Test that override logic is not triggered when all gates pass normally."""
         # Very similar values - should pass all gates without needing override
         baseline = [100.0, 102.0, 98.0, 101.0, 99.0, 103.0, 100.0, 101.0, 102.0, 100.0]
-        change = [99.0, 101.0, 97.0, 100.0, 98.0, 102.0, 99.0, 100.0, 101.0, 99.0]
+        target = [99.0, 101.0, 97.0, 100.0, 98.0, 102.0, 99.0, 100.0, 101.0, 99.0]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Should PASS normally
         assert result.passed is True, "Should PASS all gates normally"
@@ -419,11 +419,11 @@ class TestEquivalenceBootstrapMedian:
     def test_equivalent_distributions(self):
         """Test that similar distributions are equivalent."""
         baseline = [100] * 10
-        change = [102] * 10  # Delta = 2ms
+        target = [102] * 10  # Delta = 2ms
 
         result = equivalence_bootstrap_median(
             baseline,
-            change,
+            target,
             margin_ms=30.0,
             n_boot=1000
         )
@@ -436,11 +436,11 @@ class TestEquivalenceBootstrapMedian:
     def test_non_equivalent_distributions(self):
         """Test that different distributions are not equivalent."""
         baseline = [100] * 10
-        change = [150] * 10  # Delta = 50ms
+        target = [150] * 10  # Delta = 50ms
 
         result = equivalence_bootstrap_median(
             baseline,
-            change,
+            target,
             margin_ms=30.0,
             n_boot=1000
         )
@@ -468,46 +468,46 @@ class TestEquivalenceBootstrapMedian:
     def test_invalid_margin_validation(self):
         """Test that invalid margin raises ValueError."""
         baseline = [100] * 10
-        change = [100] * 10
+        target = [100] * 10
 
         with pytest.raises(ValueError, match="margin_ms must be positive"):
-            equivalence_bootstrap_median(baseline, change, margin_ms=-5)
+            equivalence_bootstrap_median(baseline, target, margin_ms=-5)
 
         with pytest.raises(ValueError, match="margin_ms must be positive"):
-            equivalence_bootstrap_median(baseline, change, margin_ms=0)
+            equivalence_bootstrap_median(baseline, target, margin_ms=0)
 
     def test_invalid_confidence_validation(self):
         """Test that invalid confidence raises ValueError."""
         baseline = [100] * 10
-        change = [100] * 10
+        target = [100] * 10
 
         with pytest.raises(ValueError, match="confidence must be between 0 and 1"):
-            equivalence_bootstrap_median(baseline, change, confidence=0)
+            equivalence_bootstrap_median(baseline, target, confidence=0)
 
         with pytest.raises(ValueError, match="confidence must be between 0 and 1"):
-            equivalence_bootstrap_median(baseline, change, confidence=1)
+            equivalence_bootstrap_median(baseline, target, confidence=1)
 
         with pytest.raises(ValueError, match="confidence must be between 0 and 1"):
-            equivalence_bootstrap_median(baseline, change, confidence=1.5)
+            equivalence_bootstrap_median(baseline, target, confidence=1.5)
 
     def test_invalid_n_boot_validation(self):
         """Test that invalid n_boot raises ValueError."""
         baseline = [100] * 10
-        change = [100] * 10
+        target = [100] * 10
 
         with pytest.raises(ValueError, match="n_boot must be positive"):
-            equivalence_bootstrap_median(baseline, change, n_boot=0)
+            equivalence_bootstrap_median(baseline, target, n_boot=0)
 
         with pytest.raises(ValueError, match="n_boot must be positive"):
-            equivalence_bootstrap_median(baseline, change, n_boot=-100)
+            equivalence_bootstrap_median(baseline, target, n_boot=-100)
 
     def test_reproducibility_with_seed(self):
         """Test that same seed produces same results."""
         baseline = [100, 105, 98, 102, 99] * 2
-        change = [102, 107, 100, 104, 101] * 2
+        target = [102, 107, 100, 104, 101] * 2
 
-        result1 = equivalence_bootstrap_median(baseline, change, seed=42, n_boot=1000)
-        result2 = equivalence_bootstrap_median(baseline, change, seed=42, n_boot=1000)
+        result1 = equivalence_bootstrap_median(baseline, target, seed=42, n_boot=1000)
+        result2 = equivalence_bootstrap_median(baseline, target, seed=42, n_boot=1000)
 
         assert result1.equivalent == result2.equivalent
         assert result1.ci.ci_low == result2.ci.ci_low
@@ -516,11 +516,11 @@ class TestEquivalenceBootstrapMedian:
     def test_quantile_consistency(self):
         """Test that quantile calculations are consistent."""
         baseline = [100] * 20
-        change = [110] * 20
+        target = [110] * 20
 
         # Run multiple times with different seeds
         results = [
-            equivalence_bootstrap_median(baseline, change, seed=i, n_boot=500)
+            equivalence_bootstrap_median(baseline, target, seed=i, n_boot=500)
             for i in range(5)
         ]
 
@@ -531,11 +531,11 @@ class TestEquivalenceBootstrapMedian:
     def test_equivalence_margin_boundary_is_strict(self):
         """Test that CI touching the margin is NOT considered equivalent."""
         baseline = [100.0] * 10
-        change = [130.0] * 10  # Constant delta exactly 30ms
+        target = [130.0] * 10  # Constant delta exactly 30ms
 
         result = equivalence_bootstrap_median(
             baseline,
-            change,
+            target,
             margin_ms=30.0,
             n_boot=500,
             seed=123,
@@ -554,11 +554,11 @@ class TestEdgeCases:
         """Test threshold behavior for very fast operations."""
         # Use more consistent data to avoid quality gate rejection
         baseline = [0.1, 0.11, 0.09, 0.1, 0.11, 0.1, 0.09, 0.1, 0.11, 0.1]  # Low variance
-        change = [0.12, 0.13, 0.11, 0.12, 0.13, 0.12, 0.11, 0.12, 0.13, 0.12]  # Consistent small increase
+        target = [0.12, 0.13, 0.11, 0.12, 0.13, 0.12, 0.11, 0.12, 0.13, 0.12]  # Consistent small increase
 
         result = gate_regression(
             baseline,
-            change,
+            target,
             ms_floor=50.0,
             pct_floor=0.05  # 5% of 0.1 = 0.005ms
         )
@@ -574,19 +574,19 @@ class TestEdgeCases:
     def test_all_zeros(self):
         """Test handling of all-zero deltas."""
         baseline = [100] * 10
-        change = [100] * 10  # No change
+        target = [100] * 10  # No change
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Should pass - no regression
         assert result.passed is True
 
     def test_negative_deltas(self):
-        """Test handling when change is faster than baseline."""
+        """Test handling when target is faster than baseline."""
         baseline = [200] * 10
-        change = [100] * 10  # Improvement
+        target = [100] * 10  # Improvement
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Should pass - this is an improvement
         assert result.passed is True
@@ -595,9 +595,9 @@ class TestEdgeCases:
     def test_single_sample(self):
         """Test with minimum sample size."""
         baseline = [100]
-        change = [110]
+        target = [110]
 
-        result = gate_regression(baseline, change)
+        result = gate_regression(baseline, target)
 
         # Should work but may not have reliable statistics
         assert isinstance(result, GateResult)

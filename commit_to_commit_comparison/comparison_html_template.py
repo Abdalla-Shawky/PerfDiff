@@ -55,11 +55,11 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
         name = comparison.name
         result_obj = comparison.gate_result
         baseline_arr = np.array(comparison.baseline_data)
-        change_arr = np.array(comparison.change_data)
+        target_arr = np.array(comparison.target_data)
 
         baseline_median = float(np.median(baseline_arr))
-        change_median = float(np.median(change_arr))
-        delta = change_median - baseline_median
+        target_median = float(np.median(target_arr))
+        delta = target_median - baseline_median
 
         # Determine status
         if result_obj.inconclusive:
@@ -89,7 +89,7 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
             <span class="status-badge {status_class}">{status}</span>
           </td>
           <td class="numeric-cell">{_fmt_ms(baseline_median)}</td>
-          <td class="numeric-cell">{_fmt_ms(change_median)}</td>
+          <td class="numeric-cell">{_fmt_ms(target_median)}</td>
           <td class="numeric-cell delta-{delta_class}">{delta_formatted}</td>
           <td class="action-cell">
             <a href="{escape(name)}.html" class="view-details-btn">View Details</a>
@@ -550,7 +550,7 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
             <th>Trace Name</th>
             <th>Status</th>
             <th>Baseline Median</th>
-            <th>Change Median</th>
+            <th>Target Median</th>
             <th>Delta (Δ)</th>
             <th>Actions</th>
           </tr>

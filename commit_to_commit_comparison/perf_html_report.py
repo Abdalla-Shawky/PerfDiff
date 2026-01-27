@@ -71,8 +71,8 @@ from constants import (
     ANIMATION_DURATION_NORMAL,
     ANIMATION_DURATION_SLOW,
     CHART_COLOR_BASELINE,
-    CHART_COLOR_CHANGE_IMPROVEMENT,
-    CHART_COLOR_CHANGE_REGRESSION,
+    CHART_COLOR_TARGET_IMPROVEMENT,
+    CHART_COLOR_TARGET_REGRESSION,
     CHART_COLOR_NEUTRAL,
     DARK_BG_PRIMARY,
     DARK_BG_SECONDARY,
@@ -131,13 +131,13 @@ def _mini_table(rows: List[List[str]]) -> str:
 def render_html_report(
     title: str,
     baseline: List[float],
-    change: List[float],
+    target: List[float],
     result: Dict[str, Any],
     mode: str,
     eq: Optional[Dict[str, Any]] = None,
 ) -> str:
     a = np.array(baseline, dtype=float)
-    b = np.array(change, dtype=float)
+    b = np.array(target, dtype=float)
     d = b - a
 
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -158,15 +158,15 @@ def render_html_report(
         status_color = "#f44336"  # Red
 
     base_med = float(np.median(a))
-    change_med = float(np.median(b))
+    target_med = float(np.median(b))
     delta_med = float(np.median(d))
     base_p90 = float(np.quantile(a, P90_QUANTILE, method="linear"))
-    change_p90 = float(np.quantile(b, P90_QUANTILE, method="linear"))
+    target_p90 = float(np.quantile(b, P90_QUANTILE, method="linear"))
     delta_p90 = float(np.quantile(d, P90_QUANTILE, method="linear"))
     pos_frac = float(np.mean(d > 0))
 
     # Calculate percentage change for plain English
-    pct_change = ((change_med - base_med) / base_med * PCT_CONVERSION_FACTOR) if base_med > 0 else 0
+    pct_change = ((target_med - base_med) / base_med * PCT_CONVERSION_FACTOR) if base_med > 0 else 0
 
     # Determine plain English explanation
     if inconclusive:
@@ -301,10 +301,10 @@ def render_html_report(
         }
 
     baseline_quality = assess_data_quality(a, "Baseline")
-    change_quality = assess_data_quality(b, "Change")
+    target_quality = assess_data_quality(b, "Target")
 
     # Overall data quality verdict
-    overall_quality_score = (baseline_quality["score"] + change_quality["score"]) / 2
+    overall_quality_score = (baseline_quality["score"] + target_quality["score"]) / 2
     if overall_quality_score >= OVERALL_HIGH_CONFIDENCE:
         overall_quality_verdict = "✅ High confidence in results"
         overall_quality_class = "good"
@@ -338,25 +338,25 @@ def render_html_report(
 
     max_run = float(max(np.max(a), np.max(b)))
 
-    # Detect outliers in baseline and change
+    # Detect outliers in baseline and target
     baseline_outliers = detect_outliers(a)
-    change_outliers = detect_outliers(b)
+    target_outliers = detect_outliers(b)
 
     runs_rows = []
     for i, (ai, bi, di) in enumerate(zip(a.tolist(), b.tolist(), d.tolist()), start=1):
         # Mark outliers with a badge
         baseline_val = _fmt_ms(ai)
-        change_val = _fmt_ms(bi)
+        target_val = _fmt_ms(bi)
 
         if ai in baseline_outliers:
             baseline_val = f'{_fmt_ms(ai)} <span class="outlier-badge">⚠️</span>'
-        if bi in change_outliers:
-            change_val = f'{_fmt_ms(bi)} <span class="outlier-badge">⚠️</span>'
+        if bi in target_outliers:
+            target_val = f'{_fmt_ms(bi)} <span class="outlier-badge">⚠️</span>'
 
         runs_rows.append([
             str(i),
             baseline_val,
-            change_val,
+            target_val,
             _fmt_ms(di),
         ])
 
@@ -365,10 +365,10 @@ def render_html_report(
         ["Status", status],
         ["N (paired)", str(len(d))],
         ["Baseline median", _fmt_ms(base_med)],
-        ["Change median", _fmt_ms(change_med)],
-        ["Median delta (change-baseline)", _fmt_ms(delta_med)],
+        ["Target median", _fmt_ms(target_med)],
+        ["Median delta (target-baseline)", _fmt_ms(delta_med)],
         ["Baseline p90", _fmt_ms(base_p90)],
-        ["Change p90", _fmt_ms(change_p90)],
+        ["Target p90", _fmt_ms(target_p90)],
         ["p90 delta", _fmt_ms(delta_p90)],
         ["Positive delta fraction", _fmt_pct(pos_frac)],
     ]
@@ -413,7 +413,7 @@ def render_html_report(
 
     # Prepare data for charts and exports (as JSON)
     baseline_data_json = json.dumps(a.tolist())
-    change_data_json = json.dumps(b.tolist())
+    target_data_json = json.dumps(b.tolist())
     delta_data_json = json.dumps(d.tolist())
 
     # Prepare full data export
@@ -424,15 +424,15 @@ def render_html_report(
         "status": {"passed": passed, "reason": result.get("reason", "")},
         "measurements": {
             "baseline": a.tolist(),
-            "change": b.tolist(),
+            "target": b.tolist(),
             "delta": d.tolist(),
         },
         "statistics": {
             "baseline_median": base_med,
-            "change_median": change_med,
+            "target_median": target_med,
             "median_delta": delta_med,
             "baseline_p90": base_p90,
-            "change_p90": change_p90,
+            "target_p90": target_p90,
             "p90_delta": delta_p90,
             "positive_fraction": pos_frac,
         },
@@ -444,12 +444,12 @@ def render_html_report(
                 "cv": baseline_quality["cv"],
                 "outliers": baseline_quality["num_outliers"],
             },
-            "change": {
-                "score": change_quality["score"],
-                "verdict": change_quality["verdict"],
-                "n": change_quality["n"],
-                "cv": change_quality["cv"],
-                "outliers": change_quality["num_outliers"],
+            "target": {
+                "score": target_quality["score"],
+                "verdict": target_quality["verdict"],
+                "n": target_quality["n"],
+                "cv": target_quality["cv"],
+                "outliers": target_quality["num_outliers"],
             },
         },
         "details": details,
@@ -459,8 +459,8 @@ def render_html_report(
 
     export_data_json = json.dumps(export_data, indent=2)
 
-    # Determine chart color for change data (regression vs improvement)
-    chart_change_color = CHART_COLOR_CHANGE_REGRESSION if delta_med > 0 else CHART_COLOR_CHANGE_IMPROVEMENT
+    # Determine chart color for target data (regression vs improvement)
+    chart_target_color = CHART_COLOR_TARGET_REGRESSION if delta_med > 0 else CHART_COLOR_TARGET_IMPROVEMENT
 
     # Pass all local variables plus module-level helper functions to template
     template_context = locals()
@@ -476,10 +476,10 @@ def render_html_report(
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description="Generate an HTML perf regression report from paired baseline/change arrays."
+        description="Generate an HTML perf regression report from paired baseline/target arrays."
     )
     p.add_argument("--baseline", required=True, help='Baseline array: JSON "[...]" or "1,2,3"')
-    p.add_argument("--change", required=True, help='Change array: JSON "[...]" or "1,2,3"')
+    p.add_argument("--target", required=True, help='Target array: JSON "[...]" or "1,2,3"')
     p.add_argument("--out", required=True, help="Output HTML file path, e.g. report.html")
     p.add_argument("--title", default="Performance Regression Report", help="Report title")
 
@@ -504,7 +504,7 @@ def main() -> int:
 
     try:
         baseline = _parse_array(args.baseline)
-        change = _parse_array(args.change)
+        target = _parse_array(args.target)
     except Exception as e:
         print(f"Error parsing arrays: {e}", file=sys.stderr)
         return EXIT_PARSE_ERROR
@@ -512,7 +512,7 @@ def main() -> int:
     # Run the PR-style gate always (even for release, useful signal)
     gate = gate_regression(
         baseline=baseline,
-        change=change,
+        target=target,
         ms_floor=args.ms_floor,
         pct_floor=args.pct_floor,
         tail_quantile=args.tail_quantile,
@@ -530,7 +530,7 @@ def main() -> int:
     if args.mode == "release":
         eq = equivalence_bootstrap_median(
             baseline=baseline,
-            change=change,
+            target=target,
             margin_ms=args.equivalence_margin_ms,
             confidence=args.bootstrap_confidence,
             n_boot=args.bootstrap_n,
@@ -547,7 +547,7 @@ def main() -> int:
     report = render_html_report(
         title=args.title,
         baseline=baseline,
-        change=change,
+        target=target,
         result={
             "passed": gate.passed,
             "reason": gate.reason,

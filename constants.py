@@ -56,7 +56,7 @@ TAIL_PCT_FLOOR = 0.05
 # ==============================================================================
 
 # Maximum allowed fraction of "slower" runs (0.0 - 1.0)
-# If more than this fraction of change runs are slower than baseline median,
+# If more than this fraction of target runs are slower than baseline median,
 # it indicates a consistent performance degradation
 # 0.70 = 70% of runs can be slower before flagging as regression
 DIRECTIONALITY = 0.70
@@ -299,8 +299,8 @@ ANIMATION_DURATION_SLOW = 500      # Slow transitions (scroll animations)
 
 # Chart color palette
 CHART_COLOR_BASELINE = "#1976d2"            # Blue - baseline measurements
-CHART_COLOR_CHANGE_IMPROVEMENT = "#2e7d32"  # Green - performance improvement
-CHART_COLOR_CHANGE_REGRESSION = "#d32f2f"   # Red - performance regression
+CHART_COLOR_TARGET_IMPROVEMENT = "#2e7d32"  # Green - performance improvement
+CHART_COLOR_TARGET_REGRESSION = "#d32f2f"   # Red - performance regression
 CHART_COLOR_NEUTRAL = "#f57c00"             # Orange - neutral/warning
 
 # Dark mode colors

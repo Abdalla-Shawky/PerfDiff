@@ -26,7 +26,7 @@ pip install numpy scipy pytest
 ```bash
 python perf_html_report.py \
   --baseline "[800,805,798,810,799,803,801,807,802,804]" \
-  --change   "[845,850,838,860,842,848,844,855,849,847]" \
+  --target   "[845,850,838,860,842,848,844,855,849,847]" \
   --out performance_report.html
 ```
 
@@ -41,7 +41,7 @@ python perf_html_report.py \
 ## What Does It Do?
 
 This tool:
-1. ✅ **Compares** baseline vs change performance measurements
+1. ✅ **Compares** baseline vs target performance measurements
 2. 📊 **Detects** regressions using multiple statistical tests
 3. 📈 **Generates** beautiful HTML reports with visualizations
 4. 🤖 **Integrates** with CI/CD via exit codes
@@ -184,7 +184,7 @@ See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) and [QUALITY_GATES_GUI
 ```bash
 python perf_html_report.py \
   --baseline "[100,102,98,101,99]" \
-  --change   "[110,112,108,111,109]" \
+  --target   "[110,112,108,111,109]" \
   --out report.html
 ```
 
@@ -193,7 +193,7 @@ python perf_html_report.py \
 ```bash
 python perf_html_report.py \
   --baseline "[50,52,48,51,49]" \
-  --change   "[60,62,58,61,59]" \
+  --target   "[60,62,58,61,59]" \
   --ms-floor 20.0 \
   --pct-floor 0.10 \
   --out custom_report.html
@@ -204,7 +204,7 @@ python perf_html_report.py \
 ```bash
 python perf_html_report.py \
   --baseline "[800,805,798,810,799]" \
-  --change   "[802,807,800,812,801]" \
+  --target   "[802,807,800,812,801]" \
   --mode release \
   --equivalence-margin-ms 30.0 \
   --out release_report.html
@@ -215,12 +215,12 @@ python perf_html_report.py \
 ```bash
 # Run benchmarks
 ./run_benchmarks.sh > baseline.txt
-./run_benchmarks.sh > change.txt
+./run_benchmarks.sh > target.txt
 
 # Check for regression
 python perf_html_report.py \
   --baseline "$(cat baseline.txt)" \
-  --change "$(cat change.txt)" \
+  --target "$(cat target.txt)" \
   --out report.html
 
 # Exit code will be 1 if regression detected
@@ -239,7 +239,7 @@ fi
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--baseline` | Baseline measurements (required) | - |
-| `--change` | Change measurements (required) | - |
+| `--target` | Target measurements (required) | - |
 | `--out` | Output HTML file (required) | - |
 | `--mode` | `pr` or `release` | `pr` |
 | `--ms-floor` | Absolute threshold (ms) | `50.0` |
@@ -337,7 +337,7 @@ All documentation is located in the [`docs/`](docs/) folder.
 ### 1. Data Collection
 You provide two sets of paired measurements:
 - **Baseline**: Performance before changes
-- **Change**: Performance after changes
+- **Target**: Performance after changes
 
 ### 2. Statistical Analysis
 
@@ -346,7 +346,7 @@ The tool performs multiple checks:
 ```
 ┌─────────────────────────────────────────┐
 │ Median Delta Check                      │
-│ Is median(change - baseline) too large? │
+│ Is median(target - baseline) too large? │
 └─────────────────────────────────────────┘
            ↓
 ┌─────────────────────────────────────────┐
@@ -409,14 +409,14 @@ git checkout feature-branch
 ```bash
 for i in {1..10}; do
   curl -w "%{time_total}\n" -o /dev/null -s https://api.example.com/endpoint
-done > change.txt
+done > target.txt
 ```
 
 #### Step 4: Check for Regression
 ```bash
 python perf_html_report.py \
   --baseline "$(cat baseline.txt | tr '\n' ',')" \
-  --change "$(cat change.txt | tr '\n' ',')" \
+  --target "$(cat target.txt | tr '\n' ',')" \
   --out api_perf_report.html \
   --title "API Endpoint - Feature Branch"
 ```

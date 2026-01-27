@@ -13,7 +13,7 @@ from .commit_to_commit_comparison import GateResult
 def render_trace_detail_template(
     trace_name: str,
     baseline: np.ndarray,
-    change: np.ndarray,
+    target: np.ndarray,
     result: GateResult,
     prev_trace: str = None,
     next_trace: str = None,
@@ -24,7 +24,7 @@ def render_trace_detail_template(
     Args:
         trace_name: Name of the trace
         baseline: Baseline measurements array
-        change: Change measurements array
+        target: Target measurements array
         result: GateResult from gate_regression()
         prev_trace: Name of previous trace (for navigation)
         next_trace: Name of next trace (for navigation)
@@ -46,7 +46,7 @@ def render_trace_detail_template(
     base_html = render_html_report(
         title=f"Performance Report: {trace_name}",
         baseline=baseline.tolist(),
-        change=change.tolist(),
+        target=target.tolist(),
         result=result_dict,
         mode="pr"  # PR mode for regression detection
     )
