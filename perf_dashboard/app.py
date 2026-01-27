@@ -357,7 +357,7 @@ def run_regression_analysis(data: List[Dict[str, Any]], trace_name: str) -> Dict
     # Use main_health algorithm if available
     if assess_main_health:
         try:
-            report = assess_main_health(series)
+            report = assess_main_health(series, adaptive=True)
 
             # Extract all detection results
             control = report.control if report else None
@@ -734,7 +734,7 @@ def generate_regression_details():
 
         # Run main_health analysis
         if assess_main_health:
-            report = assess_main_health(series)
+            report = assess_main_health(series, adaptive=True)
             overall_status = "ALERT" if report.overall_alert else "OK"
 
             # Try to get regression index from different detectors

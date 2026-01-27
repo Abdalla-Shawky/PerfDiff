@@ -429,6 +429,51 @@ def ewma_monitor(
 # Step-fit (simple, median-only)
 # -----------------------------
 
+def _refine_changepoint_to_largest_jump(
+    series: List[float],
+    statistical_index: int,
+    search_radius: int = 10,
+) -> int:
+    """
+    Refine a statistical changepoint to find the actual regression commit.
+
+    The step_fit algorithm finds the best statistical split (maximizes median difference),
+    but this may be a few points away from the actual commit that caused the regression.
+
+    This function scans a window around the statistical split to find the index
+    with the largest consecutive point-to-point jump, which is the actual commit
+    that introduced the regression.
+
+    Args:
+        series: Full time series
+        statistical_index: Initial changepoint from step_fit
+        search_radius: How many points to search before/after the statistical index
+
+    Returns:
+        Refined index pointing to the CAUSING commit (where the regression was introduced)
+    """
+    n = len(series)
+
+    # Define search window
+    start = max(0, statistical_index - search_radius)
+    end = min(n - 1, statistical_index + search_radius + 1)
+
+    if end - start < 2:
+        return statistical_index  # Not enough data to refine
+
+    # Find the largest consecutive jump in the search window
+    max_jump = 0.0
+    max_jump_index = statistical_index
+
+    for i in range(start, end - 1):
+        jump = abs(series[i + 1] - series[i])
+        if jump > max_jump:
+            max_jump = jump
+            max_jump_index = i + 1  # Return the CAUSING commit (where the regression was introduced)
+
+    return max_jump_index
+
+
 def step_fit(
     series: List[float],
     scan_back: Optional[int] = HEALTH_STEP_SCAN_BACK,
@@ -438,6 +483,7 @@ def step_fit(
     score_k: float = HEALTH_STEP_SCORE_K,
     min_mad: float = HEALTH_MIN_MAD,
     step_pct_threshold: Optional[float] = HEALTH_STEP_PCT_THRESHOLD,
+    refine_to_largest_jump: bool = True,  # NEW: Enable changepoint refinement
 ) -> Optional[StepFitResult]:
     """
     Simple step-fit for median-only data.
@@ -453,6 +499,7 @@ def step_fit(
       scan_back: Number of recent points to scan. None = scan entire series (recommended for exact commit detection)
       min_mad: Minimum MAD to prevent division by zero
       step_pct_threshold: Percentage change threshold for practical alarm (e.g., 20.0 for 20%)
+      refine_to_largest_jump: If True, refine changepoint to the largest consecutive jump (actual regression commit)
     """
     # Parameter validation
     if scan_back is not None and scan_back <= 0:
@@ -538,17 +585,38 @@ def step_fit(
 
     found = statistical_alarm or practical_alarm
 
+    # Calculate initial change_index (statistical split)
+    initial_change_index = int(start + best_t)
+
+    # Refine changepoint to largest jump if requested
+    if found and refine_to_largest_jump:
+        refined_index = _refine_changepoint_to_largest_jump(
+            series=list(x_full),
+            statistical_index=initial_change_index,
+            search_radius=10
+        )
+        change_index = refined_index
+
+        # Add refinement info to reason if the index changed
+        if refined_index != initial_change_index:
+            refinement_note = f" → refined to idx={refined_index} (largest jump)"
+        else:
+            refinement_note = ""
+    else:
+        change_index = initial_change_index
+        refinement_note = ""
+
     # Build reason string showing which threshold(s) triggered
     if found:
-        reason = f"FOUND step: idx={start + best_t}, before={best_before:.2f}, after={best_after:.2f}, delta={best_delta:.2f}"
+        reason = f"FOUND step: idx={change_index}, before={best_before:.2f}, after={best_after:.2f}, delta={best_delta:.2f}"
         if statistical_alarm:
             reason += f" (score={best_score:.2f}≥{score_k})"
         if practical_alarm:
             reason += f" ({pct_change:.1f}%≥{step_pct_threshold}%)"
-        reason += f", scan_window=[{start},{end})"
+        reason += f", scan_window=[{start},{end}){refinement_note}"
     else:
         reason = (
-            f"WEAK step: idx={start + best_t}, "
+            f"WEAK step: idx={initial_change_index}, "
             f"before={best_before:.2f}, after={best_after:.2f}, "
             f"delta={best_delta:.2f}, score={best_score:.2f}, "
             f"scan_window=[{start},{end})"
@@ -557,7 +625,7 @@ def step_fit(
     return StepFitResult(
         found=found,
         reason=reason,
-        change_index=int(start + best_t),
+        change_index=change_index,
         before_median=float(best_before),
         after_median=float(best_after),
         delta=float(best_delta),
@@ -739,10 +807,10 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 30,
             'ewma_pct_threshold': 15.0,  # Default
             'step_min_segment': 10,
-            'step_score_k': 4.0,  # Default strict threshold
+            'step_score_k': 1.2,  # Lowered from 4.0 to catch steps in noisy data
             'trend_total_pct_threshold': 5.0,  # 5.0% total change (default)
             'trend_slope_pct_threshold': 3.0,  # 3.0%/point (default)
-            'description': 'Very long series - conservative detection'
+            'description': 'Very long series - balanced detection'
         }
 
 

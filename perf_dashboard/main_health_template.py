@@ -8,6 +8,32 @@ premium health monitoring reports with charts and quality assessment.
 from typing import List, Dict, Any, Optional
 
 
+def _format_value(value: float, precision: int = 2) -> str:
+    """
+    Format a numeric value intelligently, preserving original precision.
+
+    - If the value is an integer (or very close), show without decimals
+    - Otherwise, show with minimal decimals (remove trailing zeros)
+
+    Args:
+        value: The numeric value to format
+        precision: Maximum decimal places (default: 2)
+
+    Returns:
+        Formatted string representation
+    """
+    if value is None:
+        return "N/A"
+
+    # Check if value is essentially an integer
+    if abs(value - round(value)) < 1e-9:
+        return str(int(round(value)))
+
+    # Format with specified precision and remove trailing zeros
+    formatted = f"{value:.{precision}f}".rstrip('0').rstrip('.')
+    return formatted
+
+
 def render_health_template(
     series: List[float],
     report: Any,  # HealthReport
@@ -34,34 +60,22 @@ def render_health_template(
     stepfit = report.stepfit
     trend = report.trend
 
-    # Filter series to show only 20 before and 20 after regression point
+    # Always show the FULL series - no filtering
+    # This ensures the chart shows exactly the same data that was analyzed
     display_series = series
     display_offset = 0
-    start_idx = 0
-    end_idx = len(series)
 
-    if regression_index is not None:
-        # Calculate window around regression point
-        before_count = 20
-        after_count = 20
-        start_idx = max(0, regression_index - before_count)
-        end_idx = min(len(series), regression_index + after_count + 1)
+    # Prepare series data for chart (full, unfiltered data)
+    series_json = str(series)
 
-        display_series = series[start_idx:end_idx]
-        display_offset = start_idx  # Track offset for correct indexing
-
-    # Prepare series data for chart
-    series_json = str(display_series)
-
-    # Calculate quality score based on full series (not filtered)
+    # Calculate quality score
     quality_score, quality_verdict, quality_issues, outlier_indices = _assess_data_quality(series, report)
 
-    # Adjust outlier indices to match filtered series
-    adjusted_outlier_indices = [idx - display_offset for idx in outlier_indices if start_idx <= idx < end_idx]
-    outlier_indices_json = str(adjusted_outlier_indices)
+    # Use all outlier indices (no filtering needed since we show full series)
+    outlier_indices_json = str(outlier_indices)
 
-    # Adjust regression index for filtered series
-    adjusted_regression_index = regression_index - display_offset if regression_index is not None else None
+    # No adjustment needed since we show the full series
+    adjusted_regression_index = regression_index
 
     # Calculate trimmed mean (average excluding outliers)
     trimmed_mean = _calculate_trimmed_mean(series, outlier_indices)
@@ -84,8 +98,6 @@ def render_health_template(
     <title>{trace_name} Regression Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -418,40 +430,6 @@ def render_health_template(
             transition: width 0.3s ease;
         }}
 
-        /* Zoom controls */
-        .zoom-controls {{
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            gap: 8px;
-            z-index: 10;
-        }}
-
-        .zoom-btn {{
-            background: var(--bg-secondary);
-            border: 1px solid var(--border, rgba(0,0,0,0.1));
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-primary);
-            box-shadow: var(--shadow-sm);
-            transition: all 0.2s;
-            user-select: none;
-        }}
-
-        .zoom-btn:hover {{
-            background: var(--bg-tertiary);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }}
-
-        .zoom-btn:active {{
-            transform: translateY(0);
-        }}
-
         /* Collapsible sections */
         details {{
             background: var(--bg-secondary);
@@ -573,7 +551,7 @@ def render_health_template(
                 </div>
                 <div class="metric">
                     <div class="metric-label">Trimmed Mean</div>
-                    <div class="metric-value">{trimmed_mean:.2f}<span class="metric-unit"> ms</span></div>
+                    <div class="metric-value">{_format_value(trimmed_mean)}<span class="metric-unit"> ms</span></div>
                 </div>
             </div>
 
@@ -592,12 +570,10 @@ def render_health_template(
         <!-- Time Series Chart -->
         <div class="card">
             <div class="card-title">📈 Time Series Analysis</div>
+            <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px;">
+                Showing all {len(series)} data points analyzed (no filtering applied)
+            </p>
             <div class="chart-container">
-                <div class="zoom-controls">
-                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">🔍+</button>
-                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">🔍−</button>
-                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">↺</button>
-                </div>
                 <canvas id="timeSeriesChart"></canvas>
             </div>
         </div>
@@ -808,20 +784,16 @@ def render_health_template(
             label: 'Measured Values',
             data: series.map((val, idx) => ({{x: idx, y: val}})),
             borderWidth: 2,
-            pointRadius: (ctx) => outlierIndices.includes(ctx.dataIndex) ? 6 : 3,
-            pointStyle: (ctx) => outlierIndices.includes(ctx.dataIndex) ? 'triangle' : 'circle',
-            pointBackgroundColor: (ctx) => {{
-                if (outlierIndices.includes(ctx.dataIndex)) return '#f57c00';  // Orange for outliers
-                return '#0066ff';  // Blue for all other points
-            }},
-            pointHoverRadius: 5,
-            tension: 0.1,
+            pointRadius: 0,  // No point markers for cleaner, more readable chart
+            pointHoverRadius: 0,  // No hover markers
+            tension: 0,  // No interpolation - show exact data points with straight lines
             fill: true,
             borderColor: '#0066ff',  // Keep line blue throughout
-            backgroundColor: 'rgba(0, 102, 255, 0.1)'  // Keep fill blue throughout
+            backgroundColor: 'rgba(0, 102, 255, 0.1)',  // Keep fill blue throughout
+            stepped: false  // Use straight lines between points (not stepped/bar chart)
         }}];
 
-        {_render_chart_baseline(control, len(display_series))}
+        {_render_chart_baseline(control, len(series))}
 
         // Horizontal crosshair plugin
         let mouseY = null;
@@ -944,26 +916,7 @@ def render_health_template(
                                 }}
                             }}
                         }}
-                    }} : {{}},
-                    zoom: {{
-                        pan: {{
-                            enabled: false,
-                            mode: 'x'
-                        }},
-                        zoom: {{
-                            wheel: {{
-                                enabled: false,
-                                speed: 0.1
-                            }},
-                            pinch: {{
-                                enabled: false
-                            }},
-                            mode: 'x'
-                        }},
-                        limits: {{
-                            x: {{min: 0, max: series.length - 1}}
-                        }}
-                    }}
+                    }} : {{}}
                 }},
                 scales: {{
                     x: {{
@@ -988,19 +941,6 @@ def render_health_template(
                 }}
             }}
         }});
-
-        // Zoom control functions
-        function zoomIn() {{
-            chart.zoom(1.2);
-        }}
-
-        function zoomOut() {{
-            chart.zoom(0.8);
-        }}
-
-        function resetZoom() {{
-            chart.resetZoom();
-        }}
     </script>
 </body>
 </html>
@@ -1161,7 +1101,7 @@ def _render_outlier_rows(outlier_indices: List[int], series: List[float]) -> str
         rows += f"""
             <tr>
                 <td>{idx}</td>
-                <td>{series[idx]:.2f} ms</td>
+                <td>{_format_value(series[idx])} ms</td>
                 <td>Anomaly detected via rolling MAD (k=3.5)</td>
             </tr>
         """
@@ -1185,15 +1125,15 @@ def _render_regression_alert(index: int, stepfit: Any) -> str:
         <div class="regression-details">
             <div class="metric">
                 <div class="metric-label">Before Median</div>
-                <div class="metric-value" style="font-size: 18px;">{before:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value" style="font-size: 18px;">{_format_value(before)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">After Median</div>
-                <div class="metric-value" style="font-size: 18px;">{after:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value" style="font-size: 18px;">{_format_value(after)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Delta</div>
-                <div class="metric-value" style="font-size: 18px; color: var(--danger);">{delta:+.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value" style="font-size: 18px; color: var(--danger);">{'+' if delta > 0 else ''}{_format_value(delta)}<span class="metric-unit"> ms</span></div>
             </div>
         </div>
         ''' if before is not None else ''}
@@ -1231,19 +1171,19 @@ def _render_control_chart(control: Any) -> str:
         <div class="metric-grid">
             <div class="metric">
                 <div class="metric-label">Baseline Median</div>
-                <div class="metric-value">{control.baseline_median:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(control.baseline_median)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Current Value</div>
-                <div class="metric-value">{control.value:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(control.value)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Delta (Difference)</div>
-                <div class="metric-value">{abs(control.value - control.baseline_median):.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(abs(control.value - control.baseline_median))}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Practical Threshold</div>
-                <div class="metric-value">{max(50, 0.05 * control.baseline_median):.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(max(50, 0.05 * control.baseline_median))}<span class="metric-unit"> ms</span></div>
             </div>
         </div>
 
@@ -1322,19 +1262,19 @@ def _render_ewma(ewma: Any) -> str:
         <div class="metric-grid">
             <div class="metric">
                 <div class="metric-label">EWMA Value</div>
-                <div class="metric-value">{ewma.ewma:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(ewma.ewma)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Current Value</div>
-                <div class="metric-value">{ewma.value:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(ewma.value)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Upper Bound</div>
-                <div class="metric-value">{ewma.upper_bound:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(ewma.upper_bound)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Lower Bound</div>
-                <div class="metric-value">{ewma.lower_bound:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(ewma.lower_bound)}<span class="metric-unit"> ms</span></div>
             </div>
         </div>
     </div>
@@ -1364,19 +1304,19 @@ def _render_stepfit(stepfit: Any) -> str:
             </div>
             <div class="metric">
                 <div class="metric-label">Before Median</div>
-                <div class="metric-value">{stepfit.before_median:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(stepfit.before_median)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">After Median</div>
-                <div class="metric-value">{stepfit.after_median:.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value">{_format_value(stepfit.after_median)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Delta</div>
-                <div class="metric-value" style="color: var(--danger);">{stepfit.delta:+.2f}<span class="metric-unit"> ms</span></div>
+                <div class="metric-value" style="color: var(--danger);">{'+' if stepfit.delta > 0 else ''}{_format_value(stepfit.delta)}<span class="metric-unit"> ms</span></div>
             </div>
             <div class="metric">
                 <div class="metric-label">Score</div>
-                <div class="metric-value">{min(stepfit.score, 9999.99):.2f}<span class="metric-unit"></span></div>
+                <div class="metric-value">{_format_value(min(stepfit.score, 9999.99))}<span class="metric-unit"></span></div>
             </div>
         </div>
         """
