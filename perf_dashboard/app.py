@@ -857,7 +857,7 @@ def get_available_traces():
 
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
+    port = int(os.getenv('PORT', 5003))
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
 
     print(f"""
