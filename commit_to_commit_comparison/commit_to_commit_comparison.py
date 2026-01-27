@@ -55,21 +55,38 @@ class GateResult:
                      When True, passed will also be True to prevent build
                      failures, but users should treat this as "cannot determine"
                      rather than "performance is acceptable".
+        no_change: True if all tests passed AND the delta is within practical
+                  significance threshold (no meaningful performance difference).
+                  When True, passed will also be True.
+
+    Possible states:
+        1. PASS (passed=True, inconclusive=False, no_change=False)
+           - No regression detected, measurable but acceptable change
+        2. NO CHANGE (passed=True, inconclusive=False, no_change=True)
+           - No meaningful performance difference detected
+        3. FAIL (passed=False, inconclusive=False, no_change=False)
+           - Regression detected
+        4. INCONCLUSIVE (passed=True, inconclusive=True, no_change=False)
+           - Data quality too poor to determine
 
     Examples:
         Regression detected:
-            GateResult(passed=False, reason="FAIL: ...", details={...}, inconclusive=False)
+            GateResult(passed=False, reason="FAIL: ...", details={...}, inconclusive=False, no_change=False)
 
-        No regression (genuine pass):
-            GateResult(passed=True, reason="PASS: ...", details={...}, inconclusive=False)
+        No regression (genuine pass with measurable change):
+            GateResult(passed=True, reason="PASS: ...", details={...}, inconclusive=False, no_change=False)
+
+        No meaningful change:
+            GateResult(passed=True, reason="NO CHANGE: ...", details={...}, inconclusive=False, no_change=True)
 
         Insufficient data quality (inconclusive):
-            GateResult(passed=True, reason="INCONCLUSIVE: ...", details={...}, inconclusive=True)
+            GateResult(passed=True, reason="INCONCLUSIVE: ...", details={...}, inconclusive=True, no_change=False)
     """
     passed: bool
     reason: str
     details: Dict[str, Any]
     inconclusive: bool = False
+    no_change: bool = False
 
 
 @dataclass
@@ -320,6 +337,8 @@ def gate_regression(
     # Collect failures
     failures = []
     passed = True
+    no_change = False
+    inconclusive = False
 
     # Check 1: Median delta vs threshold
     if median_delta > threshold:
@@ -391,6 +410,33 @@ def gate_regression(
                     failures.append(f"Wilcoxon test significant (p={p_greater:.4f} < {wilcoxon_alpha})")
             except Exception as e:
                 details["wilcoxon_error"] = str(e)
+
+    # Check for NO CHANGE state: tests passed AND delta within practical threshold
+    if passed:  # All regression checks passed
+        abs_delta = abs(median_delta)
+        rel_delta = abs_delta / baseline_median if baseline_median > 0 else 0.0
+
+        # Calculate dynamic practical threshold (same formula as override)
+        dynamic_practical_threshold = baseline_median * PRACTICAL_DELTA_PCT
+        dynamic_practical_threshold = max(MIN_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
+        dynamic_practical_threshold = min(MAX_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
+
+        # If change is negligible, mark as NO CHANGE
+        if abs_delta < dynamic_practical_threshold:
+            no_change = True
+            reason = (
+                f"NO CHANGE: Delta {median_delta:.2f}ms ({rel_delta*100:.2f}%) "
+                f"is within practical significance threshold ({dynamic_practical_threshold:.1f}ms). "
+                f"No meaningful performance difference detected."
+            )
+            details["no_change_assessment"] = {
+                "detected": True,
+                "abs_delta_ms": abs_delta,
+                "rel_delta_pct": rel_delta * 100,
+                "practical_threshold_ms": dynamic_practical_threshold,
+                "baseline_median_ms": baseline_median,
+                "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
+            }
 
     # Practical significance override
     # Even if statistical tests failed (directionality, Wilcoxon), override to PASS
@@ -464,7 +510,7 @@ def gate_regression(
         except Exception as e:
             details["bootstrap_error"] = str(e)
 
-    return GateResult(passed=passed, reason=reason, details=details)
+    return GateResult(passed=passed, reason=reason, details=details, inconclusive=inconclusive, no_change=no_change)
 
 
 def equivalence_bootstrap_median(

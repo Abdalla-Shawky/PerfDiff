@@ -144,6 +144,9 @@ def render_html_report(
     if inconclusive:
         status = "INCONCLUSIVE ⚠️"
         status_color = "#ff9800"  # Orange for warning
+    elif result.get("no_change", False):
+        status = "NO CHANGE ⚖️"
+        status_color = "#2196f3"  # Blue for info
     elif passed:
         status = "PASS ✅"
         status_color = "#4caf50"  # Green
@@ -169,6 +172,9 @@ def render_html_report(
             "⚠️ Cannot determine if performance changed. Measurements are too noisy/inconsistent. "
             "Fix data quality issues and re-test with interleaved measurements."
         )
+    elif result.get("no_change", False):
+        simple_verdict = f"No performance change detected (delta: {delta_med:.1f}ms, {abs(pct_change):.1f}%)"
+        recommendation = "⚖️ This change has no measurable performance impact. Safe to deploy."
     elif passed:
         if delta_med < 0:
             simple_verdict = f"Performance IMPROVED by {abs(delta_med):.1f}ms ({abs(pct_change):.1f}% faster)"
@@ -181,7 +187,10 @@ def render_html_report(
         recommendation = "❌ This change should be reviewed before deployment. Performance has degraded."
 
     # Simple comparison for non-technical users
-    if delta_med < 0:
+    if result.get("no_change", False):
+        change_icon = "⚖️"  # Balance/scale
+        change_color = "#2196f3"  # Blue
+    elif delta_med < 0:
         change_icon = "📈"  # Improvement
         change_color = "#137333"  # Green
     elif delta_med > 0:

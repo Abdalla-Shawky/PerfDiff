@@ -385,6 +385,10 @@ def render_template(**context) -> str:
       color: var(--color-warning);
       text-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
     }}
+    .big-status.no-change {{
+      color: var(--color-info);
+      text-shadow: 0 2px 10px rgba(33, 150, 243, 0.3);
+    }}
 
     .verdict {{
       font-size: 24px;
@@ -1025,7 +1029,7 @@ def render_template(**context) -> str:
   <div class="container">
     <!-- EXECUTIVE SUMMARY - Simple & Clear for Everyone -->
     <div class="executive-summary">
-      <div class="big-status {'inconclusive' if inconclusive else ('pass' if passed else 'fail')}">{status}</div>
+      <div class="big-status {'inconclusive' if inconclusive else ('no-change' if result.get('no_change', False) else ('pass' if passed else 'fail'))}">{status}</div>
       <div class="verdict">{escape(simple_verdict)}</div>
 
       <div class="comparison">

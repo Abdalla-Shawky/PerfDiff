@@ -40,7 +40,8 @@ class TestGateRegression:
 
         assert isinstance(result, GateResult)
         assert result.passed is True
-        assert "PASS:" in result.reason
+        # Can be either PASS or NO CHANGE depending on the delta size
+        assert "PASS:" in result.reason or "NO CHANGE:" in result.reason
 
     def test_realistic_arrays_pass(self):
         """Realistic, slightly noisy arrays that should pass."""
@@ -297,8 +298,10 @@ class TestGateRegression:
 
         result = gate_regression(baseline, change)
 
-        # Should have clear PASS or FAIL prefix
-        assert result.reason.startswith("PASS:") or result.reason.startswith("FAIL:")
+        # Should have clear PASS, NO CHANGE, or FAIL prefix
+        assert (result.reason.startswith("PASS:") or
+                result.reason.startswith("NO CHANGE:") or
+                result.reason.startswith("FAIL:"))
 
         if not result.passed:
             # Should not say "within threshold" if failed
