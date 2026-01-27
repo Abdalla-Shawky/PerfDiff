@@ -118,9 +118,9 @@ statistical methods to make decisions that are robust to noise.
 No critical correctness issues found in the current implementation.
 
 Notable considerations:
-- **Breaking change**: CLI uses `--target` instead of `--change`. Existing scripts need updates.
+- **CLI compatibility**: `--change` is supported as a deprecated alias for `--target` (warns on use).
 - **Inconclusive behavior**: Quality gates intentionally return PASS with `inconclusive=True` to avoid failing CI on bad data.
-- **Practical override**: Statistical failures can be overridden if deltas are below practical thresholds; this is intended but should be documented for stakeholders.
+- **Practical override**: Statistical failures can be overridden if deltas are below practical thresholds; this is intended and should be communicated to stakeholders.
 
 Potential enhancements (optional):
 - Add a deprecated `--change` alias in `perf_html_report.py` for backward compatibility.

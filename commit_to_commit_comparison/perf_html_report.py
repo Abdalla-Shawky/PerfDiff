@@ -479,7 +479,12 @@ def main() -> int:
         description="Generate an HTML perf regression report from paired baseline/target arrays."
     )
     p.add_argument("--baseline", required=True, help='Baseline array: JSON "[...]" or "1,2,3"')
-    p.add_argument("--target", required=True, help='Target array: JSON "[...]" or "1,2,3"')
+    p.add_argument("--target", required=False, help='Target array: JSON "[...]" or "1,2,3"')
+    p.add_argument(
+        "--change",
+        required=False,
+        help='[DEPRECATED] Use --target instead. Change array: JSON "[...]" or "1,2,3"',
+    )
     p.add_argument("--out", required=True, help="Output HTML file path, e.g. report.html")
     p.add_argument("--title", default="Performance Regression Report", help="Report title")
 
@@ -501,6 +506,16 @@ def main() -> int:
     p.add_argument("--equivalence-margin-ms", type=float, default=EQUIVALENCE_MARGIN_MS, help="Used only in --mode release")
 
     args = p.parse_args()
+
+    if args.target and args.change:
+        print("Error: Use only one of --target or --change (deprecated).", file=sys.stderr)
+        return EXIT_PARSE_ERROR
+    if not args.target and args.change:
+        args.target = args.change
+        print("Warning: --change is deprecated. Use --target instead.", file=sys.stderr)
+    if not args.target:
+        print("Error: --target is required.", file=sys.stderr)
+        return EXIT_PARSE_ERROR
 
     try:
         baseline = _parse_array(args.baseline)
