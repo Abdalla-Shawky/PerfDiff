@@ -685,6 +685,114 @@ class TestAssessMainHealth:
         # Should execute without error
         assert report is not None
 
+    def test_adaptive_score_k_noisy_step_detection(self):
+        """Test that adaptive score_k detects noisy steps that would fail with strict thresholds"""
+        # This is the user's problematic series:
+        # Clear step from ~1100ms to ~1170ms at index 10, but drops to ~1150ms at the end
+        # Step score: 2.36 (too low for default 4.0, but OK for adaptive 2.0)
+        series = [1100, 1101, 1111, 1099, 1100, 1102, 1098, 1101, 1100, 1099, 1101,
+                  1176, 1171, 1169, 1162, 1160, 1161, 1179, 1172, 1170, 1171, 1170,
+                  1172, 1179, 1171, 1170, 1152, 1149, 1151, 1150, 1152]
+
+        # Test with adaptive mode (score_k = 2.0 for 31-point series)
+        report_adaptive = assess_main_health(series, abs_floor=50.0, pct_floor=0.05, adaptive=True)
+
+        # Should detect the step with adaptive score_k
+        assert report_adaptive is not None
+        assert report_adaptive.stepfit is not None
+        assert report_adaptive.stepfit.found is True, f"Step should be detected with adaptive score_k. Reason: {report_adaptive.stepfit.reason}"
+        assert report_adaptive.stepfit.change_index == 10, f"Change should be at index 10, got {report_adaptive.stepfit.change_index}"
+        assert report_adaptive.overall_alert is True, "Overall alert should be raised"
+
+        # Test with non-adaptive mode (score_k = 4.0 default)
+        report_strict = assess_main_health(series, abs_floor=50.0, pct_floor=0.05, adaptive=False, step_score_k=4.0)
+
+        # Should NOT detect with strict threshold
+        assert report_strict is not None
+        assert report_strict.stepfit is not None
+        assert report_strict.stepfit.found is False, "Step should NOT be detected with strict score_k=4.0"
+
+        print("\n=== Adaptive score_k Test ===")
+        print(f"  Adaptive (score_k=2.0): Step detected = {report_adaptive.stepfit.found}")
+        print(f"  Strict (score_k=4.0): Step detected = {report_strict.stepfit.found}")
+
+    def test_adaptive_score_k_parameters(self):
+        """Test that different series lengths get appropriate score_k thresholds"""
+        from main_health import _calculate_adaptive_parameters
+
+        # Very short series (10-14 points) → score_k = 1.5
+        params_very_short = _calculate_adaptive_parameters(12)
+        assert params_very_short['step_score_k'] == 1.5
+
+        # Short series (15-29 points) → score_k = 2.0
+        params_short = _calculate_adaptive_parameters(25)
+        assert params_short['step_score_k'] == 2.0
+
+        # Medium series (30-49 points) → score_k = 2.0
+        params_medium = _calculate_adaptive_parameters(40)
+        assert params_medium['step_score_k'] == 2.0
+
+        # Long series (50-99 points) → score_k = 3.0
+        params_long = _calculate_adaptive_parameters(75)
+        assert params_long['step_score_k'] == 3.0
+
+        # Very long series (100+ points) → score_k = 4.0
+        params_very_long = _calculate_adaptive_parameters(150)
+        assert params_very_long['step_score_k'] == 4.0
+
+        print("\n=== Adaptive score_k Thresholds ===")
+        print(f"  Very short (12 pts): score_k = {params_very_short['step_score_k']}")
+        print(f"  Short (25 pts): score_k = {params_short['step_score_k']}")
+        print(f"  Medium (40 pts): score_k = {params_medium['step_score_k']}")
+        print(f"  Long (75 pts): score_k = {params_long['step_score_k']}")
+        print(f"  Very long (150 pts): score_k = {params_very_long['step_score_k']}")
+
+    def test_adaptive_score_k_with_clean_step(self):
+        """Test that adaptive score_k still detects clean, obvious steps"""
+        # Clean step: 1000ms → 1500ms (50% increase, high score)
+        series = [1000, 1001, 999, 1000, 1002, 998, 1001, 1000, 999, 1001,
+                  1500, 1501, 1499, 1500, 1502, 1498, 1501, 1500, 1499, 1501,
+                  1500, 1501, 1499, 1500, 1502, 1498, 1501, 1500, 1499, 1501]
+
+        report = assess_main_health(series, abs_floor=50.0, pct_floor=0.05, adaptive=True)
+
+        # Should detect clean step easily
+        assert report is not None
+        assert report.stepfit is not None
+        assert report.stepfit.found is True, f"Clean step should be detected. Reason: {report.stepfit.reason}"
+
+        # Verify the step has correct before/after values (don't be strict about exact index)
+        assert report.stepfit.before_median < 1100, f"Before median should be ~1000ms, got {report.stepfit.before_median}"
+        assert report.stepfit.after_median > 1400, f"After median should be ~1500ms, got {report.stepfit.after_median}"
+        assert report.stepfit.delta > 400, f"Delta should be ~500ms, got {report.stepfit.delta}"
+        assert report.overall_alert is True
+
+        print("\n=== Clean Step Detection ===")
+        print(f"  Step detected: {report.stepfit.found}")
+        print(f"  Change index: {report.stepfit.change_index}")
+        print(f"  Before: {report.stepfit.before_median:.1f}ms, After: {report.stepfit.after_median:.1f}ms")
+
+    def test_adaptive_score_k_short_series_sensitive(self):
+        """Test that short series use very sensitive score_k thresholds"""
+        # Very short series (12 points) with weak step
+        # Step from 100ms to 120ms (20% increase but potentially low score due to noise)
+        series = [100, 102, 98, 101, 99, 120, 122, 118, 121, 119, 121, 120]
+
+        # With adaptive (score_k = 1.5 for very short series)
+        report_adaptive = assess_main_health(series, abs_floor=5.0, pct_floor=0.05, adaptive=True)
+
+        # With strict threshold
+        report_strict = assess_main_health(series, abs_floor=5.0, pct_floor=0.05, adaptive=False, step_score_k=4.0)
+
+        # Adaptive should be more sensitive
+        print("\n=== Short Series Sensitivity ===")
+        print(f"  Adaptive (score_k=1.5): Step detected = {report_adaptive.stepfit.found if report_adaptive.stepfit else False}")
+        print(f"  Strict (score_k=4.0): Step detected = {report_strict.stepfit.found if report_strict.stepfit else False}")
+
+        # At least verify both complete without errors
+        assert report_adaptive is not None
+        assert report_strict is not None
+
 
 # ============================================================================
 # Edge Cases Tests

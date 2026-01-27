@@ -695,6 +695,7 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 5,
             'ewma_pct_threshold': 3.0,  # 3% drift
             'step_min_segment': 3,
+            'step_score_k': 1.5,  # Very low threshold for noisy short series
             'trend_total_pct_threshold': 2.0,  # 2% total change
             'trend_slope_pct_threshold': 1.5,  # 1.5%/point
             'description': 'Very short series - aggressive detection'
@@ -705,6 +706,7 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 5,
             'ewma_pct_threshold': 5.0,  # 5% drift
             'step_min_segment': 4,
+            'step_score_k': 2.0,  # Lower threshold for short series
             'trend_total_pct_threshold': 2.5,  # 2.5% total change
             'trend_slope_pct_threshold': 1.0,  # 1.0%/point
             'description': 'Short series - sensitive detection'
@@ -715,6 +717,7 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 10,
             'ewma_pct_threshold': 8.0,  # 8% drift
             'step_min_segment': 5,
+            'step_score_k': 2.0,  # Lower threshold for potentially noisy data
             'trend_total_pct_threshold': 1.0,  # 1.0% total change (lowered for subtle noisy creep)
             'trend_slope_pct_threshold': 0.3,  # 0.3%/point (lowered for subtle creep)
             'description': 'Medium series - balanced detection'
@@ -725,6 +728,7 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 20,
             'ewma_pct_threshold': 12.0,  # 12% drift
             'step_min_segment': 8,
+            'step_score_k': 3.0,  # Moderate threshold
             'trend_total_pct_threshold': 3.0,  # 3.0% total change
             'trend_slope_pct_threshold': 1.5,  # 1.5%/point
             'description': 'Long series - standard detection'
@@ -735,6 +739,7 @@ def _calculate_adaptive_parameters(series_length: int) -> dict:
             'window': 30,
             'ewma_pct_threshold': 15.0,  # Default
             'step_min_segment': 10,
+            'step_score_k': 4.0,  # Default strict threshold
             'trend_total_pct_threshold': 5.0,  # 5.0% total change (default)
             'trend_slope_pct_threshold': 3.0,  # 3.0%/point (default)
             'description': 'Very long series - conservative detection'
@@ -752,7 +757,7 @@ def assess_main_health(
     ewma_pct_threshold: Optional[float] = None,
     step_scan_back: Optional[int] = HEALTH_STEP_SCAN_BACK,
     step_min_segment: Optional[int] = None,
-    step_score_k: float = HEALTH_STEP_SCORE_K,
+    step_score_k: Optional[float] = None,
     step_pct_threshold: Optional[float] = HEALTH_STEP_PCT_THRESHOLD,
     trend_total_pct_threshold: Optional[float] = None,
     trend_slope_pct_threshold: Optional[float] = None,
@@ -771,9 +776,11 @@ def assess_main_health(
                          If None and adaptive=True, calculated automatically.
       step_min_segment: Minimum segment size for step detection.
                        If None and adaptive=True, calculated automatically.
+      step_score_k: Changepoint score threshold. If None and adaptive=True, calculated automatically.
+                   Lower values = more sensitive (may detect noisier steps).
       step_pct_threshold: Step change percentage threshold (e.g., 20.0 for 20%)
       adaptive: If True (default), automatically calculates window, ewma_pct_threshold,
-               and step_min_segment based on series length. Set to False to use
+               step_min_segment, and step_score_k based on series length. Set to False to use
                explicit parameter values or constants from constants.py.
     """
     # Apply adaptive parameters if enabled
@@ -787,6 +794,8 @@ def assess_main_health(
             ewma_pct_threshold = adaptive_params['ewma_pct_threshold']
         if step_min_segment is None:
             step_min_segment = adaptive_params['step_min_segment']
+        if step_score_k is None:
+            step_score_k = adaptive_params['step_score_k']
         if trend_total_pct_threshold is None:
             trend_total_pct_threshold = adaptive_params['trend_total_pct_threshold']
         if trend_slope_pct_threshold is None:
@@ -795,6 +804,7 @@ def assess_main_health(
         print(f"📊 Adaptive mode: {adaptive_params['description']}")
         print(f"   Series length: {len(series)}, Window: {window}, "
               f"EWMA threshold: {ewma_pct_threshold}%, Min segment: {step_min_segment}")
+        print(f"   Step score threshold: {step_score_k}")
         print(f"   Trend thresholds: total={trend_total_pct_threshold}%, slope={trend_slope_pct_threshold}%/pt")
     else:
         # Non-adaptive mode: use defaults from constants if not provided
@@ -804,6 +814,8 @@ def assess_main_health(
             ewma_pct_threshold = HEALTH_EWMA_PCT_THRESHOLD
         if step_min_segment is None:
             step_min_segment = HEALTH_STEP_MIN_SEGMENT
+        if step_score_k is None:
+            step_score_k = HEALTH_STEP_SCORE_K
         if trend_total_pct_threshold is None:
             trend_total_pct_threshold = 5.0  # Default
         if trend_slope_pct_threshold is None:
