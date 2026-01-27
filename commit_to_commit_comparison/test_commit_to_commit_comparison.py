@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
-Comprehensive test suite for perf_regress.py
+Comprehensive test suite for commit_to_commit_comparison.py
 
 Tests all fixed issues and core functionality.
 """
 import pytest
 import numpy as np
-from perf_regress import gate_regression, equivalence_bootstrap_median, GateResult, EquivalenceResult
+from commit_to_commit_comparison.commit_to_commit_comparison import (
+    gate_regression,
+    equivalence_bootstrap_median,
+    GateResult,
+    EquivalenceResult,
+)
 from constants import MIN_SAMPLES_FOR_REGRESSION, MAX_CV_FOR_REGRESSION_CHECK
 
 

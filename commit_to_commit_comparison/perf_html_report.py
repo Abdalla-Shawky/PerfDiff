@@ -12,8 +12,8 @@ from typing import List, Any, Dict, Optional
 import numpy as np
 
 # ---- Import from your module (the one I gave you earlier) ----
-# If perf_regress.py is in the same folder, this works:
-from perf_regress import gate_regression, equivalence_bootstrap_median
+# If commit_to_commit_comparison.py is in the same package, import via package:
+from commit_to_commit_comparison.commit_to_commit_comparison import gate_regression, equivalence_bootstrap_median
 from perf_html_template import render_template
 
 from constants import (

@@ -267,7 +267,7 @@ python perf_html_report.py --help
 pip install pytest
 
 # Run all tests
-python -m pytest test_perf_regress.py -v
+python -m pytest test_commit_to_commit_comparison.py -v
 
 # Expected output:
 # 24 passed in ~1.3s
@@ -312,11 +312,11 @@ All documentation is located in the [`docs/`](docs/) folder.
 
 ```
 .
-├── perf_regress.py          # Core regression detection logic
+├── commit_to_commit_comparison.py          # Core regression detection logic
 ├── perf_html_report.py      # CLI and HTML report generation
 ├── perf_html_template.py    # HTML/CSS/JS template (separated)
 ├── constants.py             # Configuration constants
-├── test_perf_regress.py     # Test suite (24 tests)
+├── test_commit_to_commit_comparison.py     # Test suite (24 tests)
 ├── README.md                # This file
 ├── .gitignore               # Git ignore patterns
 ├── docs/                    # Documentation folder
