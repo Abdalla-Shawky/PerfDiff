@@ -169,6 +169,14 @@ def compare_traces(baseline_json: str, change_json: str) -> MultiTraceResult:
         baseline_data = baseline_traces[name]
         change_data = change_traces[name]
 
+        # Check if arrays have the same length
+        if len(baseline_data) != len(change_data):
+            warnings.append(
+                f"⚠️ Skipping trace '{name}': mismatched lengths "
+                f"(baseline: {len(baseline_data)}, change: {len(change_data)})"
+            )
+            continue
+
         # Run regression check
         try:
             result = gate_regression(baseline_data, change_data)
