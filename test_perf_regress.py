@@ -178,6 +178,91 @@ class TestGateRegression:
             # Should not say "within threshold" if failed
             assert "within threshold" not in result.reason or "FAIL:" in result.reason
 
+    def test_practical_significance_override(self):
+        """Test that negligible changes are not reported as regression.
+
+        This test replicates the scenario from no_regression.html:
+        - Baseline: [2400.0, 2410.0, 2395.0, 2405.0, 2402.0, 2398.0, 2412.0, 2401.0, 2399.0, 2407.0]
+        - Change: [2403.0, 2412.0, 2397.0, 2408.0, 2401.0, 2400.0, 2415.0, 2404.0, 2402.0, 2409.0]
+        - Delta: +2.5ms (0.1% slower)
+        - Directionality: 90% (9/10 runs slower) - FAILS
+        - Wilcoxon: p=0.0029 - FAILS
+        - Result: Should PASS due to practical significance override
+        """
+        baseline = [2400.0, 2410.0, 2395.0, 2405.0, 2402.0, 2398.0, 2412.0, 2401.0, 2399.0, 2407.0]
+        change = [2403.0, 2412.0, 2397.0, 2408.0, 2401.0, 2400.0, 2415.0, 2404.0, 2402.0, 2409.0]
+
+        result = gate_regression(baseline, change)
+
+        # Key assertions
+        assert result.passed is True, "Should PASS due to practical significance override"
+        assert "practical significance override" in result.reason, \
+            "Reason should mention practical significance override"
+
+        # Verify details show override was applied
+        assert "practical_override" in result.details, \
+            "Details should contain practical_override info"
+        assert result.details["practical_override"]["applied"] is True, \
+            "Override should be marked as applied"
+
+        # Verify the delta values
+        assert result.details["practical_override"]["abs_delta_ms"] < 5.0, \
+            "Absolute delta should be below 5ms threshold"
+        assert result.details["practical_override"]["rel_delta_pct"] < 0.5, \
+            "Relative delta should be below 0.5% threshold"
+
+        # Verify original failures are preserved
+        assert "original_failures" in result.details["practical_override"], \
+            "Should preserve original failure reasons"
+        original_failures = result.details["practical_override"]["original_failures"]
+        assert len(original_failures) > 0, "Should have at least one statistical failure"
+
+        # The statistical tests should have failed (directionality and Wilcoxon)
+        failures_str = "; ".join(original_failures)
+        assert "slower" in failures_str or "Wilcoxon" in failures_str, \
+            "Should have failed on directionality or Wilcoxon"
+
+    def test_practical_significance_override_not_applied_when_delta_too_large(self):
+        """Test that override is NOT applied when delta is above practical threshold.
+
+        Even if only one threshold is exceeded, the override should not apply.
+        """
+        # Delta: 10ms on ~100ms baseline = 10% (above 0.5% threshold)
+        baseline = [100.0, 102.0, 98.0, 101.0, 99.0, 103.0, 100.0, 101.0, 102.0, 100.0]
+        change = [110.0, 112.0, 108.0, 111.0, 109.0, 113.0, 110.0, 111.0, 112.0, 110.0]
+
+        result = gate_regression(baseline, change)
+
+        # Should FAIL (no override because delta is too large)
+        assert result.passed is False, "Should FAIL because delta exceeds practical threshold"
+        assert "FAIL:" in result.reason, "Reason should indicate failure"
+
+        # Verify override was NOT applied
+        assert "practical_override" in result.details, \
+            "Details should contain practical_override info"
+        assert result.details["practical_override"]["applied"] is False, \
+            "Override should NOT be applied when delta is too large"
+
+    def test_practical_significance_override_not_applied_when_passes_all_gates(self):
+        """Test that override logic is not triggered when all gates pass normally."""
+        # Very similar values - should pass all gates without needing override
+        baseline = [100.0, 102.0, 98.0, 101.0, 99.0, 103.0, 100.0, 101.0, 102.0, 100.0]
+        change = [99.0, 101.0, 97.0, 100.0, 98.0, 102.0, 99.0, 100.0, 101.0, 99.0]
+
+        result = gate_regression(baseline, change)
+
+        # Should PASS normally
+        assert result.passed is True, "Should PASS all gates normally"
+
+        # Override should not be mentioned in reason
+        assert "practical significance override" not in result.reason, \
+            "Should be normal PASS, not override"
+
+        # No practical_override field should be present (or it should show not applied)
+        # depending on implementation, but definitely not applied
+        if "practical_override" in result.details:
+            assert result.details["practical_override"]["applied"] is False
+
 
 class TestEquivalenceBootstrapMedian:
     """Test equivalence_bootstrap_median function."""

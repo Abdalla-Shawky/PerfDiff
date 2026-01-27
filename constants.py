@@ -19,6 +19,14 @@ MS_FLOOR = 50.0
 # 0.05 = 5% increase. Used for faster operations where absolute thresholds may be too lenient
 PCT_FLOOR = 0.05
 
+# Practical significance override thresholds
+# Even if statistical tests fail (directionality, Wilcoxon), override to PASS
+# if the delta is below these practical significance minimums.
+# This prevents false positives on statistically significant but negligible changes.
+# Example: 2.5ms delta (0.1%) with p=0.003 is statistically significant but not practically meaningful.
+MIN_PRACTICAL_DELTA_MS = 5.0  # Absolute minimum (e.g., 5ms)
+MIN_PRACTICAL_DELTA_PCT = 0.005  # Relative minimum as fraction (0.005 = 0.5%)
+
 # Tail latency percentile for tail performance analysis (0.0 - 1.0)
 # 0.90 = 90th percentile (p90). Measures worst-case performance
 TAIL_QUANTILE = 0.90
