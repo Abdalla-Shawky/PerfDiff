@@ -182,12 +182,13 @@ class TestGateRegression:
         """Test that negligible changes are not reported as regression.
 
         This test replicates the scenario from no_regression.html:
-        - Baseline: [2400.0, 2410.0, 2395.0, 2405.0, 2402.0, 2398.0, 2412.0, 2401.0, 2399.0, 2407.0]
-        - Change: [2403.0, 2412.0, 2397.0, 2408.0, 2401.0, 2400.0, 2415.0, 2404.0, 2402.0, 2409.0]
+        - Baseline: ~2400ms
+        - Change: ~2403ms
         - Delta: +2.5ms (0.1% slower)
+        - Dynamic threshold: 20ms (1% of 2400ms, capped at 20ms)
         - Directionality: 90% (9/10 runs slower) - FAILS
         - Wilcoxon: p=0.0029 - FAILS
-        - Result: Should PASS due to practical significance override
+        - Result: Should PASS due to practical significance override (2.5ms < 20ms)
         """
         baseline = [2400.0, 2410.0, 2395.0, 2405.0, 2402.0, 2398.0, 2412.0, 2401.0, 2399.0, 2407.0]
         change = [2403.0, 2412.0, 2397.0, 2408.0, 2401.0, 2400.0, 2415.0, 2404.0, 2402.0, 2409.0]
@@ -205,11 +206,16 @@ class TestGateRegression:
         assert result.details["practical_override"]["applied"] is True, \
             "Override should be marked as applied"
 
-        # Verify the delta values
-        assert result.details["practical_override"]["abs_delta_ms"] < 5.0, \
-            "Absolute delta should be below 5ms threshold"
-        assert result.details["practical_override"]["rel_delta_pct"] < 0.5, \
-            "Relative delta should be below 0.5% threshold"
+        # Verify the dynamic threshold was calculated correctly
+        # For 2400ms baseline: 1% = 24ms, but capped at 20ms
+        practical_threshold = result.details["practical_override"]["practical_threshold_ms"]
+        assert practical_threshold == 20.0, \
+            f"Threshold should be 20ms (capped), got {practical_threshold}ms"
+
+        # Verify the delta is below the dynamic threshold
+        abs_delta = result.details["practical_override"]["abs_delta_ms"]
+        assert abs_delta < practical_threshold, \
+            f"Delta {abs_delta}ms should be below threshold {practical_threshold}ms"
 
         # Verify original failures are preserved
         assert "original_failures" in result.details["practical_override"], \
@@ -225,9 +231,13 @@ class TestGateRegression:
     def test_practical_significance_override_not_applied_when_delta_too_large(self):
         """Test that override is NOT applied when delta is above practical threshold.
 
-        Even if only one threshold is exceeded, the override should not apply.
+        - Baseline: ~100ms
+        - Change: ~110ms
+        - Delta: 10ms
+        - Dynamic threshold: 2ms (floor, since 1% of 100 = 1ms < 2ms floor)
+        - Result: Should FAIL (10ms > 2ms threshold)
         """
-        # Delta: 10ms on ~100ms baseline = 10% (above 0.5% threshold)
+        # Delta: 10ms on ~100ms baseline
         baseline = [100.0, 102.0, 98.0, 101.0, 99.0, 103.0, 100.0, 101.0, 102.0, 100.0]
         change = [110.0, 112.0, 108.0, 111.0, 109.0, 113.0, 110.0, 111.0, 112.0, 110.0]
 
@@ -242,6 +252,16 @@ class TestGateRegression:
             "Details should contain practical_override info"
         assert result.details["practical_override"]["applied"] is False, \
             "Override should NOT be applied when delta is too large"
+
+        # Verify the dynamic threshold
+        practical_threshold = result.details["practical_override"]["practical_threshold_ms"]
+        assert practical_threshold == 2.0, \
+            f"Threshold should be 2ms (floor), got {practical_threshold}ms"
+
+        # Verify delta exceeds threshold
+        abs_delta = result.details["practical_override"]["abs_delta_ms"]
+        assert abs_delta >= practical_threshold, \
+            f"Delta {abs_delta}ms should exceed threshold {practical_threshold}ms"
 
     def test_practical_significance_override_not_applied_when_passes_all_gates(self):
         """Test that override logic is not triggered when all gates pass normally."""

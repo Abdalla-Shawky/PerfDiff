@@ -25,8 +25,9 @@ from constants import (
     CV_THRESHOLD_MULTIPLIER,
     MIN_SAMPLES_FOR_REGRESSION,
     PCT_CONVERSION_FACTOR,
-    MIN_PRACTICAL_DELTA_MS,
-    MIN_PRACTICAL_DELTA_PCT,
+    MIN_PRACTICAL_DELTA_ABS_MS,
+    MAX_PRACTICAL_DELTA_ABS_MS,
+    PRACTICAL_DELTA_PCT,
 )
 
 
@@ -396,16 +397,23 @@ def gate_regression(
     # if the delta is below practical significance minimums.
     # This prevents false positives on statistically significant but negligible changes.
     if not passed:
-        # Calculate both absolute and relative deltas
+        # Calculate absolute delta
         abs_delta = abs(median_delta)
         rel_delta = abs_delta / baseline_median if baseline_median > 0 else 0.0
 
-        # Check if delta is below BOTH practical significance thresholds
-        # Must be below absolute AND relative thresholds to override
-        below_practical_threshold = (
-            abs_delta < MIN_PRACTICAL_DELTA_MS and
-            rel_delta < MIN_PRACTICAL_DELTA_PCT
-        )
+        # Calculate DYNAMIC practical threshold based on baseline
+        # This scales the threshold with the baseline value, so:
+        #   - 100ms baseline → ~2ms threshold (2%)
+        #   - 500ms baseline → ~5ms threshold (1%)
+        #   - 2000ms baseline → ~20ms threshold (1%)
+        #   - 5000ms baseline → ~20ms threshold (0.4%, capped)
+        dynamic_practical_threshold = baseline_median * PRACTICAL_DELTA_PCT
+        # Apply floor and ceiling
+        dynamic_practical_threshold = max(MIN_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
+        dynamic_practical_threshold = min(MAX_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
+
+        # Override if delta is below the dynamic threshold
+        below_practical_threshold = abs_delta < dynamic_practical_threshold
 
         if below_practical_threshold:
             # Override to PASS with explanatory note
@@ -413,16 +421,16 @@ def gate_regression(
             passed = True
             reason = (
                 f"PASS (practical significance override): Delta {median_delta:.2f}ms ({rel_delta*100:.2f}%) "
-                f"is statistically significant but below practical threshold "
-                f"({MIN_PRACTICAL_DELTA_MS}ms AND {MIN_PRACTICAL_DELTA_PCT*100:.1f}%). "
+                f"is statistically significant but below practical threshold ({dynamic_practical_threshold:.1f}ms). "
                 f"Statistical failures: {'; '.join(original_failures)}"
             )
             details["practical_override"] = {
                 "applied": True,
                 "abs_delta_ms": abs_delta,
                 "rel_delta_pct": rel_delta * 100,
-                "min_practical_ms": MIN_PRACTICAL_DELTA_MS,
-                "min_practical_pct": MIN_PRACTICAL_DELTA_PCT * 100,
+                "practical_threshold_ms": dynamic_practical_threshold,
+                "baseline_median_ms": baseline_median,
+                "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
                 "original_failures": original_failures,
             }
         else:
@@ -430,8 +438,9 @@ def gate_regression(
                 "applied": False,
                 "abs_delta_ms": abs_delta,
                 "rel_delta_pct": rel_delta * 100,
-                "min_practical_ms": MIN_PRACTICAL_DELTA_MS,
-                "min_practical_pct": MIN_PRACTICAL_DELTA_PCT * 100,
+                "practical_threshold_ms": dynamic_practical_threshold,
+                "baseline_median_ms": baseline_median,
+                "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
             }
 
     # Build final reason string (if not already set by practical override)

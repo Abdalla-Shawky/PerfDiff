@@ -24,8 +24,18 @@ PCT_FLOOR = 0.05
 # if the delta is below these practical significance minimums.
 # This prevents false positives on statistically significant but negligible changes.
 # Example: 2.5ms delta (0.1%) with p=0.003 is statistically significant but not practically meaningful.
-MIN_PRACTICAL_DELTA_MS = 5.0  # Absolute minimum (e.g., 5ms)
-MIN_PRACTICAL_DELTA_PCT = 0.005  # Relative minimum as fraction (0.005 = 0.5%)
+#
+# Dynamic threshold calculation: practical_threshold = baseline * PRACTICAL_DELTA_PCT
+# With min/max bounds to handle very fast and very slow operations.
+#
+# Examples:
+#   - 100ms baseline: 1% = 1ms, but floor is 2ms → threshold = 2ms (2%)
+#   - 500ms baseline: 1% = 5ms → threshold = 5ms (1%)
+#   - 2000ms baseline: 1% = 20ms → threshold = 20ms (1%)
+#   - 5000ms baseline: 1% = 50ms, but ceiling is 20ms → threshold = 20ms (0.4%)
+MIN_PRACTICAL_DELTA_ABS_MS = 2.0  # Absolute minimum (never go below 2ms)
+MAX_PRACTICAL_DELTA_ABS_MS = 20.0  # Absolute maximum (never go above 20ms)
+PRACTICAL_DELTA_PCT = 0.01  # Base percentage (1% of baseline)
 
 # Tail latency percentile for tail performance analysis (0.0 - 1.0)
 # 0.90 = 90th percentile (p90). Measures worst-case performance

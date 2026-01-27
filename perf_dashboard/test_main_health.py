@@ -426,15 +426,25 @@ class TestAssessMainHealth:
         """Sustained performance degradation should trigger Step-Fit detection"""
         # Stable baseline followed by sustained degradation
         # This tests Step-Fit's ability to detect median shifts in batch historical data
+        # Series: 60 points at 100ms, then gradual increase to 300ms over 40 points
         series = [100.0] * 60 + [100.0 + 5*(i-59) for i in range(60, 100)]
         report = assess_main_health(series, abs_floor=10.0, pct_floor=0.05)
 
-        # Step-Fit should detect the median change (before=100, after=275)
+        # Step-Fit should detect the median change somewhere in the gradual increase region
+        # With lower score_k (1.2), it detects earlier (~80) vs previous threshold 4.0 (~89)
         # Note: EWMA has limited effectiveness in batch mode because it processes
         # full history from baseline median, making drift % small even for large changes
         assert report is not None
         assert report.stepfit and report.stepfit.found
-        assert report.stepfit.change_index == 89  # Detects optimal split point
+        # Change should be detected somewhere in the increasing region (60-99)
+        assert 60 <= report.stepfit.change_index < 100, \
+            f"Step should be in increasing region (60-99), got {report.stepfit.change_index}"
+        # Before median should be close to baseline (100)
+        assert 95 <= report.stepfit.before_median <= 105, \
+            f"Before median should be ~100, got {report.stepfit.before_median}"
+        # After median should show significant increase
+        assert report.stepfit.after_median > 200, \
+            f"After median should show significant increase (>200), got {report.stepfit.after_median}"
 
     def test_assess_main_health_creep_regression_recovery(self):
         """EWMA detects performance creeping back after temporary improvement"""
@@ -688,7 +698,9 @@ class TestAssessMainHealth:
     def test_adaptive_score_k_noisy_step_detection(self):
         """Test that adaptive score_k detects noisy steps that would fail with strict thresholds"""
         # This is the user's problematic series:
-        # Clear step from ~1100ms to ~1170ms at index 10, but drops to ~1150ms at the end
+        # Clear step from ~1100ms to ~1170ms around index 10-11
+        # The statistical split is at index 10, but the CAUSING commit (largest jump) is at index 11
+        # Jump: 1101 (idx 10) → 1176 (idx 11) = +75ms
         # Step score: 2.36 (too low for default 4.0, but OK for adaptive 2.0)
         series = [1100, 1101, 1111, 1099, 1100, 1102, 1098, 1101, 1100, 1099, 1101,
                   1176, 1171, 1169, 1162, 1160, 1161, 1179, 1172, 1170, 1171, 1170,
@@ -701,7 +713,8 @@ class TestAssessMainHealth:
         assert report_adaptive is not None
         assert report_adaptive.stepfit is not None
         assert report_adaptive.stepfit.found is True, f"Step should be detected with adaptive score_k. Reason: {report_adaptive.stepfit.reason}"
-        assert report_adaptive.stepfit.change_index == 10, f"Change should be at index 10, got {report_adaptive.stepfit.change_index}"
+        # Refinement points to CAUSING commit (index 11, where jump happens), not statistical split (index 10)
+        assert report_adaptive.stepfit.change_index == 11, f"Change should be at index 11 (causing commit), got {report_adaptive.stepfit.change_index}"
         assert report_adaptive.overall_alert is True, "Overall alert should be raised"
 
         # Test with non-adaptive mode (score_k = 4.0 default)
@@ -736,9 +749,9 @@ class TestAssessMainHealth:
         params_long = _calculate_adaptive_parameters(75)
         assert params_long['step_score_k'] == 3.0
 
-        # Very long series (100+ points) → score_k = 4.0
+        # Very long series (100+ points) → score_k = 1.2 (lowered to catch steps in noisy data)
         params_very_long = _calculate_adaptive_parameters(150)
-        assert params_very_long['step_score_k'] == 4.0
+        assert params_very_long['step_score_k'] == 1.2
 
         print("\n=== Adaptive score_k Thresholds ===")
         print(f"  Very short (12 pts): score_k = {params_very_short['step_score_k']}")
