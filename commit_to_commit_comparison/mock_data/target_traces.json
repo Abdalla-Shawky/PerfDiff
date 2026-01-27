@@ -372,7 +372,7 @@
     },
     {
       "name": "screen_metrics_UIInputWindowController_frozenFrames",
-      "measurements": [1, 1, 1, 1, 1, 1, 2, 1, 2, 1]
+      "measurements": [231,104,110,226,210,244,144,148,179,87,204,189,225,121,226,185,106,124,245,108,185,183,182,117,193,251,98,211]
     },
     {
       "name": "TBC_NewHome_Splash_Prefetch_After_Fetching_User_durationMs",

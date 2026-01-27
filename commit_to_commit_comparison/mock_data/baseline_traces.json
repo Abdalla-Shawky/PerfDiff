@@ -100,7 +100,7 @@
     },
     {
       "name": "homeTabStartToInteractive_timeToInteractiveMs",
-      "measurements": [2638, 4508, 2410, 2442, 2630, 2452, 2624, 2385, 2640, 2626]
+      "measurements": [1458,2402,2321,1865,1536,1725,1578,1836,1677,1743]
     },
     {
       "name": "bottomNavStartToInteractive_durationMs",
@@ -148,7 +148,7 @@
     },
     {
       "name": "NewAccount_RenderUI_durationMs",
-      "measurements": [36, 126, 36, 107, 40, 107, 35, 122, 38, 125, 35, 124, 38, 125, 27, 133, 34, 124, 43, 109, 35, 122]
+      "measurements": [126, 36, 107, 40, 107, 35, 122, 38, 125, 35, 124, 38, 125, 27, 133, 34, 124, 43, 109, 35, 122]
     },
     {
       "name": "accountStartToInteractive_timeToInteractiveMs",
@@ -444,7 +444,7 @@
     },
     {
       "name": "screen_metrics_UIInputWindowController_frozenFrames",
-      "measurements": [1, 1, 1, 1, 1, 1, 1, 1, 1]
+      "measurements": [125,69,155,183,129,139,175,104,178,187,116,159,127,136,154,122,184,82,241,157,179,195,108,153,181,163,113,120]
     },
     {
       "name": "screen_metrics_UIInputWindowController_totalFrames",
