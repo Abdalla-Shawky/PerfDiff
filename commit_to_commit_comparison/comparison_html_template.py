@@ -38,15 +38,18 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
     if result.warnings:
         warning_items = "\n".join([f"<li>{escape(w)}</li>" for w in result.warnings])
         warning_html = f"""
-        <div class="warning-banner">
-          <div class="warning-icon">⚠️</div>
+        <details class="warning-banner">
+          <summary class="warning-summary">
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-title">Warnings</span>
+            <span class="warning-count">{len(result.warnings)}</span>
+          </summary>
           <div class="warning-content">
-            <div class="warning-title">Warnings</div>
             <ul class="warning-list">
               {warning_items}
             </ul>
           </div>
-        </div>
+        </details>
         """
 
     # Build table rows
@@ -162,8 +165,10 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       --anim-slow: 400ms;
     }}
 
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: "Space Grotesk", "Sora", "Avenir Next", "Helvetica Neue", sans-serif;
       background: #0a0e12;
       color: var(--text-primary);
       line-height: 1.6;
@@ -194,11 +199,22 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       position: sticky;
       top: 0;
       z-index: 100;
-      background: var(--bg-secondary);
+      background:
+        radial-gradient(1200px 200px at 10% -50%, rgba(255, 152, 0, 0.18), transparent 60%),
+        radial-gradient(900px 200px at 90% -40%, rgba(0, 200, 180, 0.18), transparent 55%),
+        linear-gradient(180deg, rgba(16, 20, 26, 0.98), rgba(12, 16, 22, 0.96));
       backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--border-color);
       padding: var(--space-4) var(--space-5);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.1);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 28px rgba(0, 200, 180, 0.12);
+    }}
+
+    .header::before {{
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(255, 152, 0, 0.9), rgba(0, 200, 180, 0.9), rgba(255, 152, 0, 0.9));
     }}
 
     .header-content {{
@@ -207,21 +223,68 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: var(--space-4);
+    }}
+
+    .header-left {{
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }}
+
+    .header-kicker {{
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
     }}
 
     .header-title {{
-      font-size: 26px;
+      font-size: 30px;
       font-weight: 700;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #f4f8ff;
+      text-shadow: 0 2px 16px rgba(0, 200, 180, 0.25);
     }}
 
     .header-subtitle {{
       font-size: 14px;
       color: var(--text-secondary);
-      margin-top: var(--space-1);
+      margin-top: 2px;
+    }}
+
+    .header-right {{
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }}
+
+    .header-chip {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(0, 200, 180, 0.12);
+      border: 1px solid rgba(0, 200, 180, 0.45);
+      color: #d8fff7;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      box-shadow: 0 0 18px rgba(0, 200, 180, 0.18);
+    }}
+
+    .header-meta {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      background: rgba(255, 152, 0, 0.12);
+      border: 1px solid rgba(255, 152, 0, 0.45);
+      color: #ffe1b8;
+      font-size: 12px;
+      font-weight: 600;
     }}
 
     /* Container */
@@ -235,25 +298,61 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
 
     /* Warning banner */
     .warning-banner {{
-      display: flex;
-      gap: var(--space-4);
       background: rgba(255, 152, 0, 0.1);
       border: 1px solid rgba(255, 152, 0, 0.3);
       border-radius: var(--radius-lg);
-      padding: var(--space-4);
+      padding: var(--space-3) var(--space-4);
       margin-bottom: var(--space-6);
       box-shadow: 0 0 15px rgba(255, 152, 0, 0.2);
     }}
 
+    .warning-summary {{
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      cursor: pointer;
+      user-select: none;
+    }}
+
+    .warning-summary::-webkit-details-marker {{
+      display: none;
+    }}
+
+    .warning-summary::after {{
+      content: "▾";
+      margin-left: auto;
+      color: var(--color-warning);
+      font-size: 14px;
+      transition: transform var(--anim-fast) ease;
+    }}
+
+    details[open] > .warning-summary::after {{
+      transform: rotate(180deg);
+    }}
+
+    .warning-count {{
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 152, 0, 0.2);
+      color: var(--color-warning);
+    }}
+
+    .warning-content {{
+      margin-top: var(--space-3);
+      padding-left: 34px;
+    }}
+
     .warning-icon {{
-      font-size: 24px;
+      font-size: 20px;
       flex-shrink: 0;
     }}
 
     .warning-title {{
       font-weight: 600;
       font-size: 16px;
-      margin-bottom: var(--space-2);
       color: var(--color-warning);
     }}
 
@@ -265,6 +364,10 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
 
     .warning-list li {{
       margin-bottom: var(--space-1);
+    }}
+
+    .warning-banner[open] {{
+      box-shadow: 0 0 18px rgba(255, 152, 0, 0.28);
     }}
 
     /* Summary stats */
@@ -496,9 +599,14 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
   <!-- Header -->
   <div class="header">
     <div class="header-content">
-      <div>
+      <div class="header-left">
+        <div class="header-kicker">Performance Intelligence</div>
         <h1 class="header-title">CompaX</h1>
-        <div class="header-subtitle">Multi-Trace Regression Report • {escape(result.timestamp)}</div>
+        <div class="header-subtitle">Multi-Trace Regression Report</div>
+      </div>
+      <div class="header-right">
+        <div class="header-chip">Live Report</div>
+        <div class="header-meta">Updated {escape(result.timestamp)}</div>
       </div>
     </div>
   </div>
