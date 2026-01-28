@@ -1222,7 +1222,11 @@ def render_template(**context) -> str:
     <div class="section">
       <div class="section-header" onclick="toggleSection('explanation')">
         <div>
-          <h2 class="section-title">🔍 Why Did This {'Pass' if passed else 'Fail'}?</h2>
+          <h2 class="section-title">🔍 Why Did This {
+            'Result Is Inconclusive' if inconclusive else
+            ('Show No Change' if result.get('no_change', False) else
+             ('Pass' if passed else 'Fail'))
+          }?</h2>
           <div class="section-subtitle">Technical explanation of the decision</div>
         </div>
         <span class="toggle-icon">▼</span>
@@ -1234,7 +1238,11 @@ def render_template(**context) -> str:
         </div>
         <div class="hint-box warning">
           <strong>💡 What this means:</strong><br/>
-          {'The performance test passed all checks. ' if passed else 'The performance test failed one or more checks. '}
+          {(
+            'Data quality gates failed, so the result is inconclusive. ' if inconclusive else
+            ('All checks passed and the change is within practical thresholds (no meaningful change). ' if result.get('no_change', False) else
+             ('The performance test passed all checks. ' if passed else 'The performance test failed one or more checks. '))
+          )}
           The tool checks multiple factors: median change, worst-case (p90) latency, consistency across runs, and statistical significance.
         </div>
       </div>
