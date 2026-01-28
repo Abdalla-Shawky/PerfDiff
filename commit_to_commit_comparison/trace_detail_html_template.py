@@ -44,7 +44,7 @@ def render_trace_detail_template(
 
     # Generate the base performance report HTML
     base_html = render_html_report(
-        title=f"Performance Report: {trace_name}",
+        title="CompaX",
         baseline=baseline.tolist(),
         target=target.tolist(),
         result=result_dict,
@@ -132,11 +132,12 @@ def render_trace_detail_template(
       font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
       font-size: 15px;
       font-weight: 600;
-      color: #e0e0e0;
+      color: #f5f9ff;
       padding: 6px 12px;
-      background: rgba(102, 126, 234, 0.15);
+      background: rgba(0, 102, 255, 0.25);
       border-radius: 6px;
-      border: 1px solid rgba(102, 126, 234, 0.3);
+      border: 1px solid rgba(0, 102, 255, 0.6);
+      box-shadow: 0 0 12px rgba(0, 102, 255, 0.35);
     }
 
     .nav-btn {

@@ -497,7 +497,7 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
   <div class="header">
     <div class="header-content">
       <div>
-        <h1 class="header-title">Performance Comparison</h1>
+        <h1 class="header-title">CompaX</h1>
         <div class="header-subtitle">Multi-Trace Regression Report • {escape(result.timestamp)}</div>
       </div>
     </div>
