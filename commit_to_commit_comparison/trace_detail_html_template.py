@@ -44,7 +44,7 @@ def render_trace_detail_template(
 
     # Generate the base performance report HTML
     base_html = render_html_report(
-        title="CompaX",
+        title="TrustTrace",
         baseline=baseline.tolist(),
         target=target.tolist(),
         result=result_dict,
