@@ -339,8 +339,7 @@
         299,
         390
       ],
-      "startTime": 3500,
-      "duration": 339.0
+      "startTime": 3500
     },
     {
       "name": "http:post:HomeFeed_durationMs",
@@ -365,8 +364,7 @@
         1669,
         1114
       ],
-      "startTime": 2250,
-      "duration": 1114.0
+      "startTime": 2250
     },
     {
       "name": "NewAccount_ConvertDataToViewModel_durationMs",
@@ -391,8 +389,7 @@
         14,
         18
       ],
-      "startTime": 24700,
-      "duration": 15.0
+      "startTime": 24700
     },
     {
       "name": "NewHome_GraphQL_Home_durationMs",
@@ -417,8 +414,7 @@
         1717,
         1213
       ],
-      "startTime": 2200,
-      "duration": 1237.0
+      "startTime": 2200
     },
     {
       "name": "NewAccount_RenderUI_durationMs",
@@ -443,8 +439,7 @@
         35,
         61
       ],
-      "startTime": 24720,
-      "duration": 36.0
+      "startTime": 24720
     },
     {
       "name": "home_screen_map_data_to_view_model_durationMs",
@@ -469,8 +464,7 @@
         120,
         107
       ],
-      "startTime": 3900,
-      "duration": 107.0
+      "startTime": 3900
     },
     {
       "name": "home_screen_ui_render_durationMs",
@@ -495,8 +489,7 @@
         204,
         45
       ],
-      "startTime": 4000,
-      "duration": 28.0
+      "startTime": 4000
     },
     {
       "name": "screen_metrics_BottomNavigationController_slowFrames",
@@ -560,8 +553,7 @@
         381,
         333
       ],
-      "startTime": 2100,
-      "duration": 298.0
+      "startTime": 2100
     },
     {
       "name": "screen_metrics_BottomNavigationController_frozenFrames",
@@ -682,8 +674,7 @@
         1,
         19291
       ],
-      "startTime": 5000,
-      "duration": 18508.0
+      "startTime": 5000
     },
     {
       "name": "screen_metrics_NewAccountScreenViewController_slowFrames",
@@ -756,8 +747,7 @@
         281,
         333
       ],
-      "startTime": 24700,
-      "duration": 285.0
+      "startTime": 24700
     },
     {
       "name": "screen_metrics_NewAccountScreenViewController_frozenFrames",
@@ -796,8 +786,7 @@
         650,
         660
       ],
-      "startTime": 0,
-      "duration": 594.0
+      "startTime": 0
     },
     {
       "name": "splash_init_to_view_will_appear_durationMs",
@@ -812,8 +801,7 @@
         469,
         499
       ],
-      "startTime": 600,
-      "duration": 412.0
+      "startTime": 600
     },
     {
       "name": "app_start_to_launcher_durationMs",
@@ -828,8 +816,7 @@
         1168,
         1211
       ],
-      "startTime": 0,
-      "duration": 1057.0
+      "startTime": 0
     },
     {
       "name": "fetch_bundled_countries_durationMs",
@@ -844,8 +831,7 @@
         5,
         6
       ],
-      "startTime": 350,
-      "duration": 6.0
+      "startTime": 350
     },
     {
       "name": "SnapToAddress_durationMs",
@@ -860,8 +846,7 @@
         1,
         1
       ],
-      "startTime": 4100,
-      "duration": 1.0
+      "startTime": 4100
     },
     {
       "name": "FetchAppConfig_durationMs",
@@ -876,8 +861,7 @@
         225,
         243
       ],
-      "startTime": 150,
-      "duration": 201.0
+      "startTime": 150
     },
     {
       "name": "TryLoadLastSavedUser_durationMs",
@@ -892,8 +876,7 @@
         47,
         52
       ],
-      "startTime": 100,
-      "duration": 46.0
+      "startTime": 100
     },
     {
       "name": "PreparationBeforeRestaurantsList_durationMs",
@@ -908,8 +891,7 @@
         80,
         85
       ],
-      "startTime": 4200,
-      "duration": 73.0
+      "startTime": 4200
     },
     {
       "name": "AnimateSplashView_durationMs",
@@ -924,8 +906,7 @@
         1,
         1
       ],
-      "startTime": 1000,
-      "duration": 1.0
+      "startTime": 1000
     },
     {
       "name": "app_start_to_first_screen_durationMs",
@@ -940,8 +921,7 @@
         1674,
         1705
       ],
-      "startTime": 0,
-      "duration": 1450.0
+      "startTime": 0
     },
     {
       "name": "PostFirstRenderedFrame_durationMs",
@@ -956,8 +936,7 @@
         877,
         896
       ],
-      "startTime": 1450,
-      "duration": 728.0
+      "startTime": 1450
     },
     {
       "name": "screen_metrics_SplashViewController_frozenFrames",
@@ -1000,25 +979,23 @@
         22,
         24
       ],
-      "startTime": 600,
-      "duration": 19.0
+      "startTime": 600
     },
     {
       "name": "homeTabStartToInteractive",
       "measurements": [
-        1357,
-        1143,
-        1206,
-        1425,
         1157,
-        1335,
-        1202,
-        1051,
-        1801,
-        1216
+        1143,
+        1106,
+        1125,
+        1157,
+        1135,
+        1102,
+        1151,
+        1101,
+        1116
       ],
-      "startTime": 2200,
-      "duration": 1211.0
+      "startTime": 2200
     },
     {
       "name": "bottomNavStartToInteractive_durationMs",
@@ -1033,8 +1010,7 @@
         2375,
         2515
       ],
-      "startTime": 2100,
-      "duration": 2170.0
+      "startTime": 2100
     },
     {
       "name": "AppStartToInteractive_durationMs",
@@ -1049,8 +1025,7 @@
         4391,
         4530
       ],
-      "startTime": 0,
-      "duration": 3820.0
+      "startTime": 0
     },
     {
       "name": "menuStartToInteractive",
@@ -1066,8 +1041,7 @@
         1076,
         943
       ],
-      "startTime": 25500,
-      "duration": 1027.0
+      "startTime": 25500
     },
     {
       "name": "screen_metrics_home_totalFrames",
@@ -1124,8 +1098,7 @@
         2277,
         2429
       ],
-      "startTime": 2100,
-      "duration": 2085.0
+      "startTime": 2100
     },
     {
       "name": "accountStartToInteractive_timeToInteractiveMs",
@@ -1149,8 +1122,7 @@
         531,
         251
       ],
-      "startTime": 24700,
-      "duration": 392.0
+      "startTime": 24700
     },
     {
       "name": "screen_metrics_NewAccountScreenViewController_timeToInteractiveMs",
@@ -1165,8 +1137,7 @@
         356,
         286
       ],
-      "startTime": 24700,
-      "duration": 302.0
+      "startTime": 24700
     },
     {
       "name": "screen_metrics_login_frozenFrames",
@@ -1195,8 +1166,7 @@
         185,
         176
       ],
-      "startTime": 27000,
-      "duration": 176.0
+      "startTime": 27000
     },
     {
       "name": "screen_metrics_login_totalFrames",
@@ -1673,8 +1643,7 @@
         678,
         662
       ],
-      "startTime": 26500,
-      "duration": 655.0
+      "startTime": 26500
     },
     {
       "name": "screen_metrics_UISystemKeyboardDockController_totalFrames",

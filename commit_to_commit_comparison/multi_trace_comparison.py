@@ -75,10 +75,14 @@ def load_traces_from_json(json_path: str) -> Tuple[Dict[str, np.ndarray], dict]:
       "commit": "abc123",
       "timestamp": "2026-01-27T10:00:00Z",
       "traces": [
-        {"name": "api_login", "measurements": [100.0, 102.0, ...]},
-        {"name": "ui_render", "measurements": [250.0, 255.0, ...]}
+        {"name": "api_login", "measurements": [100.0, 102.0, ...], "startTime": 0},
+        {"name": "ui_render", "measurements": [250.0, 255.0, ...], "startTime": 100}
       ]
     }
+
+    Note:
+    - startTime is optional and used for timeline visualization
+    - Duration is auto-calculated from median(measurements)
 
     Args:
         json_path: Path to JSON file
@@ -123,13 +127,11 @@ def load_traces_from_json(json_path: str) -> Tuple[Dict[str, np.ndarray], dict]:
 
         traces[name] = np.array(measurements, dtype=float)
 
-        # Extract timing information (optional fields)
+        # Extract timing information (only startTime is in JSON)
         start_time = trace.get('startTime', None)
-        duration = trace.get('duration', None)
 
-        # If duration not provided, compute from measurements
-        if duration is None and measurements:
-            duration = float(np.median(measurements))
+        # Always compute duration from measurements
+        duration = float(np.median(measurements)) if measurements else None
 
         traces_timing[name] = {
             'start_time': start_time,
