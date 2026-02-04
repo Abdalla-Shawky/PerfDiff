@@ -1,470 +1,1960 @@
 {
-  "commit": "",
-  "timestamp": "2026-01-15T17:16:57Z",
+  "commit": "ea984b0d4b80f9afd08ea5ebf56b4d4ed9b65ddb",
+  "timestamp": "2026-01-21T16:23:40Z",
   "traces": [
     {
       "name": "fwf_update_attributes_durationMs",
-      "measurements": [30, 1, 2, 3, 1, 1, 25, 1, 2, 1, 1, 24, 1, 1, 27, 1, 1, 27, 1, 1, 5, 1, 1, 6, 1, 1, 5, 1, 1, 1, 6, 1]
-    },
-    {
-      "name": "screen_metrics__UICursorAccessoryViewController_slowFrames",
-      "measurements": [109, 5, 2, 110, 3, 2, 103, 4, 2, 104, 4, 2, 112, 3, 2, 118, 2, 1, 106, 3, 2, 105, 4, 2, 109, 4, 2, 103, 3, 2, 121, 3]
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        1,
+        1,
+        2,
+        1,
+        1,
+        2,
+        1,
+        1,
+        22,
+        1,
+        1,
+        2,
+        1,
+        1,
+        2,
+        1,
+        1,
+        2,
+        1,
+        1
+      ]
     },
     {
       "name": "screen_metrics__UICursorAccessoryViewController_frozenFrames",
-      "measurements": [2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0, 0, 2, 0]
+      "measurements": [
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ]
     },
     {
       "name": "screen_metrics__UICursorAccessoryViewController_navigationToScreenMs",
-      "measurements": [252, 1819, 68, 179, 1740, 66, 182, 1733, 98, 184, 1739, 69, 183, 1975, 65, 182, 1741, 64, 178, 1728, 68, 191, 1748, 62, 182, 1731, 71, 184, 1741, 90, 182, 1734]
+      "measurements": [
+        205,
+        1794,
+        79,
+        175,
+        1698,
+        61,
+        173,
+        1951,
+        67,
+        199,
+        1763,
+        61,
+        181,
+        1739,
+        81,
+        201,
+        1733,
+        61,
+        172,
+        1707,
+        61,
+        177,
+        1744,
+        79,
+        207,
+        1815,
+        60,
+        181,
+        1740
+      ]
     },
     {
       "name": "screen_metrics__UICursorAccessoryViewController_totalFrames",
-      "measurements": [396, 29, 7, 426, 14, 7, 473, 15, 7, 427, 15, 7, 377, 14, 7, 393, 15, 7, 454, 14, 8, 404, 16, 7, 451, 16, 7, 447, 15, 7, 422, 15]
+      "measurements": [
+        484,
+        15,
+        8,
+        366,
+        16,
+        7,
+        391,
+        15,
+        7,
+        366,
+        16,
+        7,
+        400,
+        15,
+        8,
+        385,
+        15,
+        7,
+        403,
+        15,
+        6,
+        400,
+        16,
+        8,
+        360,
+        19,
+        5,
+        366,
+        16
+      ]
+    },
+    {
+      "name": "screen_metrics__UICursorAccessoryViewController_slowFrames",
+      "measurements": [
+        79,
+        4,
+        1,
+        90,
+        1,
+        2,
+        93,
+        2,
+        3,
+        97,
+        3,
+        2,
+        85,
+        3,
+        2,
+        86,
+        2,
+        2,
+        90,
+        3,
+        2,
+        91,
+        2,
+        2,
+        101,
+        3,
+        3,
+        90,
+        3
+      ]
     },
     {
       "name": "screen_metrics_UICompatibilityInputViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
       "name": "screen_metrics_UICompatibilityInputViewController_slowFrames",
-      "measurements": [2, 3, 3, 3, 3, 2, 4, 3, 3, 4, 3, 2, 2, 3, 3, 3, 3, 4, 4, 4, 2]
+      "measurements": [
+        2,
+        3,
+        1,
+        1,
+        1,
+        2,
+        4,
+        2,
+        3,
+        2,
+        3,
+        3,
+        2,
+        4,
+        3,
+        3,
+        3,
+        2,
+        3
+      ]
     },
     {
       "name": "screen_metrics_UICompatibilityInputViewController_totalFrames",
-      "measurements": [85, 82, 85, 98, 85, 83, 85, 81, 99, 83, 85, 83, 85, 82, 86, 83, 85, 82, 84, 83, 87]
-    },
-    {
-      "name": "screen_metrics_UINavigationController_slowFrames",
-      "measurements": [1, 18, 1, 13, 1, 14, 1, 14, 1, 21, 1, 20, 1, 16, 1, 19, 1, 11, 1, 20, 1]
+      "measurements": [
+        86,
+        75,
+        84,
+        100,
+        102,
+        80,
+        86,
+        97,
+        85,
+        80,
+        83,
+        79,
+        85,
+        79,
+        84,
+        76,
+        85,
+        75,
+        85
+      ]
     },
     {
       "name": "screen_metrics_UINavigationController_frozenFrames",
-      "measurements": [0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+      "measurements": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
       "name": "screen_metrics_UINavigationController_totalFrames",
-      "measurements": [2, 40, 1, 54, 1, 45, 1, 50, 1, 40, 1, 42, 1, 50, 1, 45, 1, 52, 1, 45, 1]
+      "measurements": [
+        1,
+        19,
+        1,
+        18,
+        1,
+        18,
+        1,
+        19,
+        1,
+        20,
+        1,
+        19,
+        1,
+        18,
+        1,
+        22,
+        1,
+        24,
+        1
+      ]
     },
     {
-      "name": "NewAccount_ConvertDataToViewModel_durationMs",
-      "measurements": [24, 14, 24, 14, 21, 13, 20, 13, 21, 13, 22, 13, 20, 14, 21, 13, 21, 14, 21, 13, 21]
-    },
-    {
-      "name": "NewAccount_RenderUI_durationMs",
-      "measurements": [115, 35, 134, 28, 124, 35, 125, 35, 125, 34, 120, 35, 119, 38, 121, 35, 124, 38, 122, 35, 126]
+      "name": "screen_metrics_UINavigationController_slowFrames",
+      "measurements": [
+        1,
+        3,
+        1,
+        3,
+        1,
+        3,
+        1,
+        2,
+        1,
+        3,
+        1,
+        3,
+        1,
+        4,
+        1,
+        3,
+        1,
+        3,
+        1
+      ]
     },
     {
       "name": "NewHome_domain_mapper_durationMs",
-      "measurements": [352, 296, 364, 322, 365, 323, 360, 333, 363, 313, 376, 315, 358, 318, 365, 327, 354, 320, 361, 312, 376]
+      "measurements": [
+        357,
+        295,
+        368,
+        276,
+        348,
+        287,
+        371,
+        294,
+        363,
+        314,
+        352,
+        288,
+        339,
+        286,
+        348,
+        285,
+        413,
+        299,
+        390
+      ],
+      "startTime": 3500,
+      "duration": 339.0
     },
     {
-      "name": "NewHome_FetchFeed_durationMs",
-      "measurements": [1562, 1732, 1279, 1688, 1246, 1825, 1262, 1766, 1259, 1677, 1264, 1714, 1244, 1750, 1278, 1687, 1253, 1695, 1267, 1680, 1292]
+      "name": "http:post:HomeFeed_durationMs",
+      "measurements": [
+        1095,
+        1471,
+        1057,
+        1436,
+        1031,
+        1397,
+        995,
+        1483,
+        1089,
+        1654,
+        1076,
+        1466,
+        1020,
+        1435,
+        965,
+        1613,
+        1096,
+        1669,
+        1114
+      ],
+      "startTime": 2250,
+      "duration": 1114.0
+    },
+    {
+      "name": "NewAccount_ConvertDataToViewModel_durationMs",
+      "measurements": [
+        18,
+        11,
+        17,
+        11,
+        17,
+        13,
+        21,
+        12,
+        17,
+        12,
+        16,
+        12,
+        16,
+        12,
+        15,
+        14,
+        20,
+        14,
+        18
+      ],
+      "startTime": 24700,
+      "duration": 15.0
     },
     {
       "name": "NewHome_GraphQL_Home_durationMs",
-      "measurements": [1580, 1922, 1519, 1885, 1462, 2048, 1483, 1797, 1480, 1872, 1409, 1911, 1455, 1945, 1491, 1946, 1473, 1866, 1481, 1920, 1513]
+      "measurements": [
+        1227,
+        1612,
+        1195,
+        1557,
+        1087,
+        1529,
+        1118,
+        1611,
+        1150,
+        1826,
+        1161,
+        1587,
+        1103,
+        1466,
+        1078,
+        1653,
+        1237,
+        1717,
+        1213
+      ],
+      "startTime": 2200,
+      "duration": 1237.0
     },
     {
-      "name": "NewHome_ConvertDataToViewModel_durationMs",
-      "measurements": [68, 79, 65, 78, 65, 77, 65, 74, 68, 75, 64, 75, 70, 78, 65, 77, 64, 77, 66, 74, 67]
+      "name": "NewAccount_RenderUI_durationMs",
+      "measurements": [
+        94,
+        34,
+        56,
+        28,
+        29,
+        31,
+        36,
+        30,
+        30,
+        31,
+        54,
+        31,
+        52,
+        82,
+        44,
+        109,
+        60,
+        35,
+        61
+      ],
+      "startTime": 24720,
+      "duration": 36.0
     },
     {
-      "name": "NewHome_RenderUI_durationMs",
-      "measurements": [12, 5, 37, 5, 37, 4, 38, 214, 41, 6, 8, 190, 37, 6, 37, 190, 37, 198, 34, 4, 35]
+      "name": "home_screen_map_data_to_view_model_durationMs",
+      "measurements": [
+        109,
+        107,
+        104,
+        106,
+        101,
+        103,
+        109,
+        107,
+        109,
+        127,
+        106,
+        116,
+        101,
+        108,
+        97,
+        105,
+        112,
+        120,
+        107
+      ],
+      "startTime": 3900,
+      "duration": 107.0
     },
     {
-      "name": "screen_metrics_NavigationController_frozenFrames",
-      "measurements": [2, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1]
-    },
-    {
-      "name": "screen_metrics_NavigationController_slowFrames",
-      "measurements": [238, 80, 244, 78, 231, 80, 248, 84, 252, 84, 223, 77, 251, 76, 257, 78, 233, 77, 251, 86, 242]
-    },
-    {
-      "name": "screen_metrics_NavigationController_totalFrames",
-      "measurements": [543, 210, 583, 229, 569, 216, 588, 190, 616, 211, 578, 212, 574, 215, 611, 200, 550, 217, 577, 199, 559]
-    },
-    {
-      "name": "NewAccount_FetchData_durationMs",
-      "measurements": [18496, 1, 19173, 1, 18684, 1, 19386, 1, 19435, 1, 18763, 1, 18768, 1, 19409, 1, 18533, 1, 18890, 1, 18537]
-    },
-    {
-      "name": "screen_metrics_NewAccountScreenViewController_navigationToScreenMs",
-      "measurements": [634, 331, 279, 319, 271, 322, 273, 320, 278, 329, 281, 332, 272, 315, 287, 319, 288, 328, 288, 312, 278]
-    },
-    {
-      "name": "screen_metrics_NewAccountScreenViewController_frozenFrames",
-      "measurements": [2, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 0, 2, 0, 1]
-    },
-    {
-      "name": "screen_metrics_NewAccountScreenViewController_slowFrames",
-      "measurements": [238, 3, 244, 3, 231, 2, 248, 4, 252, 3, 223, 3, 251, 4, 257, 4, 233, 4, 251, 4, 242]
-    },
-    {
-      "name": "screen_metrics_NewAccountScreenViewController_totalFrames",
-      "measurements": [543, 66, 583, 64, 569, 55, 588, 29, 616, 31, 578, 65, 574, 29, 611, 71, 550, 67, 577, 68, 559]
+      "name": "home_screen_ui_render_durationMs",
+      "measurements": [
+        54,
+        6,
+        17,
+        7,
+        26,
+        6,
+        19,
+        6,
+        43,
+        8,
+        35,
+        219,
+        28,
+        153,
+        12,
+        147,
+        52,
+        204,
+        45
+      ],
+      "startTime": 4000,
+      "duration": 28.0
     },
     {
       "name": "screen_metrics_BottomNavigationController_slowFrames",
-      "measurements": [238, 83, 244, 81, 231, 82, 248, 88, 252, 87, 223, 80, 251, 80, 257, 82, 233, 81, 251, 90, 242]
+      "measurements": [
+        212,
+        78,
+        217,
+        83,
+        206,
+        84,
+        183,
+        73,
+        198,
+        74,
+        203,
+        78,
+        208,
+        77,
+        210,
+        87,
+        191,
+        78,
+        205
+      ]
     },
     {
       "name": "screen_metrics_BottomNavigationController_totalFrames",
-      "measurements": [543, 276, 583, 293, 569, 271, 588, 219, 616, 242, 578, 277, 574, 244, 611, 271, 550, 284, 577, 267, 559]
+      "measurements": [
+        573,
+        244,
+        550,
+        246,
+        571,
+        243,
+        511,
+        259,
+        502,
+        258,
+        556,
+        280,
+        538,
+        276,
+        541,
+        236,
+        461,
+        224,
+        547
+      ]
     },
     {
       "name": "screen_metrics_BottomNavigationController_navigationToScreenMs",
-      "measurements": [634, 279, 271, 273, 277, 281, 272, 287, 287, 288, 278]
+      "measurements": [
+        357,
+        290,
+        285,
+        324,
+        284,
+        306,
+        290,
+        285,
+        381,
+        333
+      ],
+      "startTime": 2100,
+      "duration": 298.0
     },
     {
       "name": "screen_metrics_BottomNavigationController_frozenFrames",
-      "measurements": [2, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1]
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "screen_metrics_NavigationController_slowFrames",
+      "measurements": [
+        212,
+        75,
+        217,
+        79,
+        206,
+        80,
+        183,
+        69,
+        198,
+        70,
+        203,
+        74,
+        208,
+        73,
+        210,
+        83,
+        191,
+        75,
+        205
+      ]
+    },
+    {
+      "name": "screen_metrics_NavigationController_totalFrames",
+      "measurements": [
+        573,
+        213,
+        550,
+        217,
+        571,
+        212,
+        511,
+        194,
+        502,
+        201,
+        556,
+        213,
+        538,
+        207,
+        541,
+        204,
+        461,
+        194,
+        547
+      ]
+    },
+    {
+      "name": "screen_metrics_NavigationController_frozenFrames",
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "NewAccount_FetchData_durationMs",
+      "measurements": [
+        19672,
+        1,
+        18848,
+        1,
+        18890,
+        1,
+        18737,
+        1,
+        18961,
+        1,
+        19312,
+        1,
+        18508,
+        1,
+        19065,
+        1,
+        18978,
+        1,
+        19291
+      ],
+      "startTime": 5000,
+      "duration": 18508.0
+    },
+    {
+      "name": "screen_metrics_NewAccountScreenViewController_slowFrames",
+      "measurements": [
+        212,
+        3,
+        217,
+        4,
+        206,
+        4,
+        183,
+        4,
+        198,
+        4,
+        203,
+        4,
+        208,
+        4,
+        210,
+        4,
+        191,
+        3,
+        205
+      ]
+    },
+    {
+      "name": "screen_metrics_NewAccountScreenViewController_totalFrames",
+      "measurements": [
+        573,
+        31,
+        550,
+        29,
+        571,
+        31,
+        511,
+        65,
+        502,
+        57,
+        556,
+        67,
+        538,
+        69,
+        541,
+        32,
+        461,
+        30,
+        547
+      ]
+    },
+    {
+      "name": "screen_metrics_NewAccountScreenViewController_navigationToScreenMs",
+      "measurements": [
+        366,
+        255,
+        290,
+        240,
+        285,
+        277,
+        324,
+        240,
+        285,
+        266,
+        306,
+        244,
+        291,
+        236,
+        286,
+        266,
+        384,
+        281,
+        333
+      ],
+      "startTime": 24700,
+      "duration": 285.0
+    },
+    {
+      "name": "screen_metrics_NewAccountScreenViewController_frozenFrames",
+      "measurements": [
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1
+      ]
     },
     {
       "name": "app_coordinator_init_durationMs",
-      "measurements": [960, 974, 1020, 963, 944, 998, 972, 935, 980, 941]
+      "measurements": [
+        586,
+        528,
+        588,
+        604,
+        618,
+        594,
+        532,
+        650,
+        660
+      ],
+      "startTime": 0,
+      "duration": 594.0
     },
     {
       "name": "splash_init_to_view_will_appear_durationMs",
-      "measurements": [905, 885, 1009, 857, 961, 926, 946, 882, 875, 863]
+      "measurements": [
+        412,
+        358,
+        370,
+        415,
+        391,
+        423,
+        346,
+        469,
+        499
+      ],
+      "startTime": 600,
+      "duration": 412.0
     },
     {
       "name": "app_start_to_launcher_durationMs",
-      "measurements": [2086, 2076, 2271, 2040, 2117, 2156, 2136, 2033, 2105, 2019]
+      "measurements": [
+        1046,
+        925,
+        1004,
+        1065,
+        1057,
+        1061,
+        920,
+        1168,
+        1211
+      ],
+      "startTime": 0,
+      "duration": 1057.0
     },
     {
       "name": "fetch_bundled_countries_durationMs",
-      "measurements": [9, 9, 12, 10, 10, 30, 29, 30, 10, 10]
+      "measurements": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        7,
+        5,
+        5,
+        6
+      ],
+      "startTime": 350,
+      "duration": 6.0
     },
     {
       "name": "SnapToAddress_durationMs",
-      "measurements": [1, 1, 1, 1, 1, 1, 1, 1, 1]
+      "measurements": [
+        1,
+        4,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "startTime": 4100,
+      "duration": 1.0
     },
     {
       "name": "FetchAppConfig_durationMs",
-      "measurements": [822, 733, 744, 724, 744, 744, 741, 716, 712, 716]
+      "measurements": [
+        181,
+        187,
+        191,
+        201,
+        206,
+        202,
+        192,
+        225,
+        243
+      ],
+      "startTime": 150,
+      "duration": 201.0
     },
     {
       "name": "TryLoadLastSavedUser_durationMs",
-      "measurements": [135, 157, 135, 133, 142, 113, 152, 137, 166, 133]
+      "measurements": [
+        60,
+        51,
+        38,
+        41,
+        38,
+        46,
+        37,
+        47,
+        52
+      ],
+      "startTime": 100,
+      "duration": 46.0
     },
     {
       "name": "PreparationBeforeRestaurantsList_durationMs",
-      "measurements": [330, 327, 417, 428, 337, 387, 403, 375, 405, 439]
+      "measurements": [
+        79,
+        75,
+        58,
+        68,
+        73,
+        69,
+        54,
+        80,
+        85
+      ],
+      "startTime": 4200,
+      "duration": 73.0
     },
     {
       "name": "AnimateSplashView_durationMs",
-      "measurements": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    },
-    {
-      "name": "PostFirstRenderedFrame_durationMs",
-      "measurements": [2568, 2471, 2688, 2516, 2471, 2579, 2585, 2467, 2468, 2489]
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "startTime": 1000,
+      "duration": 1.0
     },
     {
       "name": "app_start_to_first_screen_durationMs",
-      "measurements": [3865, 3789, 4127, 3830, 3762, 3940, 3916, 3751, 3831, 3770]
+      "measurements": [
+        1442,
+        1339,
+        1426,
+        1450,
+        1479,
+        1518,
+        1318,
+        1674,
+        1705
+      ],
+      "startTime": 0,
+      "duration": 1450.0
     },
     {
-      "name": "screen_metrics_SplashViewController_slowFrames",
-      "measurements": [18, 13, 14, 14, 21, 20, 16, 19, 11, 20]
-    },
-    {
-      "name": "screen_metrics_SplashViewController_totalFrames",
-      "measurements": [40, 54, 45, 50, 40, 42, 50, 45, 52, 45]
+      "name": "PostFirstRenderedFrame_durationMs",
+      "measurements": [
+        728,
+        701,
+        724,
+        721,
+        728,
+        779,
+        679,
+        877,
+        896
+      ],
+      "startTime": 1450,
+      "duration": 728.0
     },
     {
       "name": "screen_metrics_SplashViewController_frozenFrames",
-      "measurements": [0, 1, 0, 1, 1, 0, 1, 1, 1, 1]
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
     },
     {
-      "name": "homeTabStartToInteractive_timeToInteractiveMs",
-      "measurements": [2404, 2338, 2495, 2412, 2332, 2546, 2407, 2544, 2507, 2335]
+      "name": "screen_metrics_SplashViewController_slowFrames",
+      "measurements": [
+        3,
+        3,
+        3,
+        2,
+        3,
+        3,
+        4,
+        3,
+        3
+      ]
+    },
+    {
+      "name": "screen_metrics_SplashViewController_totalFrames",
+      "measurements": [
+        19,
+        18,
+        18,
+        19,
+        20,
+        19,
+        18,
+        22,
+        24
+      ],
+      "startTime": 600,
+      "duration": 19.0
+    },
+    {
+      "name": "homeTabStartToInteractive",
+      "measurements": [
+        1357,
+        1143,
+        1206,
+        1425,
+        1157,
+        1335,
+        1202,
+        1051,
+        1801,
+        1216
+      ],
+      "startTime": 2200,
+      "duration": 1211.0
     },
     {
       "name": "bottomNavStartToInteractive_durationMs",
-      "measurements": [2526, 2461, 2624, 2654, 2457, 2669, 2529, 2666, 2628, 2457]
+      "measurements": [
+        2099,
+        2049,
+        1995,
+        2099,
+        2376,
+        2303,
+        2170,
+        2375,
+        2515
+      ],
+      "startTime": 2100,
+      "duration": 2170.0
     },
     {
       "name": "AppStartToInteractive_durationMs",
-      "measurements": [7414, 7366, 7990, 7549, 7460, 7654, 7548, 7509, 7529, 7296]
+      "measurements": [
+        3820,
+        3680,
+        3699,
+        3819,
+        4159,
+        4089,
+        3734,
+        4391,
+        4530
+      ],
+      "startTime": 0,
+      "duration": 3820.0
     },
     {
-      "name": "FetchFirebaseConfig_durationMs",
-      "measurements": [5590, 5507, 5961, 5716, 5788, 5653, 5766, 5614, 5670, 5524]
-    },
-    {
-      "name": "screen_metrics_home_frozenFrames",
-      "measurements": [2, 1, 2, 1, 1, 2, 1, 1, 1, 1]
-    },
-    {
-      "name": "screen_metrics_home_slowFrames",
-      "measurements": [80, 78, 80, 84, 84, 77, 76, 78, 77, 86]
-    },
-    {
-      "name": "screen_metrics_home_timeToInteractiveMs",
-      "measurements": [2493, 2431, 2589, 2598, 2425, 2638, 2498, 2635, 2599, 2426]
+      "name": "menuStartToInteractive",
+      "measurements": [
+        869,
+        1183,
+        1106,
+        978,
+        974,
+        795,
+        1133,
+        1094,
+        1076,
+        943
+      ],
+      "startTime": 25500,
+      "duration": 1027.0
     },
     {
       "name": "screen_metrics_home_totalFrames",
-      "measurements": [210, 229, 216, 190, 211, 212, 215, 200, 217, 199]
+      "measurements": [
+        213,
+        217,
+        212,
+        194,
+        201,
+        213,
+        207,
+        204,
+        194
+      ]
+    },
+    {
+      "name": "screen_metrics_home_slowFrames",
+      "measurements": [
+        75,
+        79,
+        80,
+        69,
+        70,
+        74,
+        73,
+        83,
+        75
+      ]
+    },
+    {
+      "name": "screen_metrics_home_frozenFrames",
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "screen_metrics_home_timeToInteractiveMs",
+      "measurements": [
+        2057,
+        1999,
+        1955,
+        2054,
+        2342,
+        2259,
+        2085,
+        2277,
+        2429
+      ],
+      "startTime": 2100,
+      "duration": 2085.0
     },
     {
       "name": "accountStartToInteractive_timeToInteractiveMs",
-      "measurements": [220, 550, 528, 210, 539, 219, 222, 540, 545, 218, 549, 219, 224, 537, 220, 537, 231, 557, 529, 218]
+      "measurements": [
+        242,
+        496,
+        462,
+        224,
+        549,
+        274,
+        513,
+        275,
+        560,
+        295,
+        492,
+        250,
+        510,
+        276,
+        586,
+        322,
+        531,
+        251
+      ],
+      "startTime": 24700,
+      "duration": 392.0
     },
     {
       "name": "screen_metrics_NewAccountScreenViewController_timeToInteractiveMs",
-      "measurements": [272, 261, 269, 277, 271, 275, 275, 271, 288, 270]
-    },
-    {
-      "name": "screen_metrics_login_totalFrames",
-      "measurements": [20, 20, 20, 18, 20, 44, 19, 44, 20, 19]
-    },
-    {
-      "name": "screen_metrics_login_navigationToScreenMs",
-      "measurements": [242, 224, 234, 258, 226, 231, 234, 234, 246, 234]
-    },
-    {
-      "name": "screen_metrics_login_slowFrames",
-      "measurements": [3, 3, 3, 3, 3, 2, 3, 2, 3, 4]
+      "measurements": [
+        272,
+        251,
+        306,
+        302,
+        329,
+        281,
+        305,
+        356,
+        286
+      ],
+      "startTime": 24700,
+      "duration": 302.0
     },
     {
       "name": "screen_metrics_login_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
-      "name": "screen_metrics_UIPredictionViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "name": "screen_metrics_login_navigationToScreenMs",
+      "measurements": [
+        180,
+        197,
+        171,
+        170,
+        178,
+        174,
+        176,
+        185,
+        176
+      ],
+      "startTime": 27000,
+      "duration": 176.0
+    },
+    {
+      "name": "screen_metrics_login_totalFrames",
+      "measurements": [
+        19,
+        19,
+        17,
+        17,
+        18,
+        18,
+        20,
+        17,
+        37
+      ]
+    },
+    {
+      "name": "screen_metrics_login_slowFrames",
+      "measurements": [
+        4,
+        3,
+        4,
+        5,
+        4,
+        4,
+        3,
+        5,
+        3
+      ]
     },
     {
       "name": "screen_metrics_UIPredictionViewController_totalFrames",
-      "measurements": [82, 98, 83, 81, 83, 83, 82, 83, 82, 83]
+      "measurements": [
+        75,
+        100,
+        80,
+        97,
+        80,
+        79,
+        79,
+        76,
+        75
+      ]
+    },
+    {
+      "name": "screen_metrics_UIPredictionViewController_frozenFrames",
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
       "name": "screen_metrics_UIPredictionViewController_slowFrames",
-      "measurements": [3, 3, 2, 3, 4, 2, 3, 3, 4, 4]
-    },
-    {
-      "name": "screen_metrics_EmailEntryViewController_navigationToScreenMs",
-      "measurements": [32, 32, 63, 33, 33, 33, 34, 31, 35, 59]
+      "measurements": [
+        3,
+        1,
+        2,
+        2,
+        2,
+        3,
+        4,
+        3,
+        2
+      ]
     },
     {
       "name": "screen_metrics_EmailEntryViewController_slowFrames",
-      "measurements": [6, 6, 5, 7, 7, 4, 6, 6, 7, 7]
+      "measurements": [
+        5,
+        4,
+        6,
+        5,
+        5,
+        5,
+        7,
+        6,
+        6
+      ]
     },
     {
       "name": "screen_metrics_EmailEntryViewController_totalFrames",
-      "measurements": [90, 106, 91, 90, 91, 91, 91, 91, 90, 91]
+      "measurements": [
+        84,
+        108,
+        88,
+        105,
+        89,
+        86,
+        86,
+        85,
+        81
+      ]
+    },
+    {
+      "name": "screen_metrics_EmailEntryViewController_navigationToScreenMs",
+      "measurements": [
+        41,
+        29,
+        30,
+        28,
+        52,
+        34,
+        30,
+        37,
+        28
+      ]
     },
     {
       "name": "screen_metrics_EmailEntryViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    },
-    {
-      "name": "screen_metrics_SSOPostLinkingViewController_slowFrames",
-      "measurements": [1, 0, 0, 1, 0, 1, 0, 0, 1, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
       "name": "screen_metrics_SSOPostLinkingViewController_navigationToScreenMs",
-      "measurements": [263, 257, 263, 267, 265, 259, 273, 272, 263, 263]
+      "measurements": [
+        264,
+        255,
+        296,
+        271,
+        274,
+        262,
+        273,
+        351,
+        286
+      ]
     },
     {
       "name": "screen_metrics_SSOPostLinkingViewController_totalFrames",
-      "measurements": [1, 0, 0, 1, 0, 1, 0, 0, 1, 0]
+      "measurements": [
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
     },
     {
       "name": "screen_metrics_SSOPostLinkingViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
-      "name": "screen_metrics_SSOEntryViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "name": "screen_metrics_SSOPostLinkingViewController_slowFrames",
+      "measurements": [
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
     },
     {
       "name": "screen_metrics_SSOEntryViewController_navigationToScreenMs",
-      "measurements": [251, 243, 241, 255, 248, 248, 256, 256, 251, 248]
+      "measurements": [
+        250,
+        243,
+        285,
+        247,
+        259,
+        250,
+        262,
+        328,
+        269
+      ]
     },
     {
       "name": "screen_metrics_SSOEntryViewController_slowFrames",
-      "measurements": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "screen_metrics_SSOEntryViewController_frozenFrames",
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
       "name": "screen_metrics_SSOEntryViewController_totalFrames",
-      "measurements": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
     },
     {
       "name": "screen_metrics_ScreensWrapper_slowFrames",
-      "measurements": [16, 16, 16, 17, 16, 12, 15, 15, 18, 17]
-    },
-    {
-      "name": "screen_metrics_ScreensWrapper_navigationToScreenMs",
-      "measurements": [51, 48, 50, 52, 47, 46, 48, 47, 53, 48]
-    },
-    {
-      "name": "screen_metrics_ScreensWrapper_totalFrames",
-      "measurements": [210, 226, 211, 222, 212, 235, 211, 236, 210, 212]
+      "measurements": [
+        12,
+        11,
+        17,
+        17,
+        15,
+        15,
+        16,
+        17,
+        16
+      ]
     },
     {
       "name": "screen_metrics_ScreensWrapper_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "screen_metrics_ScreensWrapper_navigationToScreenMs",
+      "measurements": [
+        41,
+        40,
+        36,
+        38,
+        40,
+        37,
+        40,
+        40,
+        39
+      ]
+    },
+    {
+      "name": "screen_metrics_ScreensWrapper_totalFrames",
+      "measurements": [
+        205,
+        245,
+        207,
+        223,
+        207,
+        205,
+        207,
+        206,
+        220
+      ]
     },
     {
       "name": "screen_metrics_NavigationBar_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    },
-    {
-      "name": "screen_metrics_NavigationBar_navigationToScreenMs",
-      "measurements": [51, 48, 50, 52, 47, 46, 48, 47, 53, 48]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
       "name": "screen_metrics_NavigationBar_slowFrames",
-      "measurements": [16, 16, 16, 17, 16, 12, 15, 15, 18, 17]
+      "measurements": [
+        12,
+        11,
+        17,
+        17,
+        15,
+        15,
+        16,
+        17,
+        16
+      ]
+    },
+    {
+      "name": "screen_metrics_NavigationBar_navigationToScreenMs",
+      "measurements": [
+        41,
+        41,
+        36,
+        38,
+        40,
+        37,
+        40,
+        40,
+        39
+      ]
     },
     {
       "name": "screen_metrics_NavigationBar_totalFrames",
-      "measurements": [210, 226, 211, 222, 212, 235, 211, 236, 210, 212]
-    },
-    {
-      "name": "screen_metrics_EmbeddedNavigationController_slowFrames",
-      "measurements": [16, 16, 16, 17, 16, 12, 15, 15, 18, 17]
-    },
-    {
-      "name": "screen_metrics_EmbeddedNavigationController_navigationToScreenMs",
-      "measurements": [52, 48, 51, 53, 48, 47, 49, 48, 54, 49]
-    },
-    {
-      "name": "screen_metrics_EmbeddedNavigationController_totalFrames",
-      "measurements": [210, 226, 211, 222, 212, 235, 211, 236, 210, 212]
+      "measurements": [
+        205,
+        245,
+        207,
+        223,
+        207,
+        205,
+        207,
+        206,
+        220
+      ]
     },
     {
       "name": "screen_metrics_EmbeddedNavigationController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
-      "name": "screen_metrics_EmailLoginViewController_slowFrames",
-      "measurements": [7, 7, 8, 7, 6, 6, 6, 7, 8, 6]
+      "name": "screen_metrics_EmbeddedNavigationController_navigationToScreenMs",
+      "measurements": [
+        42,
+        43,
+        37,
+        39,
+        41,
+        38,
+        41,
+        41,
+        40
+      ]
+    },
+    {
+      "name": "screen_metrics_EmbeddedNavigationController_totalFrames",
+      "measurements": [
+        205,
+        245,
+        207,
+        223,
+        207,
+        205,
+        207,
+        206,
+        220
+      ]
+    },
+    {
+      "name": "screen_metrics_EmbeddedNavigationController_slowFrames",
+      "measurements": [
+        12,
+        11,
+        17,
+        17,
+        15,
+        15,
+        16,
+        17,
+        16
+      ]
     },
     {
       "name": "screen_metrics_EmailLoginViewController_navigationToScreenMs",
-      "measurements": [155, 156, 157, 160, 158, 156, 169, 157, 163, 161]
+      "measurements": [
+        154,
+        149,
+        175,
+        155,
+        169,
+        152,
+        144,
+        178,
+        149
+      ]
     },
     {
-      "name": "screen_metrics_EmailLoginViewController_totalFrames",
-      "measurements": [100, 100, 100, 114, 101, 100, 101, 101, 100, 102]
+      "name": "screen_metrics_EmailLoginViewController_slowFrames",
+      "measurements": [
+        3,
+        4,
+        7,
+        7,
+        6,
+        6,
+        6,
+        6,
+        7
+      ]
     },
     {
       "name": "screen_metrics_EmailLoginViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      "measurements": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
     },
     {
-      "name": "NewHome_JokerOffer_FetchData_durationMs",
-      "measurements": [915, 880, 901, 895, 888, 886, 912, 898, 905, 916]
+      "name": "screen_metrics_EmailLoginViewController_totalFrames",
+      "measurements": [
+        102,
+        118,
+        102,
+        101,
+        100,
+        101,
+        101,
+        104,
+        102
+      ]
     },
     {
-      "name": "screen_metrics_UIInputWindowController_slowFrames",
-      "measurements": [250, 237, 255, 258, 228, 256, 263, 239, 258, 247]
-    },
-    {
-      "name": "screen_metrics_UIInputWindowController_totalFrames",
-      "measurements": [682, 668, 687, 729, 678, 673, 712, 650, 676, 660]
-    },
-    {
-      "name": "screen_metrics_UIInputWindowController_frozenFrames",
-      "measurements": [231,104,110,226,210,244,144,148,179,87,204,189,225,121,226,185,106,124,245,108,185,183,182,117,193,251,98,211]
-    },
-    {
-      "name": "TBC_NewHome_Splash_Prefetch_After_Fetching_User_durationMs",
-      "measurements": [39370, 39042, 39907, 39321, 38447, 39346, 39133, 39154, 39051, 38813]
-    },
-    {
-      "name": "TBC_NewHome_Splash_FetchFeed_Prefetch_durationMs",
-      "measurements": [39361, 39033, 39895, 39311, 38437, 39316, 39104, 39124, 39040, 38804]
-    },
-    {
-      "name": "screen_metrics_UIViewController_frozenFrames",
-      "measurements": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    },
-    {
-      "name": "screen_metrics_UIViewController_slowFrames",
-      "measurements": [94, 86, 85, 92, 87, 91, 96, 82, 94, 84]
-    },
-    {
-      "name": "screen_metrics_UIViewController_totalFrames",
-      "measurements": [198, 188, 194, 192, 195, 199, 203, 193, 194, 196]
-    },
-    {
-      "name": "screen_metrics_UIEditingOverlayViewController_slowFrames",
-      "measurements": [361, 341, 360, 371, 347, 363, 368, 349, 361, 369]
-    },
-    {
-      "name": "screen_metrics_UIEditingOverlayViewController_frozenFrames",
-      "measurements": [3, 3, 3, 3, 3, 3, 4, 3, 4, 3]
-    },
-    {
-      "name": "screen_metrics_UIEditingOverlayViewController_totalFrames",
-      "measurements": [1109, 1142, 1115, 1107, 1072, 1128, 1116, 1102, 1123, 1083]
-    },
-    {
-      "name": "screen_metrics_UISystemKeyboardDockController_slowFrames",
-      "measurements": [250, 237, 255, 258, 228, 256, 263, 239, 258, 247]
-    },
-    {
-      "name": "screen_metrics_UISystemKeyboardDockController_frozenFrames",
-      "measurements": [1, 1, 1, 1, 1, 1, 2, 1, 2, 1]
+      "name": "http:post:JokerOfferFeedQuery_durationMs",
+      "measurements": [
+        679,
+        619,
+        614,
+        669,
+        655,
+        624,
+        607,
+        678,
+        662
+      ],
+      "startTime": 26500,
+      "duration": 655.0
     },
     {
       "name": "screen_metrics_UISystemKeyboardDockController_totalFrames",
-      "measurements": [682, 668, 687, 729, 678, 673, 712, 650, 676, 660]
+      "measurements": [
+        651,
+        688,
+        613,
+        602,
+        655,
+        638,
+        641,
+        565,
+        648
+      ]
     },
     {
-      "name": "screen_metrics_UITrackingElementWindowController_totalFrames",
-      "measurements": [773, 775, 779, 820, 770, 765, 803, 742, 767, 752]
+      "name": "screen_metrics_UISystemKeyboardDockController_frozenFrames",
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
     },
     {
-      "name": "screen_metrics_UITrackingElementWindowController_frozenFrames",
-      "measurements": [1, 1, 1, 1, 1, 1, 2, 1, 2, 1]
+      "name": "screen_metrics_UISystemKeyboardDockController_slowFrames",
+      "measurements": [
+        219,
+        209,
+        190,
+        204,
+        208,
+        213,
+        215,
+        197,
+        211
+      ]
     },
     {
-      "name": "screen_metrics_UITrackingElementWindowController_slowFrames",
-      "measurements": [257, 244, 261, 266, 236, 261, 269, 246, 266, 255]
-    },
-    {
-      "name": "screen_metrics_DebugMenuViewController_slowFrames",
-      "measurements": [361, 341, 360, 371, 347, 363, 368, 349, 361, 369]
-    },
-    {
-      "name": "screen_metrics_DebugMenuViewController_frozenFrames",
-      "measurements": [3, 3, 3, 3, 3, 3, 4, 3, 4, 3]
-    },
-    {
-      "name": "screen_metrics_DebugMenuViewController_totalFrames",
-      "measurements": [1109, 1142, 1115, 1107, 1072, 1128, 1116, 1102, 1123, 1083]
-    },
-    {
-      "name": "screen_metrics_UIHostingController<AppVersionView>_slowFrames",
-      "measurements": [361, 341, 360, 371, 347, 363, 368, 349, 361, 369]
-    },
-    {
-      "name": "screen_metrics_UIHostingController<AppVersionView>_frozenFrames",
-      "measurements": [3, 3, 3, 3, 3, 3, 4, 3, 4, 3]
+      "name": "TBC_NewHome_Splash_Prefetch_After_Fetching_User_durationMs",
+      "measurements": [
+        35631,
+        36259,
+        35639,
+        36690,
+        37114,
+        35815,
+        36382,
+        36699,
+        37083
+      ]
     },
     {
       "name": "screen_metrics_UIHostingController<AppVersionView>_totalFrames",
-      "measurements": [1109, 1142, 1115, 1107, 1072, 1128, 1116, 1102, 1123, 1083]
+      "measurements": [
+        1018,
+        1080,
+        979,
+        1003,
+        1041,
+        1042,
+        1042,
+        925,
+        1015
+      ]
     },
     {
-      "name": "screen_metrics_PassthroughViewController_totalFrames",
-      "measurements": [1109, 1142, 1115, 1107, 1071, 1127, 1115, 1102, 1122, 1082]
+      "name": "screen_metrics_UIHostingController<AppVersionView>_slowFrames",
+      "measurements": [
+        310,
+        303,
+        287,
+        290,
+        295,
+        304,
+        307,
+        298,
+        302
+      ]
+    },
+    {
+      "name": "screen_metrics_UIHostingController<AppVersionView>_frozenFrames",
+      "measurements": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "screen_metrics_DebugMenuViewController_slowFrames",
+      "measurements": [
+        310,
+        303,
+        287,
+        290,
+        295,
+        304,
+        307,
+        298,
+        302
+      ]
+    },
+    {
+      "name": "screen_metrics_DebugMenuViewController_frozenFrames",
+      "measurements": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "screen_metrics_DebugMenuViewController_totalFrames",
+      "measurements": [
+        1018,
+        1080,
+        979,
+        1003,
+        1041,
+        1042,
+        1042,
+        925,
+        1015
+      ]
+    },
+    {
+      "name": "TBC_NewHome_Splash_FetchFeed_Prefetch_durationMs",
+      "measurements": [
+        35626,
+        36253,
+        35632,
+        36684,
+        37105,
+        35779,
+        36377,
+        36676,
+        37077
+      ]
     },
     {
       "name": "screen_metrics_PassthroughViewController_frozenFrames",
-      "measurements": [3, 3, 3, 3, 3, 3, 4, 3, 4, 3]
+      "measurements": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "screen_metrics_PassthroughViewController_totalFrames",
+      "measurements": [
+        1017,
+        1080,
+        978,
+        1002,
+        1040,
+        1042,
+        1041,
+        924,
+        1015
+      ]
     },
     {
       "name": "screen_metrics_PassthroughViewController_slowFrames",
-      "measurements": [361, 341, 360, 371, 346, 362, 367, 349, 360, 368]
+      "measurements": [
+        309,
+        303,
+        286,
+        289,
+        294,
+        304,
+        306,
+        297,
+        302
+      ]
+    },
+    {
+      "name": "screen_metrics_UIEditingOverlayViewController_totalFrames",
+      "measurements": [
+        1018,
+        1080,
+        979,
+        1003,
+        1041,
+        1042,
+        1042,
+        925,
+        1015
+      ]
+    },
+    {
+      "name": "screen_metrics_UIEditingOverlayViewController_slowFrames",
+      "measurements": [
+        310,
+        303,
+        287,
+        290,
+        295,
+        304,
+        307,
+        298,
+        302
+      ]
+    },
+    {
+      "name": "screen_metrics_UIEditingOverlayViewController_frozenFrames",
+      "measurements": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "screen_metrics_UIInputWindowController_frozenFrames",
+      "measurements": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "screen_metrics_UIInputWindowController_slowFrames",
+      "measurements": [
+        219,
+        209,
+        190,
+        204,
+        208,
+        213,
+        215,
+        197,
+        211
+      ]
+    },
+    {
+      "name": "screen_metrics_UIInputWindowController_totalFrames",
+      "measurements": [
+        651,
+        688,
+        613,
+        602,
+        655,
+        638,
+        641,
+        565,
+        648
+      ]
     }
   ]
 }

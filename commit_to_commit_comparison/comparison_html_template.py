@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from multi_trace_comparison import MultiTraceResult
 
+from .timeline_html_template import render_timeline_section
+
 
 def _fmt_ms(value: float) -> str:
     """Format milliseconds with appropriate precision."""
@@ -32,6 +34,9 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
     """
     # Calculate summary stats
     stats = result.get_summary_stats()
+
+    # Generate timeline HTML
+    timeline_html = render_timeline_section(result)
 
     # Build warning banner HTML
     warning_html = ""
@@ -590,6 +595,238 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       box-shadow: 0 0 20px rgba(0, 102, 255, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
     }}
 
+    /* View toggle buttons */
+    .view-toggle-group {{
+      display: flex;
+      gap: 0;
+      background: rgba(36, 43, 56, 0.8);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      border: 1px solid var(--border-color);
+      margin-right: var(--space-3);
+    }}
+
+    .view-toggle-btn {{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all var(--anim-normal) ease;
+      font-family: inherit;
+    }}
+
+    .view-toggle-btn:hover {{
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
+    }}
+
+    .view-toggle-btn.active {{
+      background: var(--accent-primary);
+      color: white;
+      box-shadow: 0 0 12px rgba(0, 102, 255, 0.4);
+    }}
+
+    .view-toggle-btn .icon {{
+      font-size: 14px;
+    }}
+
+    /* Timeline container */
+    .timeline-container {{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }}
+
+    .timeline-info {{
+      text-align: center;
+      margin-bottom: var(--space-4);
+      padding: var(--space-3);
+      background: rgba(0, 102, 255, 0.1);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(0, 102, 255, 0.2);
+    }}
+
+    .timeline-info-text {{
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+    }}
+
+    .timeline-section {{
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      box-shadow: var(--shadow-lg), 0 0 30px rgba(102, 126, 234, 0.15);
+    }}
+
+    .timeline-title {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-5);
+      padding-bottom: var(--space-3);
+      border-bottom: 1px solid var(--border-color);
+    }}
+
+    .timeline-label {{
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-shadow: 0 2px 8px rgba(0, 200, 180, 0.2);
+    }}
+
+    .timeline-commit {{
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: rgba(0, 102, 255, 0.15);
+      padding: 4px 10px;
+      border-radius: 4px;
+    }}
+
+    .timeline-chart {{
+      overflow-x: auto;
+      overflow-y: hidden;
+      margin-bottom: var(--space-4);
+    }}
+
+    .timeline-svg {{
+      overflow: visible;
+      min-height: 200px;
+    }}
+
+    /* Timeline bars */
+    .trace-bar {{
+      cursor: pointer;
+      transition: opacity var(--anim-fast) ease;
+    }}
+
+    .trace-bar:hover {{
+      opacity: 0.85;
+    }}
+
+    .bar-fill {{
+      transition: all var(--anim-normal) ease;
+    }}
+
+    .bar-fill.status-pass {{
+      fill: var(--color-success);
+      filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.4));
+    }}
+
+    .bar-fill.status-fail {{
+      fill: var(--color-error);
+      filter: drop-shadow(0 0 8px rgba(244, 67, 54, 0.4));
+    }}
+
+    .bar-fill.status-no-change {{
+      fill: var(--color-info);
+      filter: drop-shadow(0 0 8px rgba(33, 150, 243, 0.4));
+    }}
+
+    .bar-fill.status-inconclusive {{
+      fill: var(--color-warning);
+      filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.4));
+    }}
+
+    .bar-label {{
+      fill: var(--text-primary);
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      font-weight: 500;
+    }}
+
+    /* Timeline legend */
+    .timeline-legend {{
+      display: flex;
+      gap: var(--space-4);
+      justify-content: center;
+      flex-wrap: wrap;
+    }}
+
+    .legend-item {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }}
+
+    .legend-dot {{
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }}
+
+    .legend-dot.status-pass {{
+      background: var(--color-success);
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+    }}
+
+    .legend-dot.status-fail {{
+      background: var(--color-error);
+      box-shadow: 0 0 8px rgba(244, 67, 54, 0.4);
+    }}
+
+    .legend-dot.status-no-change {{
+      background: var(--color-info);
+      box-shadow: 0 0 8px rgba(33, 150, 243, 0.4);
+    }}
+
+    .legend-dot.status-inconclusive {{
+      background: var(--color-warning);
+      box-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
+    }}
+
+    /* Empty state */
+    .timeline-empty {{
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-secondary);
+    }}
+
+    .empty-icon {{
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }}
+
+    .empty-title {{
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }}
+
+    .empty-message {{
+      font-size: 15px;
+      line-height: 1.8;
+    }}
+
+    .empty-message code {{
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', monospace;
+      font-size: 13px;
+    }}
+
+    .timeline-empty-section {{
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }}
+
     /* Responsive design */
     @media (max-width: 900px) {{
       .header-content {{
@@ -609,6 +846,27 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       .comparison-table td {{
         padding: var(--space-2) var(--space-3);
       }}
+
+      .view-toggle-btn .icon {{
+        font-size: 16px;
+      }}
+
+      .view-toggle-btn {{
+        font-size: 0;
+        padding: 8px 10px;
+      }}
+
+      .view-toggle-btn .icon {{
+        margin: 0;
+      }}
+
+      .timeline-chart {{
+        overflow-x: auto;
+      }}
+
+      .timeline-svg {{
+        min-width: 800px;
+      }}
     }}
 
     @media (max-width: 600px) {{
@@ -622,6 +880,16 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
 
       .stat-value {{
         font-size: 28px;
+      }}
+
+      .timeline-title {{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }}
+
+      .header-right {{
+        flex-wrap: wrap;
       }}
     }}
   </style>
@@ -639,6 +907,14 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
         <div class="header-subtitle">Multi-Trace Regression Report</div>
       </div>
       <div class="header-right">
+        <div class="view-toggle-group">
+          <button class="view-toggle-btn active" data-view="table" onclick="switchView('table')">
+            <span class="icon">📊</span> Table
+          </button>
+          <button class="view-toggle-btn" data-view="timeline" onclick="switchView('timeline')">
+            <span class="icon">📈</span> Timeline
+          </button>
+        </div>
         <div class="header-chip">Live Report</div>
         <div class="header-meta">Updated {escape(result.timestamp)}</div>
       </div>
@@ -673,34 +949,42 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       </div>
     </div>
 
-    <!-- Search box -->
-    <div class="search-container">
-      <input
-        type="text"
-        id="trace-search"
-        class="search-box"
-        placeholder="🔍 Search traces by name..."
-        oninput="filterTraces()"
-      />
+    <!-- Table View -->
+    <div id="table-view" style="display: block;">
+      <!-- Search box -->
+      <div class="search-container">
+        <input
+          type="text"
+          id="trace-search"
+          class="search-box"
+          placeholder="🔍 Search traces by name..."
+          oninput="filterTraces()"
+        />
+      </div>
+
+      <!-- Comparison table -->
+      <div class="table-container">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Trace Name</th>
+              <th>Status</th>
+              <th>Baseline Median</th>
+              <th>Target Median</th>
+              <th>Delta (Δ)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {table_body}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- Comparison table -->
-    <div class="table-container">
-      <table class="comparison-table">
-        <thead>
-          <tr>
-            <th>Trace Name</th>
-            <th>Status</th>
-            <th>Baseline Median</th>
-            <th>Target Median</th>
-            <th>Delta (Δ)</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {table_body}
-        </tbody>
-      </table>
+    <!-- Timeline View -->
+    <div id="timeline-view" style="display: none;">
+      {timeline_html}
     </div>
   </div>
 
@@ -715,6 +999,35 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
         row.style.display = traceName.includes(searchTerm) ? '' : 'none';
       }});
     }}
+
+    // View switching functionality
+    let currentView = 'table';
+
+    function switchView(view) {{
+      currentView = view;
+
+      // Update button states
+      document.querySelectorAll('.view-toggle-btn').forEach(btn => {{
+        btn.classList.toggle('active', btn.dataset.view === view);
+      }});
+
+      // Toggle visibility
+      document.getElementById('table-view').style.display =
+        view === 'table' ? 'block' : 'none';
+      document.getElementById('timeline-view').style.display =
+        view === 'timeline' ? 'block' : 'none';
+
+      // Save preference
+      localStorage.setItem('preferredView', view);
+    }}
+
+    // Restore saved preference on load
+    window.addEventListener('DOMContentLoaded', () => {{
+      const saved = localStorage.getItem('preferredView');
+      if (saved && saved === 'timeline') {{
+        switchView('timeline');
+      }}
+    }});
 
     // Animated background (stars and meteors)
     const canvas = document.getElementById('bg-canvas');

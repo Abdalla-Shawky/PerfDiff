@@ -21,6 +21,10 @@ class TraceComparison:
     baseline_data: List[float]
     target_data: List[float]
     gate_result: GateResult
+    baseline_start_time: Optional[float] = None
+    baseline_duration: Optional[float] = None
+    target_start_time: Optional[float] = None
+    target_duration: Optional[float] = None
 
     def __post_init__(self):
         """Convert data to lists if they're numpy arrays for JSON serialization."""
@@ -98,6 +102,7 @@ def load_traces_from_json(json_path: str) -> Tuple[Dict[str, np.ndarray], dict]:
         raise KeyError(f"JSON file must contain 'traces' field: {json_path}")
 
     traces = {}
+    traces_timing = {}  # Store timing information for each trace
     metadata = {
         'commit': data.get('commit', 'unknown'),
         'timestamp': data.get('timestamp', ''),
@@ -118,6 +123,20 @@ def load_traces_from_json(json_path: str) -> Tuple[Dict[str, np.ndarray], dict]:
 
         traces[name] = np.array(measurements, dtype=float)
 
+        # Extract timing information (optional fields)
+        start_time = trace.get('startTime', None)
+        duration = trace.get('duration', None)
+
+        # If duration not provided, compute from measurements
+        if duration is None and measurements:
+            duration = float(np.median(measurements))
+
+        traces_timing[name] = {
+            'start_time': start_time,
+            'duration': duration
+        }
+
+    metadata['traces_timing'] = traces_timing
     return traces, metadata
 
 
@@ -141,6 +160,10 @@ def compare_traces(baseline_json: str, target_json: str) -> MultiTraceResult:
     # Load traces from both files
     baseline_traces, baseline_meta = load_traces_from_json(baseline_json)
     target_traces, target_meta = load_traces_from_json(target_json)
+
+    # Extract timing metadata
+    baseline_timing = baseline_meta.get('traces_timing', {})
+    target_timing = target_meta.get('traces_timing', {})
 
     comparisons = []
     warnings = []
@@ -180,11 +203,20 @@ def compare_traces(baseline_json: str, target_json: str) -> MultiTraceResult:
         # Run regression check
         try:
             result = gate_regression(baseline_data, target_data)
+
+            # Get timing info for this trace
+            baseline_trace_timing = baseline_timing.get(name, {})
+            target_trace_timing = target_timing.get(name, {})
+
             comparisons.append(TraceComparison(
                 name=name,
                 baseline_data=baseline_data.tolist(),
                 target_data=target_data.tolist(),
-                gate_result=result
+                gate_result=result,
+                baseline_start_time=baseline_trace_timing.get('start_time'),
+                baseline_duration=baseline_trace_timing.get('duration'),
+                target_start_time=target_trace_timing.get('start_time'),
+                target_duration=target_trace_timing.get('duration')
             ))
         except Exception as e:
             warnings.append(f"⚠️ Error comparing trace '{name}': {str(e)}")
