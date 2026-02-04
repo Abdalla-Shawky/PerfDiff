@@ -915,7 +915,6 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
             <span class="icon">📈</span> Timeline
           </button>
         </div>
-        <div class="header-chip">Live Report</div>
         <div class="header-meta">Updated {escape(result.timestamp)}</div>
       </div>
     </div>
