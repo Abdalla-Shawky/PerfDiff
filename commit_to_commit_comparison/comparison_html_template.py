@@ -194,6 +194,21 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       50% {{ box-shadow: 0 0 20px rgba(102, 126, 234, 0.5), 0 0 30px rgba(102, 126, 234, 0.3); }}
     }}
 
+    /* Typewriter effect for header title */
+    @keyframes typewriter {{
+      from {{ width: 0; }}
+      to {{ width: calc(var(--typewriter-chars) * 1ch); }}
+    }}
+
+    @keyframes caret-blink {{
+      0%, 100% {{ border-color: transparent; }}
+      50% {{ border-color: rgba(255, 255, 255, 0.8); }}
+    }}
+
+    @keyframes caret-hide {{
+      to {{ border-color: transparent; }}
+    }}
+
     /* Header */
     .header {{
       position: sticky;
@@ -244,6 +259,25 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
       font-weight: 700;
       color: #f4f8ff;
       text-shadow: 0 2px 16px rgba(0, 200, 180, 0.25);
+    }}
+
+    .typewriter {{
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 2px solid rgba(255, 255, 255, 0.85);
+      padding-right: 0;
+      margin-right: 0;
+      animation: typewriter 1.6s steps(var(--typewriter-chars)) 0.2s both,
+                 caret-blink 0.75s step-end 4 1.8s,
+                 caret-hide 0.01s linear 4.85s forwards;
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+      .typewriter {{
+        animation: none;
+        border-right: none;
+      }}
     }}
 
     .header-subtitle {{
@@ -601,7 +635,7 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
     <div class="header-content">
       <div class="header-left">
         <div class="header-kicker">Performance Intelligence</div>
-        <h1 class="header-title">TrustTrace</h1>
+        <h1 class="header-title"><span class="typewriter" style="--typewriter-chars: 10;">TrustTrace</span></h1>
         <div class="header-subtitle">Multi-Trace Regression Report</div>
       </div>
       <div class="header-right">
