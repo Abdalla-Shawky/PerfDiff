@@ -635,7 +635,7 @@ def render_comparison_template(result: 'MultiTraceResult') -> str:
     <div class="header-content">
       <div class="header-left">
         <div class="header-kicker">Performance Intelligence</div>
-        <h1 class="header-title"><span class="typewriter" style="--typewriter-chars: 10;">TrustTrace</span></h1>
+        <h1 class="header-title"><span class="typewriter" style="--typewriter-chars: 8;">PerfDiff</span></h1>
         <div class="header-subtitle">Multi-Trace Regression Report</div>
       </div>
       <div class="header-right">
