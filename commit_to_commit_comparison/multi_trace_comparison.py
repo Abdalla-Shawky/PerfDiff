@@ -7,7 +7,7 @@ between baseline and target commits, generating HTML reports for analysis.
 import json
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
@@ -25,6 +25,8 @@ class TraceComparison:
     baseline_duration: Optional[float] = None
     target_start_time: Optional[float] = None
     target_duration: Optional[float] = None
+    baseline_device_metrics: Optional[List[Dict]] = None
+    target_device_metrics: Optional[List[Dict]] = None
 
     def __post_init__(self):
         """Convert data to lists if they're numpy arrays for JSON serialization."""
@@ -133,9 +135,13 @@ def load_traces_from_json(json_path: str) -> Tuple[Dict[str, np.ndarray], dict]:
         # Always compute duration from measurements
         duration = float(np.median(measurements)) if measurements else None
 
+        # Extract device metrics
+        device_metrics = trace.get('device_metrics_per_run', [])
+
         traces_timing[name] = {
             'start_time': start_time,
-            'duration': duration
+            'duration': duration,
+            'device_metrics': device_metrics
         }
 
     metadata['traces_timing'] = traces_timing
@@ -218,7 +224,9 @@ def compare_traces(baseline_json: str, target_json: str) -> MultiTraceResult:
                 baseline_start_time=baseline_trace_timing.get('start_time'),
                 baseline_duration=baseline_trace_timing.get('duration'),
                 target_start_time=target_trace_timing.get('start_time'),
-                target_duration=target_trace_timing.get('duration')
+                target_duration=target_trace_timing.get('duration'),
+                baseline_device_metrics=baseline_trace_timing.get('device_metrics'),
+                target_device_metrics=target_trace_timing.get('device_metrics')
             ))
         except Exception as e:
             warnings.append(f"⚠️ Error comparing trace '{name}': {str(e)}")
@@ -282,7 +290,9 @@ def generate_trace_detail_html(
         result=comparison.gate_result,
         prev_trace=prev_trace,
         next_trace=next_trace,
-        comparison_page_url=comparison_page_url
+        comparison_page_url=comparison_page_url,
+        baseline_device_metrics=comparison.baseline_device_metrics,
+        target_device_metrics=comparison.target_device_metrics
     )
 
     if output_path:
