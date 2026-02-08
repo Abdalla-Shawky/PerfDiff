@@ -678,8 +678,10 @@ def _render_device_correlation_charts(
             if i < len(baseline_measurements) and 'thermal_state' in metric:
                 state = metric['thermal_state'].lower()
                 if state in thermal_state_map:
+                    # Add jitter to x-position for better visibility
+                    jitter = (hash(str(i) + 'baseline') % 200) / 1000 - 0.1  # -0.1 to +0.1
                     baseline_thermal_data.append({
-                        'x': thermal_state_map[state],
+                        'x': thermal_state_map[state] + jitter,
                         'y': baseline_measurements[i]
                     })
 
@@ -689,8 +691,10 @@ def _render_device_correlation_charts(
             if i < len(target_measurements) and 'thermal_state' in metric:
                 state = metric['thermal_state'].lower()
                 if state in thermal_state_map:
+                    # Add jitter to x-position for better visibility
+                    jitter = (hash(str(i) + 'target') % 200) / 1000 - 0.1  # -0.1 to +0.1
                     target_thermal_data.append({
-                        'x': thermal_state_map[state],
+                        'x': thermal_state_map[state] + jitter,
                         'y': target_measurements[i]
                     })
 
