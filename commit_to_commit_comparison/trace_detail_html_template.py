@@ -753,9 +753,16 @@ def _render_device_correlation_charts(
               }},
               ticks: {{
                 color: '#e0e0e0',
+                stepSize: 1,
+                autoSkip: false,
                 callback: function(value) {{
-                  const labels = ['Nominal', 'Fair', 'Serious', 'Critical'];
-                  return labels[value] || value;
+                  const labels = {{
+                    0: 'Nominal',
+                    1: 'Fair',
+                    2: 'Serious',
+                    3: 'Critical'
+                  }};
+                  return labels[value] !== undefined ? labels[value] : '';
                 }}
               }},
               grid: {{
