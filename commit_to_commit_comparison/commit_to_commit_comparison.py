@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
+import math
 import numpy as np
 from scipy import stats
 
@@ -15,6 +16,8 @@ from constants import (
     DIRECTIONALITY,
     USE_MANN_WHITNEY,
     MANN_WHITNEY_ALPHA,
+    MANN_WHITNEY_ALTERNATIVE,
+    MANN_WHITNEY_PROB_THRESHOLD,
     BOOTSTRAP_CONFIDENCE,
     BOOTSTRAP_N,
     SEED,
@@ -22,12 +25,14 @@ from constants import (
     ENABLE_QUALITY_GATES,
     MAX_CV_FOR_REGRESSION_CHECK,
     MIN_QUALITY_SCORE_FOR_REGRESSION,
-    CV_THRESHOLD_MULTIPLIER,
     MIN_SAMPLES_FOR_REGRESSION,
     PCT_CONVERSION_FACTOR,
     MIN_PRACTICAL_DELTA_ABS_MS,
     MAX_PRACTICAL_DELTA_ABS_MS,
     PRACTICAL_DELTA_PCT,
+    MIN_TAIL_METRIC_K,
+    MAX_TAIL_METRIC_K,
+    TAIL_METRIC_K_PCT,
 )
 
 
@@ -150,6 +155,50 @@ def _calculate_dynamic_practical_threshold(baseline_median: float) -> float:
     threshold = max(MIN_PRACTICAL_DELTA_ABS_MS, threshold)
     threshold = min(MAX_PRACTICAL_DELTA_ABS_MS, threshold)
     return threshold
+
+
+def _calculate_robust_tail_metric(data: np.ndarray, k: Optional[int] = None) -> float:
+    """
+    Calculate mean of worst k samples (more stable than single percentile).
+
+    This is a robust tail latency metric that averages the worst k samples
+    instead of using a single percentile (like P90). This approach is more
+    stable with small sample sizes and less sensitive to individual outliers.
+
+    The number of samples k is calculated adaptively based on sample size:
+        k = min(MAX_TAIL_METRIC_K, max(MIN_TAIL_METRIC_K, ceil(n * TAIL_METRIC_K_PCT)))
+
+    Examples (with MIN_TAIL_METRIC_K=2, MAX_TAIL_METRIC_K=5, TAIL_METRIC_K_PCT=0.10):
+        n=10: k = min(5, max(2, ceil(10 * 0.10))) = 2 samples (20% of data)
+        n=12: k = min(5, max(2, ceil(12 * 0.10))) = 2 samples (17% of data)
+        n=30: k = min(5, max(2, ceil(30 * 0.10))) = 3 samples (10% of data)
+        n=50: k = min(5, max(2, ceil(50 * 0.10))) = 5 samples (10% of data)
+        n=100: k = min(5, max(2, ceil(100 * 0.10))) = 5 samples (5% of data, capped)
+
+    Args:
+        data: Array of performance measurements
+        k: Number of worst samples to average. If None (default), calculated
+           adaptively based on sample size using the formula above.
+
+    Returns:
+        Mean of the worst k samples in ms
+
+    Examples:
+        >>> _calculate_robust_tail_metric(np.array([100, 105, 110, 115, 120]))
+        117.5  # n=5, k=2, mean of [115, 120]
+        >>> _calculate_robust_tail_metric(np.array([100] * 10 + [200, 210, 220]))
+        210.0  # n=13, k=2, mean of [210, 220]
+    """
+    n = len(data)
+
+    # Calculate k adaptively if not provided
+    if k is None:
+        k = max(MIN_TAIL_METRIC_K, math.ceil(n * TAIL_METRIC_K_PCT))
+        k = min(k, MAX_TAIL_METRIC_K)  # Cap at maximum
+
+    sorted_data = np.sort(data)
+    worst_k = sorted_data[-k:]
+    return float(np.mean(worst_k))
 
 
 def _check_quality_gates(
@@ -367,24 +416,18 @@ def gate_regression(
     target_median = float(np.median(b))
     median_delta = target_median - baseline_median
 
-    # Calculate CV for adaptive thresholds
+    # Calculate CV for reporting
     baseline_cv = _calculate_cv(a)
     target_cv = _calculate_cv(b)
     max_cv = max(baseline_cv, target_cv)
-
-    # Apply CV-based threshold multiplier
-    # When variance is elevated (but acceptable), be more conservative
-    # Formula: effective_threshold = base_threshold * (1 + CV_THRESHOLD_MULTIPLIER * CV/100)
-    cv_multiplier = 1.0 + (CV_THRESHOLD_MULTIPLIER * max_cv / PCT_CONVERSION_FACTOR)
 
     # Calculate threshold (max of absolute and relative)
     # For very small baseline values (<< ms_floor), the relative threshold
     # (pct_floor * baseline_median) will be tiny, so ms_floor dominates.
     # This is intentional - we want a minimum absolute threshold even for
     # very fast operations to avoid flagging insignificant noise.
-    # NOW: Apply CV multiplier to make threshold stricter when variance is high
-    base_threshold = max(ms_floor, pct_floor * baseline_median)
-    threshold = base_threshold * cv_multiplier
+    # NOTE: CV multiplier removed - quality gates already handle high variance → INCONCLUSIVE
+    threshold = max(ms_floor, pct_floor * baseline_median)
 
     # Collect failures
     failures = []
@@ -397,53 +440,83 @@ def gate_regression(
         failures.append(f"Median delta {median_delta:.2f}ms exceeds threshold {threshold:.2f}ms")
         passed = False
 
-    # Check 2: Tail (p90) check
-    baseline_tail = float(np.quantile(a, tail_quantile, method="linear"))
-    target_tail = float(np.quantile(b, tail_quantile, method="linear"))
+    # Check 2: Tail latency check (using robust trimmed mean of worst k samples)
+    # NOTE: We use adaptive trimmed mean instead of P90 percentile for stability
+    # with small sample sizes. k is calculated adaptively:
+    # k = min(MAX_TAIL_METRIC_K, max(MIN_TAIL_METRIC_K, ceil(n * TAIL_METRIC_K_PCT)))
+    # This ensures we use ~10% of samples for large n, but at least 2 samples for small n,
+    # and never more than 5 samples to avoid over-triggering.
+    baseline_tail = _calculate_robust_tail_metric(a)
+    target_tail = _calculate_robust_tail_metric(b)
     tail_delta = target_tail - baseline_tail
 
     # Calculate tail threshold (max of absolute and relative)
     # Similar to median threshold, uses max of absolute and relative to handle
     # both fast and slow operations appropriately
-    # Apply same CV multiplier to make tail check consistent with median
-    base_tail_threshold = max(tail_ms_floor, tail_pct_floor * baseline_tail)
-    tail_threshold = base_tail_threshold * cv_multiplier
+    # NOTE: CV multiplier removed - quality gates already handle high variance → INCONCLUSIVE
+    tail_threshold = max(tail_ms_floor, tail_pct_floor * baseline_tail)
 
     if tail_delta > tail_threshold:
         failures.append(f"Tail delta {tail_delta:.2f}ms exceeds threshold {tail_threshold:.2f}ms")
         passed = False
 
-    # Check 3: Directionality (for independent samples)
-    # Check what fraction of target samples exceed baseline median
+    # Directionality metric (informational only - not used for PASS/FAIL)
+    # Measures what fraction of target samples exceed baseline median
+    # This is a screening metric; Mann-Whitney P(T>B) is the confirmatory test
     positive_fraction = float(np.mean(b > baseline_median))
-    if positive_fraction >= directionality:
-        failures.append(f"{positive_fraction*100:.1f}% of target samples slower than baseline median (>= {directionality*100:.1f}% threshold)")
-        passed = False
 
     details: Dict[str, Any] = {
         "threshold_ms": threshold,
-        "base_threshold_ms": base_threshold,
         "median_delta_ms": median_delta,
         "tail_threshold_ms": tail_threshold,
-        "base_tail_threshold_ms": base_tail_threshold,
         "tail_delta_ms": tail_delta,
         "positive_fraction": positive_fraction,
         "baseline_cv": baseline_cv,
         "target_cv": target_cv,
-        "cv_multiplier": cv_multiplier,
     }
 
     # Mann-Whitney U test (for independent samples)
-    # Tests: "Is target distribution stochastically greater than baseline?"
+    # IMPORTANT: This is a ONE-SIDED test (alternative='greater')
+    # We test the directional hypothesis: "Is target stochastically greater than baseline?"
+    # This is appropriate for regression detection where we have a specific directional
+    # hypothesis (performance degradation). Combined with probability threshold
+    # (P(T>B) >= MANN_WHITNEY_PROB_THRESHOLD), this prevents false failures on improvements.
     if use_mann_whitney:
         try:
-            res = stats.mannwhitneyu(b, a, alternative='greater', method='auto')
+            # One-sided test: H1 = target distribution is stochastically greater (slower)
+            res = stats.mannwhitneyu(b, a, alternative=MANN_WHITNEY_ALTERNATIVE, method='auto')
             p_greater = res.pvalue
             u_statistic = res.statistic
 
-            # Two-sided test
+            # Two-sided test (for reference, not used in regression decision)
             res_two = stats.mannwhitneyu(b, a, alternative='two-sided', method='auto')
             p_two_sided = res_two.pvalue
+
+            # Calculate P(Target > Baseline) from U-statistic
+            # CRITICAL: scipy.stats.mannwhitneyu returns U-statistic for the FIRST argument (target/b)
+            # U_target = number of (target > baseline) pairwise comparisons won by target
+            # Total possible comparisons = n_baseline * n_target
+            # Therefore: P(Target > Baseline) = U_target / (n_baseline * n_target)
+            #
+            # This represents the probability that a randomly selected target sample
+            # is greater than a randomly selected baseline sample.
+            #
+            # NOTE: Ties contribute 0.5 to the U-statistic in scipy, which affects interpretation.
+            # With many ties, P(T>B) may not reflect strict "greater than" probability.
+            prob_target_greater = u_statistic / (len(a) * len(b)) if (len(a) * len(b)) > 0 else 0.5
+
+            # Classify effect size based on Cohen's conventions adapted for performance
+            # Baseline (no effect): P ≈ 0.50
+            if prob_target_greater < 0.55:
+                effect_size = "negligible"
+            elif prob_target_greater < 0.64:
+                effect_size = "small"
+            elif prob_target_greater < 0.71:
+                effect_size = "medium"
+            elif prob_target_greater < 0.86:
+                effect_size = "large"
+            else:
+                effect_size = "very large"
 
             mann_whitney_data = {
                 "n_baseline": len(a),
@@ -451,12 +524,30 @@ def gate_regression(
                 "u_statistic": float(u_statistic),
                 "p_greater": float(p_greater),
                 "p_two_sided": float(p_two_sided),
+                "prob_target_greater": float(prob_target_greater),
+                "effect_size": effect_size,
+                "effect_size_interpretation": (
+                    f"Target is greater than baseline {prob_target_greater*100:.1f}% of the time "
+                    f"({effect_size} effect)"
+                ),
+                "median_delta_ms": median_delta,
             }
             details["mann_whitney"] = mann_whitney_data
 
-            if p_greater < mann_whitney_alpha:
+            # FAIL only if BOTH conditions are met:
+            # 1. p-value is significant (p < alpha): Statistical significance
+            # 2. Direction indicates target is worse (P(T>B) >= threshold): Effect direction
+            #
+            # NOTE: We do NOT check median_delta > 0 here because:
+            # - Tail-only regressions can have median_delta ≈ 0 while tail is regressed
+            # - P(T>B) captures distributional shift more robustly than median alone
+            # - If P(T>B) >= 0.55, target is stochastically worse overall
+            if p_greater < mann_whitney_alpha and prob_target_greater >= MANN_WHITNEY_PROB_THRESHOLD:
                 passed = False
-                failures.append(f"Mann-Whitney U test significant (p={p_greater:.4f} < {mann_whitney_alpha})")
+                failures.append(
+                    f"Mann-Whitney U test significant (p={p_greater:.4f} < {mann_whitney_alpha}), "
+                    f"P(T>B)={prob_target_greater:.3f} >= {MANN_WHITNEY_PROB_THRESHOLD}"
+                )
         except Exception as e:
             details["mann_whitney_error"] = str(e)
 
@@ -489,8 +580,12 @@ def gate_regression(
     # Even if statistical tests failed (directionality, Mann-Whitney U), override to PASS
     # if the delta is below practical significance minimums.
     # This prevents false positives on statistically significant but negligible changes.
+    #
+    # IMPORTANT: This override is DIRECTIONAL - only applies to regressions, not improvements.
+    # If median_delta or tail_delta is negative (improvement), we don't apply the override
+    # because we never want to override improvements (they should always PASS).
     if not passed:
-        # Calculate absolute delta
+        # Calculate relative delta for reporting
         abs_delta = abs(median_delta)
         rel_delta = abs_delta / baseline_median if baseline_median > 0 else 0.0
 
@@ -502,35 +597,72 @@ def gate_regression(
         #   - 5000ms baseline → ~20ms threshold (0.4%, capped)
         dynamic_practical_threshold = _calculate_dynamic_practical_threshold(baseline_median)
 
-        # Override if delta is below the dynamic threshold
-        below_practical_threshold = abs_delta < dynamic_practical_threshold
+        # Calculate tail practical threshold
+        tail_practical_threshold = _calculate_dynamic_practical_threshold(baseline_tail)
 
-        if below_practical_threshold:
-            # Override to PASS with explanatory note
-            original_failures = failures.copy()
-            passed = True
-            reason = (
-                f"PASS (practical significance override): Delta {median_delta:.2f}ms ({rel_delta*100:.2f}%) "
-                f"is statistically significant but below practical threshold ({dynamic_practical_threshold:.1f}ms). "
-                f"Statistical failures: {'; '.join(original_failures)}"
-            )
-            details["practical_override"] = {
-                "applied": True,
-                "abs_delta_ms": abs_delta,
-                "rel_delta_pct": rel_delta * 100,
-                "practical_threshold_ms": dynamic_practical_threshold,
-                "baseline_median_ms": baseline_median,
-                "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
-                "original_failures": original_failures,
-            }
+        # Check if this is a regression (positive deltas)
+        # If either delta is negative (improvement), don't apply override
+        is_regression = median_delta > 0 and tail_delta > 0
+
+        if is_regression:
+            # Override only if BOTH median AND tail are below practical thresholds
+            # Use directional comparisons (not abs()) to ensure we're checking regressions
+            below_median_threshold = median_delta <= dynamic_practical_threshold
+            below_tail_threshold = tail_delta <= tail_practical_threshold
+
+            # Override requires both conditions
+            below_practical_threshold = below_median_threshold and below_tail_threshold
+
+            if below_practical_threshold:
+                # Override to PASS with explanatory note
+                original_failures = failures.copy()
+                passed = True
+                reason = (
+                    f"PASS (practical significance override): "
+                    f"Median delta {median_delta:.2f}ms <= {dynamic_practical_threshold:.1f}ms "
+                    f"and tail delta {tail_delta:.2f}ms <= {tail_practical_threshold:.1f}ms. "
+                    f"Statistical failures: {'; '.join(original_failures)}"
+                )
+                details["practical_override"] = {
+                    "applied": True,
+                    "median_delta_ms": median_delta,
+                    "tail_delta_ms": tail_delta,
+                    "rel_delta_pct": rel_delta * 100,
+                    "practical_threshold_ms": dynamic_practical_threshold,
+                    "tail_practical_threshold_ms": tail_practical_threshold,
+                    "baseline_median_ms": baseline_median,
+                    "baseline_tail_ms": baseline_tail,
+                    "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
+                    "original_failures": original_failures,
+                }
+            else:
+                # Document why override was NOT applied
+                reject_reason = ""
+                if not below_median_threshold:
+                    reject_reason = f"median_delta ({median_delta:.2f}ms) exceeds threshold ({dynamic_practical_threshold:.1f}ms)"
+                elif not below_tail_threshold:
+                    reject_reason = f"tail_delta ({tail_delta:.2f}ms) exceeds threshold ({tail_practical_threshold:.1f}ms)"
+
+                details["practical_override"] = {
+                    "applied": False,
+                    "median_delta_ms": median_delta,
+                    "tail_delta_ms": tail_delta,
+                    "rel_delta_pct": rel_delta * 100,
+                    "practical_threshold_ms": dynamic_practical_threshold,
+                    "tail_practical_threshold_ms": tail_practical_threshold,
+                    "reject_reason": reject_reason,
+                    "baseline_median_ms": baseline_median,
+                    "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
+                }
         else:
+            # Not a regression (at least one delta is negative/improvement)
+            # Don't apply practical override to improvements
             details["practical_override"] = {
                 "applied": False,
-                "abs_delta_ms": abs_delta,
-                "rel_delta_pct": rel_delta * 100,
-                "practical_threshold_ms": dynamic_practical_threshold,
+                "median_delta_ms": median_delta,
+                "tail_delta_ms": tail_delta,
+                "reject_reason": "Not a regression (median or tail delta is negative/improvement)",
                 "baseline_median_ms": baseline_median,
-                "threshold_pct": (dynamic_practical_threshold / baseline_median * 100) if baseline_median > 0 else 0,
             }
 
     # Build final reason string (if not already set by practical override)

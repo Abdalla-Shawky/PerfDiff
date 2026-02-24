@@ -390,12 +390,22 @@ def render_html_report(
     if isinstance(mw, dict):
         # Mann-Whitney U test format (independent samples)
         if "u_statistic" in mw:
+            prob_target_greater = mw.get("prob_target_greater", 0.5)
+            effect_size = mw.get("effect_size", "unknown")
+            p_greater = mw.get("p_greater", 1.0)
+
             mw_rows = [
                 ["Mann-Whitney n (baseline)", str(mw.get("n_baseline", ""))],
                 ["Mann-Whitney n (target)", str(mw.get("n_target", ""))],
-                ["Mann-Whitney U", f'{mw.get("u_statistic", 0.0):.1f}'],
-                ["Mann-Whitney p(greater)", f'{mw.get("p_greater", 1.0):.6f}'],
-                ["Mann-Whitney p(two-sided)", f'{mw.get("p_two_sided", 1.0):.6f}'],
+                ["Mann-Whitney U-statistic", f'{mw.get("u_statistic", 0.0):.1f}'],
+                ["", ""],  # Separator row
+                ["P(Target > Baseline)", f'{prob_target_greater:.1%}'],
+                ["Effect Size", effect_size.title()],
+                ["", ""],  # Separator row
+                ["p-value (one-sided)", f'{p_greater:.6f}'],
+                ["Statistical Significance", "Yes (p < 0.05)" if p_greater < 0.05 else "No (p ≥ 0.05)"],
+                ["", ""],  # Separator row
+                ["p-value (two-sided)", f'{mw.get("p_two_sided", 1.0):.6f}'],
             ]
     wil_rows = mw_rows  # Keep variable name for backward compatibility below
 

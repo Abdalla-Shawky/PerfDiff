@@ -11,13 +11,14 @@ Each constant is documented with its purpose and acceptable value ranges.
 
 # Absolute median threshold in milliseconds
 # Regression is flagged if median change exceeds this value
-# Used to detect regressions in slower operations (>1000ms)
-MS_FLOOR = 50.0
+# This represents the noise floor - changes below this are considered measurement noise
+# 5ms is reasonable for modern systems; adjust based on your environment's noise level
+MS_FLOOR = 5.0
 
 # Relative median threshold as a fraction (0.0 - 1.0)
 # Regression is flagged if median change exceeds this percentage
-# 0.05 = 5% increase. Used for faster operations where absolute thresholds may be too lenient
-PCT_FLOOR = 0.05
+# 0.03 = 3% increase. Catches meaningful regressions while allowing small fluctuations
+PCT_FLOOR = 0.03
 
 # Practical significance override thresholds
 # Even if statistical tests fail (directionality, Mann-Whitney U), override to PASS
@@ -39,7 +40,32 @@ PRACTICAL_DELTA_PCT = 0.01  # Base percentage (1% of baseline)
 
 # Tail latency percentile for tail performance analysis (0.0 - 1.0)
 # 0.90 = 90th percentile (p90). Measures worst-case performance
+# NOTE: As of statistical fixes, we use trimmed mean of worst k samples
+# instead of P90 percentile for more stable estimates with small sample sizes
 TAIL_QUANTILE = 0.90
+
+# Adaptive tail latency metric: trimmed mean of worst k samples
+# This is more stable than single percentile (P90) with small sample sizes
+# k is calculated adaptively: k = min(MAX_TAIL_METRIC_K, max(MIN_TAIL_METRIC_K, ceil(n * TAIL_METRIC_K_PCT)))
+# Using ceil (not floor/int) ensures we round up for small n
+# Examples:
+#   n=10:  k = min(5, max(2, ceil(10 * 0.10))) = min(5, max(2, 1)) = 2 samples (20% of data)
+#   n=12:  k = min(5, max(2, ceil(12 * 0.10))) = min(5, max(2, 2)) = 2 samples (17% of data)
+#   n=30:  k = min(5, max(2, ceil(30 * 0.10))) = min(5, max(2, 3)) = 3 samples (10% of data)
+#   n=50:  k = min(5, max(2, ceil(50 * 0.10))) = min(5, max(2, 5)) = 5 samples (10% of data)
+#   n=100: k = min(5, max(2, ceil(100 * 0.10))) = min(5, max(2, 10)) = 5 samples (5% of data, capped)
+
+# Minimum number of samples for tail metric (never use fewer than this)
+# Start at 2 for small n to avoid over-triggering on mild noise
+MIN_TAIL_METRIC_K = 2
+
+# Maximum number of samples for tail metric (cap to avoid using too many samples)
+# Cap at 5 to keep it focused on "tail" not "upper quartile"
+MAX_TAIL_METRIC_K = 5
+
+# Percentage of samples to use for tail metric (applied to medium sample sizes)
+# 0.10 = 10% of samples (e.g., for n=30, use worst 3 samples)
+TAIL_METRIC_K_PCT = 0.10
 
 # Absolute tail threshold in milliseconds
 # Regression is flagged if tail latency (p90) change exceeds this value
@@ -74,6 +100,27 @@ USE_MANN_WHITNEY = True
 # 0.05 = 5% significance level (95% confidence)
 # Lower values make the test more conservative
 MANN_WHITNEY_ALPHA = 0.05
+
+# Mann-Whitney U test alternative hypothesis (one-sided vs two-sided)
+# 'greater': One-sided test - tests if target is stochastically greater than baseline
+#            This is the correct choice for regression detection because we only
+#            care about performance degradation (target slower than baseline).
+# 'two-sided': Two-sided test - tests if distributions differ in either direction
+# 'less': One-sided test - tests if target is stochastically less than baseline
+#
+# IMPORTANT: For performance regression detection, we use ONE-SIDED 'greater' test.
+# This is appropriate because:
+#   1. We have a directional hypothesis (target is slower)
+#   2. We combine it with probability threshold (P(T>B) >= 0.55)
+#   3. This prevents false failures on improvements while maintaining power
+MANN_WHITNEY_ALTERNATIVE = 'greater'
+
+# Probability threshold for Mann-Whitney direction check
+# P(Target > Baseline) = probability that a randomly selected target sample
+# is greater than a randomly selected baseline sample
+# 0.55 = 55% threshold (mild effect size filter)
+# This ensures we only FAIL when target is stochastically worse, not just different
+MANN_WHITNEY_PROB_THRESHOLD = 0.55
 
 # Confidence level for bootstrap confidence intervals (0.0 - 1.0)
 # 0.95 = 95% confidence interval

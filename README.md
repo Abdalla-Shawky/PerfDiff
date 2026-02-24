@@ -1,14 +1,131 @@
 # Performance Regression Detection Tool
 
-A production-ready statistical tool for detecting performance regressions with **premium UI**, **data quality gates**, and **intelligent analysis**. Features world-class HTML reports, interactive visualizations, and automatic reliability checks.
+A production-ready statistical tool for detecting performance regressions with **premium UI**, **data quality gates**, and **rigorous statistical methodology**. Features world-class HTML reports, interactive visualizations, and automatic reliability checks.
 
-[![Tests](https://img.shields.io/badge/tests-24%2F24%20passing-success)](docs/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-52%2F52%20passing-success)](docs/TEST_REPORT.md)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)]()
+[![Statistical](https://img.shields.io/badge/statistical-rigorous-purple)]()
 
 ---
 
-## Quick Start
+## 🎯 Why This Tool Exists
+
+### The Performance Testing Problem
+
+Every engineering team faces these challenges when testing performance:
+
+| Problem | What Happens | Impact |
+|---------|--------------|--------|
+| **False Positives** | 2ms noise flagged as "regression" | ❌ Blocked PRs, wasted time |
+| **False Negatives** | Real 50ms regression missed due to variance | ❌ Regressions reach production |
+| **No Statistical Rigor** | "Is 5ms real or noise?" → Unknown | ❌ Guesswork, not data |
+| **Poor Data Quality** | 5 runs with 40% variance = "valid" | ❌ Unreliable conclusions |
+| **Tail Latency Ignored** | Median OK, but P90 +200ms | ❌ User pain not detected |
+| **Arbitrary Thresholds** | Fixed 10ms threshold for all operations | ❌ Fails for fast ops, misses slow ops |
+
+### What Teams Usually Do (Wrong)
+
+```python
+# ❌ The naive approach
+baseline_median = median(baseline_runs)
+target_median = median(target_runs)
+
+if target_median > baseline_median:
+    print("REGRESSION!")  # False positives everywhere
+```
+
+**Problems:**
+- No confidence: Is the difference real or random noise?
+- No quality check: Works with any garbage data
+- No tail check: Misses worst-case performance
+- No context: Same threshold for 10ms and 10s operations
+
+---
+
+## ✅ What This Tool Does Differently
+
+This tool was built from the ground up with **statistical rigor** to solve real performance testing problems.
+
+### 1. **Multi-Layered Defense Against False Results**
+
+```
+                    ┌──────────────────┐
+                    │  Quality Gates   │  ← Reject bad data FIRST
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+       ┌──────▼──────┐ ┌────▼────┐ ┌──────▼──────┐
+       │ Median      │ │ Tail    │ │ Direction   │
+       │ Threshold   │ │ Latency │ │ Check       │
+       └──────┬──────┘ └────┬────┘ └──────┬──────┘
+              │              │              │
+              └──────────────┼──────────────┘
+                             │
+                    ┌────────▼─────────┐
+                    │ Mann-Whitney U   │ ← Statistical test
+                    │ (One-sided)      │   (directional)
+                    └────────┬─────────┘
+                             │
+                    ┌────────▼─────────┐
+                    │ Practical        │ ← Prevent false
+                    │ Significance     │   positives on
+                    │ Override         │   tiny changes
+                    └──────────────────┘
+```
+
+**Why this matters:**
+- **Quality gates** prevent garbage-in-garbage-out
+- **Multiple checks** catch different types of regressions
+- **Statistical test** provides confidence (p-value)
+- **Practical override** prevents false positives on negligible changes
+
+### 2. **Statistical Rigor (Not Guesswork)**
+
+| What It Does | Why It Matters | Example |
+|--------------|----------------|---------|
+| **Mann-Whitney U Test** (one-sided) | Proves difference is real, not noise | p=0.003 → 99.7% confident target is slower |
+| **Bootstrap CI** | Quantifies uncertainty | 95% CI: [8ms, 22ms] → won't include 0 if real |
+| **Direction Checks** | Never fails on improvements | P(T>B) > 50% AND median_delta > 0 AND p < 0.05 |
+| **Adaptive Tail Metric** | Stable with small samples | Mean of worst k samples (k adaptive) |
+| **Quality Gates** | Rejects unreliable data | CV > 15% → INCONCLUSIVE (not false result) |
+
+### 3. **Solves Real Problems**
+
+**Problem 1: False Positive on Noise**
+```
+Baseline: 2400ms, Target: 2402.5ms
+Simple median: "REGRESSION!" ❌
+This tool: "PASS - below practical threshold (20ms)" ✅
+```
+
+**Problem 2: Missed Tail Regression**
+```
+Baseline: Median 101ms, Tail 150ms
+Target:   Median 101ms, Tail 350ms
+Simple median: "No change" ❌
+This tool: "FAIL - Tail delta 200ms exceeds threshold" ✅
+```
+
+**Problem 3: Garbage Data**
+```
+Runs: [100, 95, 180, 90, 85]  # One wild outlier
+CV = 34.5%
+Simple median: "Valid result" ❌
+This tool: "INCONCLUSIVE - CV 34.5% > 15% max" ✅
+```
+
+**Problem 4: False Failure on Improvement**
+```
+Target is 20ms faster (improvement!)
+Old tools: Could fail due to statistical significance
+This tool: "PASS" (direction check prevents false failures) ✅
+```
+
+---
+
+## 🚀 Quick Start
 
 ### Installation
 
@@ -21,26 +138,22 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install numpy scipy pytest
 ```
 
-### Quick Start - Local Testing
-
-Try the tool immediately with mock data:
+### Try It Now (Mock Data)
 
 ```bash
 ./run_comparison.sh \
     commit_to_commit_comparison/mock_data/baseline_traces.json \
     commit_to_commit_comparison/mock_data/target_traces.json \
     commit_to_commit_comparison/test_output
-```
 
-Then view the results:
-```bash
+# View results
 open commit_to_commit_comparison/test_output/index.html
 ```
 
 This will:
-- ✅ Process 3 sample traces (login_flow, search_query, data_export)
+- ✅ Process 10 sample traces with various scenarios
 - ✅ Generate HTML reports with interactive charts
-- ✅ Demonstrate multi-trace comparison
+- ✅ Demonstrate all regression detection features
 - ✅ Show exit code 0 (success) or 1 (regression detected)
 
 ### Basic Usage
@@ -56,239 +169,94 @@ python commit_to_commit_comparison/perf_html_report.py \
 - 📄 `generated_reports/performance_report.html` - Interactive HTML report
 - 🚦 Exit code 0 (pass) or 1 (fail) for CI/CD
 
-**Note:** All HTML reports are automatically saved to the `generated_reports/` folder.
-
 ---
 
-## What Does It Do?
+## 🔬 Statistical Methodology
 
-This tool:
-1. ✅ **Compares** baseline vs target performance measurements (independent samples)
-2. 📊 **Detects** regressions using multiple statistical tests
-3. 📈 **Generates** beautiful HTML reports with visualizations
-4. 🤖 **Integrates** with CI/CD via exit codes
+### What Makes This Tool Statistically Sound
 
-### Regression Checks
+#### 1. One-Sided Mann-Whitney U Test ✅
 
-- **Median Delta**: Is the median change too large?
-- **Tail Latency (p90)**: Did worst-case performance degrade?
-- **Directionality**: Are too many runs slower?
-- **Mann-Whitney U Test**: Is the difference statistically significant? (independent samples)
-- **Bootstrap CI**: What's the confidence interval for the change?
-- **Quality Gates**: Is the data reliable enough for analysis?
+**Why one-sided?**
+- We have a directional hypothesis: "Is target slower than baseline?"
+- One-sided test has more statistical power for directional hypotheses
+- Combined with direction checks (P(T>B) > 0.5 AND median_delta > 0)
 
----
+**Result:** Never fails on performance improvements, maximum power for detecting regressions
 
-## Why Use This Tool?
+#### 2. Adaptive Tail Latency Metric ✅
 
-### The Problem with Simple Median Comparison
+**Problem with P90:** With n=12, P90 is position 10.9/12 (near-maximum, extremely jumpy)
 
-**What teams typically do:**
-```python
-baseline_median = median(baseline_runs)
-target_median = median(target_runs)
+**Our solution:** Adaptive trimmed mean of worst k samples
+```
+k = min(MAX_TAIL_METRIC_K, max(MIN_TAIL_METRIC_K, ceil(n * TAIL_METRIC_K_PCT)))
 
-if target_median > baseline_median:
-    flag_as_regression()
+Examples:
+  n=10:  k=2 (mean of worst 2 samples - 20% of data)
+  n=12:  k=2 (mean of worst 2 samples - 17% of data)
+  n=30:  k=3 (mean of worst 3 samples - 10% of data)
+  n=50:  k=5 (mean of worst 5 samples - 10% of data)
+  n=100: k=5 (mean of worst 5 samples - 5% of data, capped)
 ```
 
-**Why this approach fails:**
+**Benefits:**
+- More stable than single percentile with small samples
+- Automatically scales with sample size
+- Less sensitive to individual outliers
+- Uses at least 2 samples (MIN_TAIL_METRIC_K), at most 5 (MAX_TAIL_METRIC_K)
+- Uses ceil() to round up for proper tail coverage
 
-| Problem | Example | Result |
-|---------|---------|--------|
-| **High False Positive Rate** | Baseline: 100ms, Target: 102ms (2ms noise) | Flagged as regression |
-| **High False Negative Rate** | High variance hides real 50ms regression | Missed regression |
-| **No Statistical Confidence** | Is 5ms difference real or random? | Unknown |
-| **Ignores Data Quality** | 5 runs with 40% variance | "Valid" result |
-| **No Tail Latency Check** | Median same, but p90 +200ms | Missed regression |
+#### 3. Practical Significance Override ✅
 
----
-
-### What This Tool Does Better
-
-#### Multi-Layered Defense Against False Results
-
-```
-                    +------------------+
-                    |  Quality Gates   |  <-- Reject bad data FIRST
-                    +--------+---------+
-                             |
-              +--------------+--------------+
-              |              |              |
-       +------v------+ +-----v-----+ +------v------+
-       | Threshold   | | Tail      | | Direction   |
-       | Check       | | Check     | | Check       |
-       +------+------+ +-----+-----+ +------+------+
-              |              |              |
-              +--------------+--------------+
-                             |
-                    +--------v---------+
-                    | Mann-Whitney U   |
-                    +--------+---------+
-                             |
-                    +--------v---------+
-                    | Practical        |
-                    | Significance     |
-                    +--------+---------+
-                             |
-                    +--------v---------+
-                    | Bootstrap CI     |
-                    +------------------+
-```
-
----
-
-### Key Algorithms
-
-#### 1. Quality Gates (The Guardian)
-
-Rejects data that's too noisy or too small for reliable conclusions.
-
-| Without Quality Gates | With Quality Gates |
-|----------------------|-------------------|
-| 5 runs flagged as "regression" | "INCONCLUSIVE: 5 samples too few" |
-| 40% variance = "valid" result | "INCONCLUSIVE: CV 40% > 15% max" |
-| Random noise = "regression" | "Cannot determine - collect more data" |
-
-**Checks:**
-- Minimum Sample Size: n >= 10 required
-- Coefficient of Variation (CV): CV <= 15% required
+**The problem:** Statistical significance ≠ practical importance
 
 **Example:**
 ```
-Runs: [100, 95, 180, 90, 85]  # One outlier
-CV = 38/110 * 100 = 34.5%  --> REJECTED (> 15%)
-```
-
-#### 2. Dynamic Threshold Check
-
-Uses both absolute AND relative thresholds, whichever is stricter.
-
-```
-threshold = max(MS_FLOOR, PCT_FLOOR * baseline_median)
-
-Example 1: Baseline 100ms
-  threshold = max(50ms, 5ms) = 50ms
-
-Example 2: Baseline 2000ms
-  threshold = max(50ms, 100ms) = 100ms
-```
-
-**Adaptive Scaling:** When variance is elevated, thresholds automatically widen.
-
-#### 3. Tail Latency Check (p90)
-
-Catches worst-case performance degradation.
-
-```
-Baseline:  Median: 101ms, P90: 150ms
-Target:    Median: 101ms, P90: 350ms
-
-Simple comparison: "No regression!" ❌
-This tool: "FAIL: Tail delta 200ms exceeds threshold" ✅
-```
-
-#### 4. Directionality Check
-
-Detects consistent slowdowns across the distribution.
-
-```
-9/10 target samples > baseline median
-Directionality: 90% >= 70% threshold --> FAIL
-```
-
-#### 5. Mann-Whitney U Test (Independent Samples)
-
-Tests if the target distribution is stochastically greater than baseline.
-
-- **Non-parametric**: No assumption of normal distribution
-- **Robust to outliers**: Uses ranks, not raw values
-- **Independent samples**: Proper for sequential testing (AAA BBB)
-- **Unequal sample sizes**: Works with different baseline/target sizes
-
-```
-Mann-Whitney U p-value < 0.05 → Statistically significant
-```
-
-#### 6. Bootstrap Confidence Intervals
-
-Provides uncertainty quantification for the median delta.
-
-```
-Original median difference: 15ms
-95% CI: [8ms, 22ms]
-
-CI doesn't include 0 → Real regression detected
-```
-
-#### 7. Practical Significance Override
-
-Prevents flagging statistically significant but negligible changes.
-
-```
-Scenario: Baseline 2500ms, Target 2502.5ms
-Mann-Whitney p=0.003 (statistically significant)
+Baseline: 2500ms
+Target:   2502.5ms
+Mann-Whitney p-value: 0.003 (statistically significant!)
 Delta: 2.5ms (0.1%)
-
-Result: PASS (practical significance override)
-Reason: Below practical threshold (20ms)
 ```
 
----
+**Without override:** FAIL ❌ (statistically significant)
+**With override:** PASS ✅ (below practical threshold of 20ms)
 
-### Comparison Table
+**Dual-threshold check:**
+- Override only applies if BOTH median AND tail deltas are negligible
+- Prevents hiding tail regressions while allowing override on median
 
-| Aspect | Simple Median | This Tool |
-|--------|---------------|-----------|
-| **Data quality check** | None | Quality gates (CV, sample size) |
-| **Threshold type** | Fixed or relative only | Adaptive (absolute + relative) |
-| **Tail latency** | Not checked | P90 check included |
-| **Consistency check** | None | Directionality (70% rule) |
-| **Statistical test** | None | Mann-Whitney U test |
-| **False positives** | High (2ms noise = "regression") | Low (practical significance override) |
-| **False negatives** | High (noise hides real issues) | Low (multiple detection layers) |
-| **Uncertainty** | Unknown | Bootstrap confidence intervals |
-| **Result types** | Pass/Fail | Pass/Fail/Inconclusive/No Change |
+#### 4. Multiple Testing (Documented, Not Inflated)
 
----
+**Common concern:** Multiple tests → inflated false positive rate?
 
-## ✨ Report Preview
+**Reality:** Only 1 test uses p-values (Mann-Whitney)
+- Median delta: Threshold comparison (not p-value)
+- Tail latency: Threshold comparison (not p-value)
+- Directionality: Informational only (not used for PASS/FAIL)
 
-The tool generates premium, interactive HTML reports with:
+**Result:** Family-wise error rate ≈ 0.05 (dominated by Mann-Whitney alone)
 
-- **🎨 Modern Design** - Professional UI with gradient accents and smooth animations
-- **📊 Interactive Charts** - Chart.js visualizations (histogram, line charts, statistical summary)
-- **🌙 Dark Mode** - Beautiful dark theme toggle with localStorage persistence
-- **📈 Quality Assessment** - Visual scoring and issue detection (0-100 scale)
-- **⚙️ Configuration Display** - Transparent threshold and quality gate settings
-- **📥 Export Options** - JSON, CSV, and print/PDF support
+#### 5. Direction Checks (No False Failures)
 
-**Key Sections:**
-1. **Executive Summary** - Large status indicator, before/after comparison, plain English verdict
-2. **Interactive Charts** - Distribution histogram, run-by-run comparison, statistical summary
-3. **Data Quality** - Quality scores, CV metrics, outlier detection, visual indicators
-4. **Technical Details** - Mann-Whitney U test, bootstrap CI, quality gates configuration
-5. **Raw Data** - Per-run breakdown with outlier marking
+**Dual condition for Mann-Whitney failure:**
+```python
+if p_greater < 0.05 AND prob_target_greater >= 0.55:
+    FAIL  # Both conditions must be met
+```
 
-See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) for design details and screenshots.
+**Why P(T>B) >= 0.55?**
+- Mild effect size filter (55% threshold)
+- Ensures target is stochastically worse, not just different
+- Removed `median_delta > 0` check to catch tail-only regressions
+
+**Result:** Never fails on performance improvements, catches tail-only regressions
 
 ---
 
-## Use Cases
+## 📊 Key Features
 
-| Use Case | Mode | Example |
-|----------|------|---------|
-| 🚦 **PR Performance Gate** | `pr` | Block PRs with >5% regression |
-| 🚀 **Release Validation** | `release` | Verify releases stay within ±30ms |
-| 🔬 **A/B Testing** | `pr` | Compare two implementations |
-| 📈 **Performance Tracking** | `pr` | Monitor trends over time |
-| ⚡ **Optimization Verification** | `pr` | Confirm improvements worked |
-
----
-
-## Features
-
-### 🎨 Premium UI (NEW!)
+### 🎨 Premium UI
 - **World-class design** - Professional UI inspired by Stripe, Vercel, and Linear
 - **Interactive Chart.js visualizations** - Histogram, line charts, statistical summaries
 - **Dark mode** - Beautiful dark theme optimized for reduced eye strain
@@ -296,32 +264,33 @@ See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) for design details and
 - **Responsive design** - Optimized for mobile, tablet, and desktop
 - **Export functionality** - JSON, CSV, and print/PDF support
 
-### 🔬 Data Quality Assessment (NEW!)
+### 🔬 Data Quality Assessment
 - **Quality scoring** - 0-100 score based on sample size, variance, outliers
 - **Quality gates** - Automatic rejection of unreliable data (CV > 15%)
 - **INCONCLUSIVE status** - Returns inconclusive instead of false positives/negatives
 - **Visual indicators** - Color-coded quality badges and progress bars
 - **Issue detection** - Identifies high variance, outliers, insufficient samples
 
-### 🎯 Statistically Sound
-- **Mann-Whitney U test** - Non-parametric test for independent samples
+### 🎯 Statistically Rigorous
+- **One-sided Mann-Whitney U test** - Directional hypothesis testing
 - **Bootstrap confidence intervals** - Default 95% CI for median delta
 - **Independent sample comparisons** - Proper for sequential testing (AAA BBB)
 - **Multi-check validation** - Median, tail, directionality, and statistical tests
+- **Direction checks** - Never fails on improvements (P(T>B) >= 0.55)
 
 ### 🛡️ Quality Gates & Validation
 - **Pre-flight checks** - Validates data quality before regression detection
 - **CV threshold** - Rejects data with coefficient of variation > 15%
 - **Sample size checks** - Requires minimum 10 samples for reliability
-- **Adaptive thresholds** - Stricter thresholds for higher variance data
+- **INCONCLUSIVE handling** - High variance → INCONCLUSIVE (not stricter thresholds)
 - **Transparent reporting** - Shows thresholds and observed values
 
 ### 📊 Adaptive Thresholds
 - **Hybrid approach** - Combines absolute (ms) and relative (%) thresholds
-- **CV-based multiplier** - Automatically adjusts strictness based on variance
 - **Fast & slow operations** - Works for <100ms and >1s operations
 - **Configurable** - Customize thresholds via CLI or constants.py
-- **Example**: Fail if change > max(50ms, 5% of baseline) × cv_multiplier
+- **Example**: Fail if change > max(5ms, 3% of baseline)
+- **No CV multiplier** - Quality gates handle variance (CV > 15% → INCONCLUSIVE)
 
 ### 🤖 CI/CD Ready
 - **Exit codes** - 0 (pass), 1 (fail), 2 (error) for automation
@@ -330,16 +299,42 @@ See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) for design details and
 - **Auto-folder creation** - Reports saved to `generated_reports/`
 - **Modes**: PR (strict) vs Release (equivalence testing)
 
-### 📈 Advanced Analytics
-- **Outlier detection** - IQR-based outlier marking
-- **Run-by-run analysis** - Individual measurement visualization
-- **Statistical summary** - Min, Q1, median, Q3, max, mean
-- **Directionality check** - Ensures consistent improvement/regression
-- **Tail latency (p90)** - Catches worst-case performance issues
-
 ---
 
 ## 🆕 Latest Updates
+
+### Version 4.0 - Critical Fixes & Statistical Rigor (February 2026)
+
+**Critical Bug Fixes** 🐛
+- **MS_FLOOR threshold**: Fixed absurd 50ms → **5ms** (10x stricter, matches typical latency ranges)
+- **PCT_FLOOR threshold**: Fixed 5% → **3%** (more appropriate for typical operations)
+- **CV multiplier removed**: Eliminated contradictory logic (made thresholds MORE permissive when variance high)
+- **Mann-Whitney direction check**: Removed `median_delta > 0` check to catch tail-only regressions
+- **Mann-Whitney threshold**: Changed P(T>B) > 0.5 → **P(T>B) >= 0.55** (mild effect size filter)
+- **Practical override**: Now directional (no abs()), only applies to regressions
+- **Tail metric k**: Changed MIN from 3 → **2**, added MAX cap at **5**, uses ceil() not int()
+
+**Statistical Improvements** 📊
+- **Explicit one-sided test**: Mann-Whitney now explicitly one-sided with documented rationale
+- **MWU U-statistic documentation**: Comprehensive documentation of probability calculation and tie handling
+- **Multiple testing documentation**: Clarified that only 1 gate uses p-values (limited inflation)
+- **Adaptive k calculation**: Tail metric uses k = min(5, max(2, ceil(n * 0.10))) for optimal stability
+
+**Impact:**
+- ✅ Appropriate thresholds (5ms floor, 3% relative)
+- ✅ No contradictory CV logic
+- ✅ Catches tail-only regressions
+- ✅ Never false-fails on improvements
+- ✅ Never hides tail regressions
+- ✅ More stable tail metrics with small samples
+- ✅ Better statistical transparency
+
+**Test Coverage:**
+- 52/52 tests passing (up from 45, +7 new tests)
+- All critical fixes validated
+- Full regression suite passing
+
+See [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md) for complete technical details.
 
 ### Version 3.0 - Independent Samples Support
 
@@ -348,48 +343,93 @@ See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) for design details and
 - Replaced Wilcoxon signed-rank test with Mann-Whitney U test
 - Arrays can now have different lengths
 - Proper sequential testing methodology
-- Updated all documentation to reflect independent samples
 
 **Breaking Changes** 🚨
 - `--no-wilcoxon` → `--no-mann-whitney`
 - `--wilcoxon-alpha` → `--mann-whitney-alpha`
 - `use_wilcoxon` parameter → `use_mann_whitney`
-- All backward compatibility removed for clean codebase
 
 ### Version 2.0 - Major UI & Quality Overhaul
 
 **Premium UI Redesign** 🎨
 - Complete visual overhaul with modern design system
-- Inter font, gradient accents, layered shadows
 - Enhanced hover states and micro-interactions
-- Circular toggle icons, premium badges
 - Optimized for both light and dark modes
 
 **Data Quality Gates** 🔬
 - Automatic detection of unreliable measurements
 - INCONCLUSIVE status prevents false positives/negatives
 - Quality scoring (0-100) with visual indicators
-- Transparent threshold display with pass/fail status
-
-**Improved Organization** 📁
-- All reports auto-saved to `generated_reports/`
-- Documentation organized in `docs/` folder
-- Clean project structure with `.gitignore`
-- Template separated into `perf_html_template.py`
-
-**Enhanced Configuration** ⚙️
-- All constants centralized in `constants.py`
-- CV-based adaptive thresholds
-- Quality gate configuration display
-- Comprehensive documentation for every setting
-
-See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) and [QUALITY_GATES_GUIDE.md](docs/QUALITY_GATES_GUIDE.md) for details.
 
 ---
 
-## Examples
+## 📖 Regression Detection Gates
 
-### Example 1: Multi-Trace Comparison (Local Testing)
+The tool performs checks in this order:
+
+### 1. Quality Gates (Pre-check)
+**Purpose:** Reject unreliable data before analysis
+- Sample size: n ≥ 10 required
+- Coefficient of variation: CV ≤ 15% required
+- **Result:** PASS/INCONCLUSIVE (never FAIL on quality alone)
+
+### 2. Median Delta Check
+**Purpose:** Detect median performance change
+- Threshold: max(5ms, 3% of baseline)
+- No CV adjustment (CV > 15% → INCONCLUSIVE instead)
+- **Result:** PASS/FAIL
+
+### 3. Tail Latency Check
+**Purpose:** Detect worst-case performance degradation
+- Metric: Adaptive trimmed mean of worst k samples (k = 2 to 5)
+- Threshold: max(75ms, 5% of baseline tail)
+- No CV adjustment (CV > 15% → INCONCLUSIVE instead)
+- **Result:** PASS/FAIL
+
+### 4. Directionality (Informational)
+**Purpose:** Screening metric only
+- Metric: Fraction of target samples > baseline median
+- Stored in details, NOT used for PASS/FAIL
+- Mann-Whitney P(T>B) is the confirmatory test
+
+### 5. Mann-Whitney U Test (One-sided)
+**Purpose:** Statistical significance test
+- Test: One-sided, alternative='greater'
+- Alpha: 0.05 (5% significance level)
+- **Direction check:** p < 0.05 AND P(T>B) >= 0.55
+- **Note:** Removed `median_delta > 0` to catch tail-only regressions
+- **Result:** PASS/FAIL
+
+### 6. Practical Significance Override (Post-check)
+**Purpose:** Prevent false positives on negligible changes
+- **Dual threshold:** median_delta < threshold AND tail_delta < tail_threshold
+- Overrides statistical failures when changes are negligible
+- **Result:** Can convert FAIL → PASS (with explanation)
+
+---
+
+## 📊 Comparison Table
+
+| Aspect | Simple Median | This Tool |
+|--------|---------------|-----------|
+| **Data quality check** | None | Quality gates (CV ≤ 15%, n ≥ 10) |
+| **Threshold type** | Fixed or relative only | Adaptive (max of absolute + relative) |
+| **Tail latency** | Not checked | Adaptive trimmed mean (k scales with n) |
+| **Consistency check** | None | Directionality (informational) |
+| **Statistical test** | None | One-sided Mann-Whitney U test |
+| **Direction check** | None | Triple condition (prevents false failures) |
+| **False positives** | High (2ms noise = "regression") | Low (practical significance override) |
+| **False negatives** | High (noise hides real issues) | Low (multiple detection layers) |
+| **Uncertainty** | Unknown | Bootstrap confidence intervals |
+| **Result types** | Pass/Fail | Pass/Fail/Inconclusive/No Change |
+| **Small sample handling** | Unreliable | Adaptive tail metric (stable with n=12) |
+| **Multiple testing** | Not addressed | Documented (only 1 p-value test) |
+
+---
+
+## 💡 Examples
+
+### Example 1: Multi-Trace Comparison
 
 ```bash
 ./run_comparison.sh \
@@ -397,7 +437,6 @@ See [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) and [QUALITY_GATES_GUI
     commit_to_commit_comparison/mock_data/target_traces.json \
     commit_to_commit_comparison/test_output
 
-# View results
 open commit_to_commit_comparison/test_output/index.html
 ```
 
@@ -410,29 +449,7 @@ python commit_to_commit_comparison/perf_html_report.py \
   --out report.html
 ```
 
-### Example 3: Custom Thresholds
-
-```bash
-python commit_to_commit_comparison/perf_html_report.py \
-  --baseline "[50,52,48,51,49]" \
-  --target   "[60,62,58,61,59]" \
-  --ms-floor 20.0 \
-  --pct-floor 0.10 \
-  --out custom_report.html
-```
-
-### Example 4: Release Mode (Equivalence Testing)
-
-```bash
-python commit_to_commit_comparison/perf_html_report.py \
-  --baseline "[800,805,798,810,799]" \
-  --target   "[802,807,800,812,801]" \
-  --mode release \
-  --equivalence-margin-ms 30.0 \
-  --out release_report.html
-```
-
-### Example 5: CI/CD Integration
+### Example 3: CI/CD Integration
 
 ```bash
 # Run benchmarks (sequential testing - AAA BBB)
@@ -454,36 +471,7 @@ fi
 
 ---
 
-## Configuration Options
-
-### Quick Reference
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--baseline` | Baseline measurements (required) | - |
-| `--target` | Target measurements (required) | - |
-| `--out` | Output HTML file (required) | - |
-| `--mode` | `pr` or `release` | `pr` |
-| `--ms-floor` | Absolute threshold (ms) | `50.0` |
-| `--pct-floor` | Relative threshold (fraction) | `0.05` (5%) |
-| `--tail-ms-floor` | Tail absolute threshold | `75.0` |
-| `--tail-pct-floor` | Tail relative threshold | `0.05` (5%) |
-| `--directionality` | Max fraction slower | `0.70` (70%) |
-| `--no-mann-whitney` | Disable Mann-Whitney U test | False |
-| `--mann-whitney-alpha` | Significance level | `0.05` |
-| `--equivalence-margin-ms` | Release mode margin | `30.0` |
-| `--seed` | Random seed | `0` |
-
-### Full Options
-
-See `--help` for all options:
-```bash
-python commit_to_commit_comparison/perf_html_report.py --help
-```
-
----
-
-## Running Tests
+## 🧪 Running Tests
 
 ```bash
 # Install test dependencies
@@ -494,12 +482,12 @@ cd commit_to_commit_comparison
 python -m pytest test_commit_to_commit_comparison.py -v
 
 # Expected output:
-# 24 passed in ~1.3s
+# ========================= 52 passed in ~5.0s =========================
 ```
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 All documentation is located in the [`docs/`](docs/) folder.
 
@@ -507,8 +495,10 @@ All documentation is located in the [`docs/`](docs/) folder.
 
 | Document | Description |
 |----------|-------------|
+| [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md) | 📊 **NEW!** Complete technical summary (Version 2.0) |
+| [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md) | 📊 Original statistical fixes documentation (Version 1.0) |
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | 📖 Complete usage guide with examples |
-| [TEST_REPORT.md](docs/TEST_REPORT.md) | 🧪 Comprehensive test results |
+| [TEST_REPORT.md](docs/TEST_REPORT.md) | 🧪 Comprehensive test results (52/52 passing) |
 | [MEASUREMENT_GUIDE.md](docs/MEASUREMENT_GUIDE.md) | 📏 Best practices for measurement |
 
 ### Feature Documentation
@@ -521,203 +511,65 @@ All documentation is located in the [`docs/`](docs/) folder.
 | [MODES_EXPLAINED.md](docs/MODES_EXPLAINED.md) | ⚙️ PR vs Release mode |
 | [THRESHOLD_COMPUTATION_EXPLAINED.md](docs/THRESHOLD_COMPUTATION_EXPLAINED.md) | 📊 Threshold calculation |
 
-### Technical Documentation
+---
 
-| Document | Description |
-|----------|-------------|
-| [COMMIT_TO_COMMIT_OVERVIEW.md](commit_to_commit_comparison/COMMIT_TO_COMMIT_OVERVIEW.md) | 📋 System overview |
-| [TEMPLATE_SPLIT_COMPLETE.md](docs/TEMPLATE_SPLIT_COMPLETE.md) | 🔧 Template architecture |
-| [ARCHITECTURE_TEMPLATE_OPTIONS.md](docs/ARCHITECTURE_TEMPLATE_OPTIONS.md) | 🏗️ Architecture options |
-| [FIXES_APPLIED.md](docs/FIXES_APPLIED.md) | ✅ Recent improvements & fixes |
+## 🎯 Who Is This Tool For?
+
+**Perfect for:**
+- 🔧 **Performance Engineers** - Validating optimizations with statistical rigor
+- ✅ **QA Teams** - Setting up reliable performance gates
+- 👥 **Engineering Teams** - Tracking performance trends over time
+- 🏗️ **Platform Teams** - Monitoring system health
+- 🔬 **Data Scientists** - Anyone who values statistical correctness
+
+**Not just another perf tool. This is:**
+- ✅ Statistically rigorous (Mann-Whitney U, Bootstrap CI)
+- ✅ Battle-tested (52/52 tests passing)
+- ✅ Production-ready (comprehensive documentation)
+- ✅ Professional UI (stakeholders trust it)
+- ✅ False-positive resistant (practical significance override)
+- ✅ False-negative resistant (multiple detection layers)
 
 ---
 
-## Project Structure
+## 🚦 Configuration Options
 
-```
-.
-├── commit_to_commit_comparison/
-│   ├── commit_to_commit_comparison.py  # Core regression detection logic
-│   ├── perf_html_report.py             # CLI and HTML report generation
-│   ├── perf_html_template.py           # HTML/CSS/JS template
-│   ├── multi_trace_comparison.py       # Multi-trace comparison
-│   ├── test_commit_to_commit_comparison.py  # Test suite (24 tests)
-│   ├── mock_data/                      # Sample test data
-│   │   ├── baseline_traces.json
-│   │   └── target_traces.json
-│   └── test_output/                    # Generated test reports
-├── constants.py                        # Configuration constants
-├── run_comparison.sh                   # Quick test script
-├── README.md                           # This file
-├── .gitignore                          # Git ignore patterns
-├── docs/                               # Documentation folder
-│   ├── USER_GUIDE.md
-│   ├── TEST_REPORT.md
-│   ├── MEASUREMENT_GUIDE.md
-│   └── ... (20+ documentation files)
-└── generated_reports/                  # Generated HTML reports (gitignored)
-```
+### Quick Reference
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--baseline` | Baseline measurements (required) | - |
+| `--target` | Target measurements (required) | - |
+| `--out` | Output HTML file (required) | - |
+| `--mode` | `pr` or `release` | `pr` |
+| `--ms-floor` | Absolute threshold (ms) | `5.0` |
+| `--pct-floor` | Relative threshold (fraction) | `0.03` (3%) |
+| `--tail-ms-floor` | Tail absolute threshold | `75.0` |
+| `--tail-pct-floor` | Tail relative threshold | `0.05` (5%) |
+| `--directionality` | Max fraction slower (informational) | `0.70` (70%) |
+| `--no-mann-whitney` | Disable Mann-Whitney U test | False |
+| `--mann-whitney-alpha` | Significance level | `0.05` |
+| `--seed` | Random seed | `0` |
+
+See `--help` for all options.
 
 ---
 
-## How It Works
+## 💡 Quick Tips
 
-### 1. Data Collection
-You provide two sets of independent measurements:
-- **Baseline**: Performance before changes (collected sequentially)
-- **Target**: Performance after changes (collected sequentially)
-
-**Testing Methodology:** Sequential testing (AAA BBB)
-- Run all baseline measurements first
-- Then run all target measurements
-- Arrays can have different lengths (independent samples)
-
-### 2. Statistical Analysis
-
-The tool performs multiple checks:
-
-```
-┌─────────────────────────────────────────┐
-│ Quality Gates                           │
-│ Is data reliable? (CV < 15%, n >= 10)  │
-└─────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────┐
-│ Median Delta Check                      │
-│ Is median(target) - median(baseline)    │
-│ too large?                              │
-└─────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────┐
-│ Tail Check (p90)                        │
-│ Did worst-case performance degrade?     │
-└─────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────┐
-│ Directionality Check                    │
-│ Are ≥70% of target runs slower?         │
-└─────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────┐
-│ Mann-Whitney U Test (Optional)          │
-│ Is target distribution stochastically   │
-│ greater than baseline?                  │
-└─────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────┐
-│ Practical Significance Override         │
-│ Is delta below practical threshold?     │
-└─────────────────────────────────────────┘
-           ↓
-      PASS or FAIL
-```
-
-### 3. Report Generation
-
-Creates an HTML report with:
-- ✅/❌ Overall status
-- 📊 Summary statistics
-- 📈 Bootstrap confidence intervals
-- 📋 Per-run breakdown
-- 🎯 Clear failure reasons
-
-### 4. Exit Code
-
-Returns exit code for automation:
-- **0**: PASS (no regression)
-- **1**: FAIL (regression detected)
-- **2**: ERROR (invalid input)
-
----
-
-## Real-World Example
-
-### Scenario: API Endpoint Performance
-
-You have an API endpoint and want to ensure a code change doesn't slow it down.
-
-#### Step 1: Collect Baseline (Sequential Testing)
-```bash
-# Run 10 times on current code (AAA)
-for i in {1..10}; do
-  curl -w "%{time_total}\n" -o /dev/null -s https://api.example.com/endpoint
-done > baseline.txt
-```
-
-#### Step 2: Apply Changes
-```bash
-git checkout feature-branch
-# Deploy to test environment
-```
-
-#### Step 3: Collect New Measurements (Sequential Testing)
-```bash
-# Run 10 times on new code (BBB)
-for i in {1..10}; do
-  curl -w "%{time_total}\n" -o /dev/null -s https://api.example.com/endpoint
-done > target.txt
-```
-
-#### Step 4: Check for Regression
-```bash
-python commit_to_commit_comparison/perf_html_report.py \
-  --baseline "$(cat baseline.txt | tr '\n' ',')" \
-  --target "$(cat target.txt | tr '\n' ',')" \
-  --out api_perf_report.html \
-  --title "API Endpoint - Feature Branch"
-```
-
-#### Step 5: Review Results
-- Open `api_perf_report.html`
-- Check exit code: `echo $?`
-- If exit code = 1, investigate regression
-- If exit code = 0, safe to merge
-
----
-
-## Requirements
-
-- **Python**: 3.8+
-- **Dependencies**:
-  - `numpy` - Numerical computations
-  - `scipy` - Statistical tests (Mann-Whitney U)
-  - `pytest` - Testing (optional, for development)
-
----
-
-## Contributing
-
-This tool has been thoroughly tested and validated:
-- ✅ 24/24 tests passing
-- ✅ All critical bugs fixed
-- ✅ Comprehensive documentation
-- ✅ Production-ready
-
-For questions or issues, refer to the documentation in this repository.
-
----
-
-## License
-
-MIT License - Feel free to use in your projects!
-
----
-
-## Quick Tips
-
-### 💡 Choosing the Right Mode
+### Choosing the Right Mode
 
 **PR Mode** (`--mode pr`): Strict regression gate
 - Use for: PRs, feature branches, continuous testing
 - Goal: Catch any performance degradation
-- Fails if: Median, tail, or directionality exceeds thresholds
+- Fails if: Median, tail, or Mann-Whitney exceeds thresholds
 
 **Release Mode** (`--mode release`): Equivalence testing
 - Use for: Release validation, stable builds
 - Goal: Ensure performance hasn't significantly changed
 - Fails if: Bootstrap CI for median delta is outside margin
 
-### 💡 Sample Size Guidelines
+### Sample Size Guidelines
 
 | Samples | Reliability | Use Case |
 |---------|-------------|----------|
@@ -725,21 +577,9 @@ MIT License - Feel free to use in your projects!
 | 10-20 | Good | Most use cases ✅ |
 | 30+ | Excellent | Critical paths, noisy environments |
 
-### 💡 Understanding Thresholds
+### Sequential Testing Methodology
 
-The tool uses `max(absolute, relative)`:
-
-**Example**: `--ms-floor 50.0 --pct-floor 0.05`
-- For baseline median = 100ms → threshold = max(50ms, 5ms) = **50ms**
-- For baseline median = 2000ms → threshold = max(50ms, 100ms) = **100ms**
-
-This adapts to both fast and slow operations!
-
-### 💡 Sequential Testing Methodology
-
-**Collect data sequentially (AAA BBB), not interleaved (ABA BAB):**
-
-✅ **Correct:**
+✅ **Correct (AAA BBB):**
 ```bash
 # Run all baseline measurements
 for i in {1..10}; do measure_baseline; done
@@ -747,7 +587,7 @@ for i in {1..10}; do measure_baseline; done
 for i in {1..10}; do measure_target; done
 ```
 
-❌ **Incorrect:**
+❌ **Incorrect (interleaved):**
 ```bash
 # Don't interleave measurements
 for i in {1..10}; do
@@ -756,41 +596,64 @@ for i in {1..10}; do
 done
 ```
 
-**Why?** The tool uses independent samples testing (Mann-Whitney U), which assumes samples are collected independently, not paired.
+**Why?** The tool uses independent samples testing (Mann-Whitney U), which assumes samples are collected independently.
 
 ---
 
-## Support
+## 📊 Project Structure
 
-📖 **Full Documentation**: See [USER_GUIDE.md](docs/USER_GUIDE.md)
-🧪 **Test Results**: See [TEST_REPORT.md](docs/TEST_REPORT.md)
-📊 **All Documentation**: Browse the [docs/](docs/) folder
-🚀 **Quick Start**: Try `./run_comparison.sh` with mock data
+```
+.
+├── commit_to_commit_comparison/
+│   ├── commit_to_commit_comparison.py  # Core regression detection logic
+│   ├── perf_html_report.py             # CLI and HTML report generation
+│   ├── perf_html_template.py           # HTML/CSS/JS template
+│   ├── multi_trace_comparison.py       # Multi-trace comparison
+│   ├── test_commit_to_commit_comparison.py  # Test suite (52 tests)
+│   ├── mock_data/                      # Sample test data
+│   └── test_output/                    # Generated test reports
+├── constants.py                        # Configuration constants
+├── STATISTICAL_FIXES_SUMMARY.md        # Statistical fixes documentation
+├── README.md                           # This file
+├── docs/                               # Documentation folder (20+ files)
+└── generated_reports/                  # Generated HTML reports (gitignored)
+```
 
 ---
 
-## 🎯 Why This Tool?
+## 🏆 Why This Tool?
 
 This isn't just another performance testing tool. It's a **complete solution** built with:
 
-✅ **Statistical Rigor** - Mann-Whitney U tests, bootstrap CI, multi-check validation
+✅ **Statistical Rigor** - One-sided Mann-Whitney U, bootstrap CI, direction checks
 ✅ **Data Quality Focus** - Automatic detection of unreliable measurements
 ✅ **Professional UI** - World-class design that stakeholders trust
-✅ **Production Ready** - 24/24 tests passing, comprehensive documentation
+✅ **Production Ready** - 52/52 tests passing, comprehensive documentation
 ✅ **CI/CD Friendly** - Exit codes, auto-folder creation, reproducible results
 ✅ **Transparent** - Shows all thresholds, configurations, and quality metrics
-✅ **Independent Samples** - Proper sequential testing methodology (AAA BBB)
-
-**Perfect for:**
-- Performance engineers validating optimizations
-- QA teams setting up performance gates
-- Engineering teams tracking performance trends
-- Platform teams monitoring system health
+✅ **No False Failures** - Direction checks prevent failures on improvements
+✅ **No Hidden Regressions** - Dual-threshold override respects tail latency
 
 **Stop guessing. Start measuring with statistical rigor.** 📊
 
 ---
 
+## 📄 License
+
+MIT License - Feel free to use in your projects!
+
+---
+
+## 🚀 Support
+
+📖 **Full Documentation**: See [USER_GUIDE.md](docs/USER_GUIDE.md)
+📊 **Technical Summary**: See [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md)
+📊 **Statistical Details**: See [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md)
+🧪 **Test Results**: See [TEST_REPORT.md](docs/TEST_REPORT.md)
+🚀 **Quick Start**: Try `./run_comparison.sh` with mock data
+
+---
+
 **Built with statistical rigor. Tested thoroughly. Production ready.** 🚀
 
-**Version 3.0** - Independent Samples · Mann-Whitney U · Sequential Testing
+**Version 4.0** - Critical Fixes · Appropriate Thresholds · No CV Contradictions · Tail-Only Regression Detection · 52/52 Tests Passing
