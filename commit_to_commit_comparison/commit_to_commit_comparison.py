@@ -122,6 +122,36 @@ def _calculate_cv(data: np.ndarray) -> float:
     return float((std_val / mean_val) * PCT_CONVERSION_FACTOR)
 
 
+def _calculate_dynamic_practical_threshold(baseline_median: float) -> float:
+    """
+    Calculate dynamic practical significance threshold.
+
+    Formula: max(MIN, min(MAX, baseline_median * PCT))
+
+    The threshold scales with the baseline median value but is clamped
+    to minimum and maximum bounds to ensure reasonable behavior across
+    different performance scales.
+
+    Args:
+        baseline_median: Baseline median value in ms
+
+    Returns:
+        Dynamic threshold in ms (clamped to MIN/MAX bounds)
+
+    Examples:
+        >>> _calculate_dynamic_practical_threshold(100.0)
+        2.0  # 100 * 0.01 = 1.0, clamped to MIN=2.0
+        >>> _calculate_dynamic_practical_threshold(500.0)
+        5.0  # 500 * 0.01 = 5.0 (between MIN and MAX)
+        >>> _calculate_dynamic_practical_threshold(5000.0)
+        20.0  # 5000 * 0.01 = 50.0, clamped to MAX=20.0
+    """
+    threshold = baseline_median * PRACTICAL_DELTA_PCT
+    threshold = max(MIN_PRACTICAL_DELTA_ABS_MS, threshold)
+    threshold = min(MAX_PRACTICAL_DELTA_ABS_MS, threshold)
+    return threshold
+
+
 def _check_quality_gates(
     baseline: np.ndarray,
     target: np.ndarray,
@@ -436,9 +466,7 @@ def gate_regression(
         rel_delta = abs_delta / baseline_median if baseline_median > 0 else 0.0
 
         # Calculate dynamic practical threshold (same formula as override)
-        dynamic_practical_threshold = baseline_median * PRACTICAL_DELTA_PCT
-        dynamic_practical_threshold = max(MIN_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
-        dynamic_practical_threshold = min(MAX_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
+        dynamic_practical_threshold = _calculate_dynamic_practical_threshold(baseline_median)
 
         # If change is negligible, mark as NO CHANGE
         if abs_delta < dynamic_practical_threshold:
@@ -472,10 +500,7 @@ def gate_regression(
         #   - 500ms baseline → ~5ms threshold (1%)
         #   - 2000ms baseline → ~20ms threshold (1%)
         #   - 5000ms baseline → ~20ms threshold (0.4%, capped)
-        dynamic_practical_threshold = baseline_median * PRACTICAL_DELTA_PCT
-        # Apply floor and ceiling
-        dynamic_practical_threshold = max(MIN_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
-        dynamic_practical_threshold = min(MAX_PRACTICAL_DELTA_ABS_MS, dynamic_practical_threshold)
+        dynamic_practical_threshold = _calculate_dynamic_practical_threshold(baseline_median)
 
         # Override if delta is below the dynamic threshold
         below_practical_threshold = abs_delta < dynamic_practical_threshold

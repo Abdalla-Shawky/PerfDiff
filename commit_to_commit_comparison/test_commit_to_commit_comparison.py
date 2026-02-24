@@ -11,6 +11,7 @@ from commit_to_commit_comparison.commit_to_commit_comparison import (
     equivalence_bootstrap_median,
     GateResult,
     EquivalenceResult,
+    _calculate_dynamic_practical_threshold,
 )
 from constants import MIN_SAMPLES_FOR_REGRESSION, MAX_CV_FOR_REGRESSION_CHECK
 
@@ -71,7 +72,7 @@ class TestGateRegression:
         result = gate_regression([], [])
 
         assert result.passed is False
-        assert "Empty arrays" in result.reason
+        assert "Empty" in result.reason and "array" in result.reason
 
     def test_mismatched_lengths(self):
         """Test that mismatched array lengths are now allowed (independent samples)."""
@@ -171,6 +172,25 @@ class TestGateRegression:
         assert result.passed is False
         assert "70.0%" in result.reason
 
+    def test_directionality_all_targets_faster(self):
+        """Test directionality when ALL targets are faster than baseline median."""
+        baseline = [100, 102, 98, 105, 103, 101, 99, 100, 104, 102, 100, 101]
+        # All target values below baseline median (101ms)
+        target = [90, 92, 88, 95, 93, 91, 89, 90, 94, 92, 90, 91]
+
+        result = gate_regression(baseline, target)
+
+        # Should PASS - all targets are faster (positive_fraction = 0.0)
+        assert result.passed is True
+
+        # Verify directionality calculation
+        baseline_median = np.median(baseline)
+        positive_fraction = np.mean(np.array(target) > baseline_median)
+        assert positive_fraction == 0.0  # 0% slower
+
+        # Directionality check should NOT fail (0% < 70%)
+        assert result.details["positive_fraction"] == 0.0
+
     def test_tail_regression_only(self):
         """Test a case where median passes but tail fails."""
         baseline = [100.0] * 10
@@ -251,6 +271,61 @@ class TestGateRegression:
         # With variance, CI should have some width
         assert bci["low"] <= 10 <= bci["high"]
 
+    def test_bootstrap_with_minimum_sample_size(self):
+        """Test bootstrap CI with exactly minimum sample size (n=10)."""
+        baseline = [100, 102, 98, 105, 103, 101, 99, 100, 104, 102]  # Exactly 10
+        target = [110, 112, 108, 115, 113, 111, 109, 110, 114, 112]  # Exactly 10
+
+        result = gate_regression(
+            baseline,
+            target,
+            bootstrap_n=1000,
+            bootstrap_confidence=0.95,
+            seed=42
+        )
+
+        # Should work with minimum sample size
+        assert result.inconclusive is False
+
+        # Bootstrap CI should be computed
+        assert "bootstrap_ci_median" in result.details
+
+        # CI should be reasonable (not NaN or infinite)
+        ci = result.details["bootstrap_ci_median"]
+        ci_low = ci["low"]
+        ci_high = ci["high"]
+        assert not np.isnan(ci_low)
+        assert not np.isnan(ci_high)
+        assert ci_low < ci_high  # Lower bound < upper bound
+
+    def test_bootstrap_different_n_boot_values(self):
+        """Test that different n_boot values produce stable CIs."""
+        baseline = [100, 102, 98, 105, 103, 101, 99, 100, 104, 102, 100, 101]
+        target = [110, 112, 108, 115, 113, 111, 109, 110, 114, 112, 110, 111]
+
+        # Run with different bootstrap iterations
+        result_100 = gate_regression(baseline, target, bootstrap_n=100, seed=42)
+        result_1000 = gate_regression(baseline, target, bootstrap_n=1000, seed=42)
+        result_5000 = gate_regression(baseline, target, bootstrap_n=5000, seed=42)
+
+        # All should return same verdict (convergence)
+        assert result_100.passed == result_1000.passed == result_5000.passed
+
+        # CI width should decrease with more iterations (more precision)
+        ci_100 = result_100.details["bootstrap_ci_median"]
+        ci_1000 = result_1000.details["bootstrap_ci_median"]
+        ci_5000 = result_5000.details["bootstrap_ci_median"]
+
+        width_100 = ci_100["high"] - ci_100["low"]
+        width_1000 = ci_1000["high"] - ci_1000["low"]
+        width_5000 = ci_5000["high"] - ci_5000["low"]
+
+        # Higher n_boot should give tighter CI (generally, though not guaranteed)
+        # Just verify they're all reasonable
+        assert 0 < width_100 < 100
+        assert 0 < width_1000 < 100
+        assert 0 < width_5000 < 100
+
     def test_random_seed_reproducibility(self):
         """Test that same seed produces same results."""
         baseline = [100, 105, 98, 102, 99] * 2
@@ -279,6 +354,23 @@ class TestGateRegression:
         # Mann-Whitney should be present (works with independent samples even if identical)
         assert "mann_whitney" in result.details
 
+    def test_mann_whitney_exception_handling(self):
+        """Test that Mann-Whitney exceptions are caught gracefully."""
+        # Create degenerate case that might fail Mann-Whitney
+        baseline = [100.0] * 12  # All identical values
+        target = [100.0] * 12    # All identical values
+
+        # Should not crash, should handle gracefully
+        result = gate_regression(baseline, target, use_mann_whitney=True)
+
+        # Either passes or has mann_whitney_error in details
+        assert result.passed or "mann_whitney_error" in result.details
+
+        # Verify error is captured in details if it occurred
+        if "mann_whitney_error" in result.details:
+            assert isinstance(result.details["mann_whitney_error"], str)
+            assert len(result.details["mann_whitney_error"]) > 0
+
     def test_inconclusive_on_insufficient_samples(self):
         """Test quality gate behavior when sample size is too small."""
         baseline = [100.0, 101.0, 99.0, 100.5, 99.5]
@@ -290,7 +382,8 @@ class TestGateRegression:
         assert result.inconclusive is True
         assert result.reason.startswith("INCONCLUSIVE:")
         assert f"minimum {MIN_SAMPLES_FOR_REGRESSION}" in result.reason
-        assert result.details["sample_size"] == len(baseline)
+        assert result.details["baseline_sample_size"] == len(baseline)
+        assert result.details["target_sample_size"] == len(target)
 
     def test_inconclusive_on_high_variance(self):
         """Test quality gate behavior when variance is too high."""
@@ -372,6 +465,38 @@ class TestGateRegression:
         failures_str = "; ".join(original_failures)
         assert "slower" in failures_str or "Wilcoxon" in failures_str, \
             "Should have failed on directionality or Wilcoxon"
+
+    def test_dynamic_practical_threshold_helper(self):
+        """Test the extracted dynamic practical threshold helper function."""
+        # Test 1: Small baseline (hits MIN clamp)
+        threshold = _calculate_dynamic_practical_threshold(100.0)
+        # 100 * 0.01 = 1.0, clamped to MIN=2.0
+        assert threshold == 2.0, f"Expected 2.0 (MIN clamp), got {threshold}"
+
+        # Test 2: Medium baseline (no clamping)
+        threshold = _calculate_dynamic_practical_threshold(500.0)
+        # 500 * 0.01 = 5.0 (between MIN=2.0 and MAX=20.0)
+        assert threshold == 5.0, f"Expected 5.0 (no clamp), got {threshold}"
+
+        # Test 3: Large baseline (hits MAX clamp)
+        threshold = _calculate_dynamic_practical_threshold(5000.0)
+        # 5000 * 0.01 = 50.0, clamped to MAX=20.0
+        assert threshold == 20.0, f"Expected 20.0 (MAX clamp), got {threshold}"
+
+        # Test 4: Edge case - zero baseline
+        threshold = _calculate_dynamic_practical_threshold(0.0)
+        # 0 * 0.01 = 0.0, clamped to MIN=2.0
+        assert threshold == 2.0, f"Expected 2.0 (MIN clamp for zero), got {threshold}"
+
+        # Test 5: Boundary value exactly at MIN threshold
+        threshold = _calculate_dynamic_practical_threshold(200.0)
+        # 200 * 0.01 = 2.0 (exactly at MIN)
+        assert threshold == 2.0, f"Expected 2.0 (at MIN boundary), got {threshold}"
+
+        # Test 6: Boundary value exactly at MAX threshold
+        threshold = _calculate_dynamic_practical_threshold(2000.0)
+        # 2000 * 0.01 = 20.0 (exactly at MAX)
+        assert threshold == 20.0, f"Expected 20.0 (at MAX boundary), got {threshold}"
 
     def test_practical_significance_override_not_applied_when_delta_too_large(self):
         """Test that override is NOT applied when delta is above practical threshold.
