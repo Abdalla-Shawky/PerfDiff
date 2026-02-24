@@ -175,6 +175,6 @@ Potential enhancements (optional):
 ## Summary
 
 This tool is a statistically aware, production-ready regression gate. It
-combines robust checks (median, tail, directionality, Wilcoxon, bootstrap CI)
+combines robust checks (median, tail, directionality, Mann-Whitney U, bootstrap CI)
 with quality gates and practical significance to avoid false positives and
 false negatives that a naive median-only comparison would miss.

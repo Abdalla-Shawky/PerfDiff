@@ -46,7 +46,7 @@ if target_median > baseline_median:
               +--------------+--------------+
                              |
                     +--------v---------+
-                    | Wilcoxon Test    |
+                    | Mann-Whitney U   |
                     +--------+---------+
                              |
                     +--------v---------+
@@ -357,7 +357,7 @@ Example 2: CI = [-45ms, +20ms]
 | **Threshold type** | Fixed or relative only | Adaptive (absolute + relative) |
 | **Tail latency** | Not checked | P90 check included |
 | **Consistency check** | None | Directionality (70% rule) |
-| **Statistical test** | None | Wilcoxon signed-rank |
+| **Statistical test** | None | Mann-Whitney U test |
 | **False positives** | High (2ms noise = "regression") | Low (practical significance override) |
 | **False negatives** | High (noise hides real issues) | Low (multiple detection layers) |
 | **Uncertainty** | Unknown | Bootstrap confidence intervals |
@@ -416,7 +416,7 @@ Example 2: CI = [-45ms, +20ms]
 ```
 Commit A: median 2500ms
 Commit B: median 2502.5ms (0.1% increase)
-Wilcoxon p-value: 0.003
+Mann-Whitney U p-value: 0.003
 
 Result: BUILD FAILED
 Team wastes 2 hours investigating
