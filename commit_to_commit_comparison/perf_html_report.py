@@ -138,7 +138,9 @@ def render_html_report(
 ) -> str:
     a = np.array(baseline, dtype=float)
     b = np.array(target, dtype=float)
-    d = b - a
+
+    # For independent samples: arrays can have different lengths
+    # Calculate delta directly from medians instead of element-wise subtraction
 
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     passed = result.get("passed", False)
@@ -159,11 +161,11 @@ def render_html_report(
 
     base_med = float(np.median(a))
     target_med = float(np.median(b))
-    delta_med = float(np.median(d))
+    delta_med = target_med - base_med  # Independent samples: median difference
     base_p90 = float(np.quantile(a, P90_QUANTILE, method="linear"))
     target_p90 = float(np.quantile(b, P90_QUANTILE, method="linear"))
-    delta_p90 = float(np.quantile(d, P90_QUANTILE, method="linear"))
-    pos_frac = float(np.mean(d > 0))
+    delta_p90 = target_p90 - base_p90  # Independent samples: p90 difference
+    pos_frac = float(np.mean(b > base_med))  # Independent samples: fraction of target > baseline median
 
     # Calculate percentage change for plain English
     pct_change = ((target_med - base_med) / base_med * PCT_CONVERSION_FACTOR) if base_med > 0 else 0
@@ -173,7 +175,7 @@ def render_html_report(
         simple_verdict = "Data quality too poor for reliable regression detection"
         recommendation = (
             "⚠️ Cannot determine if performance changed. Measurements are too noisy/inconsistent. "
-            "Fix data quality issues and re-test with interleaved measurements."
+            "Fix data quality issues and re-test with more samples."
         )
     elif result.get("no_change", False):
         simple_verdict = f"No performance change detected (delta: {delta_med:.1f}ms, {abs(pct_change):.1f}%)"
@@ -342,28 +344,32 @@ def render_html_report(
     baseline_outliers = detect_outliers(a)
     target_outliers = detect_outliers(b)
 
+    # For independent samples: show runs side-by-side (up to min length)
+    # Note: These are NOT paired - just displayed together for comparison
     runs_rows = []
-    for i, (ai, bi, di) in enumerate(zip(a.tolist(), b.tolist(), d.tolist()), start=1):
-        # Mark outliers with a badge
-        baseline_val = _fmt_ms(ai)
-        target_val = _fmt_ms(bi)
+    max_len = max(len(a), len(b))
+    for i in range(max_len):
+        baseline_val = _fmt_ms(a[i]) if i < len(a) else "—"
+        target_val = _fmt_ms(b[i]) if i < len(b) else "—"
+        delta_val = _fmt_ms(b[i] - a[i]) if i < min(len(a), len(b)) else "—"
 
-        if ai in baseline_outliers:
-            baseline_val = f'{_fmt_ms(ai)} <span class="outlier-badge">⚠️</span>'
-        if bi in target_outliers:
-            target_val = f'{_fmt_ms(bi)} <span class="outlier-badge">⚠️</span>'
+        if i < len(a) and a[i] in baseline_outliers:
+            baseline_val = f'{_fmt_ms(a[i])} <span class="outlier-badge">⚠️</span>'
+        if i < len(b) and b[i] in target_outliers:
+            target_val = f'{_fmt_ms(b[i])} <span class="outlier-badge">⚠️</span>'
 
         runs_rows.append([
-            str(i),
+            str(i + 1),
             baseline_val,
             target_val,
-            _fmt_ms(di),
+            delta_val,
         ])
 
     summary_rows = [
         ["Mode", mode],
         ["Status", status],
-        ["N (paired)", str(len(d))],
+        ["N baseline", str(len(a))],
+        ["N target", str(len(b))],
         ["Baseline median", _fmt_ms(base_med)],
         ["Target median", _fmt_ms(target_med)],
         ["Median delta (target-baseline)", _fmt_ms(delta_med)],
@@ -426,7 +432,12 @@ def render_html_report(
     # Prepare data for charts and exports (as JSON)
     baseline_data_json = json.dumps(a.tolist())
     target_data_json = json.dumps(b.tolist())
-    delta_data_json = json.dumps(d.tolist())
+
+    # For independent samples: delta array contains only overlapping measurements
+    # Note: This is for visualization only - these are NOT paired measurements
+    min_len = min(len(a), len(b))
+    delta_for_viz = [float(b[i] - a[i]) for i in range(min_len)]
+    delta_data_json = json.dumps(delta_for_viz)
 
     # Prepare full data export
     export_data = {
@@ -437,7 +448,8 @@ def render_html_report(
         "measurements": {
             "baseline": a.tolist(),
             "target": b.tolist(),
-            "delta": d.tolist(),
+            "delta_visualization_only": delta_for_viz,
+            "note": "Arrays are independent samples (not paired)",
         },
         "statistics": {
             "baseline_median": base_med,
@@ -473,6 +485,9 @@ def render_html_report(
 
     # Determine chart color for target data (regression vs improvement)
     chart_target_color = CHART_COLOR_TARGET_REGRESSION if delta_med > 0 else CHART_COLOR_TARGET_IMPROVEMENT
+
+    # For template compatibility: add 'd' variable pointing to delta_for_viz
+    d = delta_for_viz
 
     # Pass all local variables plus module-level helper functions to template
     template_context = locals()

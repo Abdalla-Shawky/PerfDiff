@@ -200,14 +200,7 @@ def compare_traces(baseline_json: str, target_json: str) -> MultiTraceResult:
         baseline_data = baseline_traces[name]
         target_data = target_traces[name]
 
-        # Check if arrays have the same length
-        if len(baseline_data) != len(target_data):
-            warnings.append(
-                f"⚠️ Skipping trace '{name}': mismatched lengths "
-                f"(baseline: {len(baseline_data)}, target: {len(target_data)})"
-            )
-            continue
-
+        # Note: Arrays can have different lengths (independent samples)
         # Run regression check
         try:
             result = gate_regression(baseline_data, target_data)
@@ -362,6 +355,15 @@ def main():
         print(f"  ✓ {comparison.name}.html")
 
     print(f"\n🎉 Done! Open {output_dir}/index.html to view the report")
+
+    # Exit with appropriate code
+    # Exit 1 if any trace failed (regression detected)
+    # Exit 0 otherwise (PASS, NO CHANGE, or INCONCLUSIVE)
+    import sys
+    if stats['fail'] > 0:
+        sys.exit(1)
+    else:
+        sys.exit(0)
 
 
 if __name__ == '__main__':
