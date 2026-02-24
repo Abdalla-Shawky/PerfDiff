@@ -26,7 +26,7 @@ from constants import (
     TAIL_MS_FLOOR,
     TAIL_PCT_FLOOR,
     DIRECTIONALITY,
-    WILCOXON_ALPHA,
+    MANN_WHITNEY_ALPHA,
     BOOTSTRAP_CONFIDENCE,
     BOOTSTRAP_N,
     SEED,
@@ -384,8 +384,8 @@ def render_html_report(
     if "threshold_ms" in details:
         summary_rows.append(["Gate threshold", _fmt_ms(float(details["threshold_ms"]))])
 
-    # Mann-Whitney U test (if present) - check both old and new key names for compatibility
-    mw = details.get("mann_whitney") or details.get("wilcoxon")
+    # Mann-Whitney U test (if present)
+    mw = details.get("mann_whitney")
     mw_rows = []
     if isinstance(mw, dict):
         # Mann-Whitney U test format (independent samples)
@@ -396,14 +396,6 @@ def render_html_report(
                 ["Mann-Whitney U", f'{mw.get("u_statistic", 0.0):.1f}'],
                 ["Mann-Whitney p(greater)", f'{mw.get("p_greater", 1.0):.6f}'],
                 ["Mann-Whitney p(two-sided)", f'{mw.get("p_two_sided", 1.0):.6f}'],
-            ]
-        # Legacy Wilcoxon format (backward compatibility)
-        else:
-            mw_rows = [
-                ["Wilcoxon n", str(mw.get("n", ""))],
-                ["Wilcoxon z", f'{mw.get("z", 0.0):.3f}'],
-                ["Wilcoxon p(greater)", f'{mw.get("p_greater", 1.0):.6f}'],
-                ["Wilcoxon p(two-sided)", f'{mw.get("p_two_sided", 1.0):.6f}'],
             ]
     wil_rows = mw_rows  # Keep variable name for backward compatibility below
 
@@ -522,8 +514,8 @@ def main() -> int:
     p.add_argument("--tail-pct-floor", type=float, default=TAIL_PCT_FLOOR)
     p.add_argument("--tail-quantile", type=float, default=TAIL_QUANTILE)
     p.add_argument("--directionality", type=float, default=DIRECTIONALITY)
-    p.add_argument("--no-wilcoxon", action="store_true")
-    p.add_argument("--wilcoxon-alpha", type=float, default=WILCOXON_ALPHA)
+    p.add_argument("--no-mann-whitney", action="store_true", help="Disable Mann-Whitney U test")
+    p.add_argument("--mann-whitney-alpha", type=float, default=MANN_WHITNEY_ALPHA, help="Significance level for Mann-Whitney U test")
     p.add_argument("--bootstrap-confidence", type=float, default=BOOTSTRAP_CONFIDENCE)
     p.add_argument("--bootstrap-n", type=int, default=BOOTSTRAP_N)
     p.add_argument("--seed", type=int, default=SEED)
@@ -561,8 +553,8 @@ def main() -> int:
         tail_ms_floor=args.tail_ms_floor,
         tail_pct_floor=args.tail_pct_floor,
         directionality=args.directionality,
-        use_wilcoxon=not args.no_wilcoxon,
-        wilcoxon_alpha=args.wilcoxon_alpha,
+        use_mann_whitney=not args.no_mann_whitney,
+        mann_whitney_alpha=args.mann_whitney_alpha,
         bootstrap_confidence=args.bootstrap_confidence,
         bootstrap_n=args.bootstrap_n,
         seed=args.seed,

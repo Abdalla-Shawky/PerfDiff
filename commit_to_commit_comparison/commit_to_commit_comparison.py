@@ -13,8 +13,8 @@ from constants import (
     TAIL_MS_FLOOR,
     TAIL_PCT_FLOOR,
     DIRECTIONALITY,
-    USE_WILCOXON,
-    WILCOXON_ALPHA,
+    USE_MANN_WHITNEY,
+    MANN_WHITNEY_ALPHA,
     BOOTSTRAP_CONFIDENCE,
     BOOTSTRAP_N,
     SEED,
@@ -240,8 +240,8 @@ def gate_regression(
     tail_ms_floor: float = TAIL_MS_FLOOR,
     tail_pct_floor: float = TAIL_PCT_FLOOR,
     directionality: float = DIRECTIONALITY,
-    use_wilcoxon: bool = USE_WILCOXON,
-    wilcoxon_alpha: float = WILCOXON_ALPHA,
+    use_mann_whitney: bool = USE_MANN_WHITNEY,
+    mann_whitney_alpha: float = MANN_WHITNEY_ALPHA,
     bootstrap_confidence: float = BOOTSTRAP_CONFIDENCE,
     bootstrap_n: int = BOOTSTRAP_N,
     seed: int = SEED,
@@ -258,8 +258,8 @@ def gate_regression(
         tail_ms_floor: Absolute threshold for tail in milliseconds
         tail_pct_floor: Relative threshold as fraction for tail (e.g., 0.05 = 5%)
         directionality: Fraction of positive deltas required (e.g., 0.70 = 70%)
-        use_wilcoxon: Whether to use Wilcoxon signed-rank test
-        wilcoxon_alpha: Significance level for Wilcoxon test
+        use_mann_whitney: Whether to use Mann-Whitney U test
+        mann_whitney_alpha: Significance level for Mann-Whitney U test
         bootstrap_confidence: Confidence level for bootstrap CI
         bootstrap_n: Number of bootstrap samples
         seed: Random seed for reproducibility
@@ -280,8 +280,8 @@ def gate_regression(
         raise ValueError(f"tail_pct_floor must be between 0 and 1, got {tail_pct_floor}")
     if not (0 <= directionality <= 1):
         raise ValueError(f"directionality must be between 0 and 1, got {directionality}")
-    if not (0 < wilcoxon_alpha < 1):
-        raise ValueError(f"wilcoxon_alpha must be between 0 and 1 (exclusive), got {wilcoxon_alpha}")
+    if not (0 < mann_whitney_alpha < 1):
+        raise ValueError(f"mann_whitney_alpha must be between 0 and 1 (exclusive), got {mann_whitney_alpha}")
     if not (0 < bootstrap_confidence < 1):
         raise ValueError(f"bootstrap_confidence must be between 0 and 1 (exclusive), got {bootstrap_confidence}")
     if bootstrap_n < 0:
@@ -405,7 +405,7 @@ def gate_regression(
 
     # Mann-Whitney U test (for independent samples)
     # Tests: "Is target distribution stochastically greater than baseline?"
-    if use_wilcoxon:  # Keep same parameter name for backward compatibility
+    if use_mann_whitney:
         try:
             res = stats.mannwhitneyu(b, a, alternative='greater', method='auto')
             p_greater = res.pvalue
@@ -424,9 +424,9 @@ def gate_regression(
             }
             details["mann_whitney"] = mann_whitney_data
 
-            if p_greater < wilcoxon_alpha:  # Reuse same alpha threshold
+            if p_greater < mann_whitney_alpha:
                 passed = False
-                failures.append(f"Mann-Whitney U test significant (p={p_greater:.4f} < {wilcoxon_alpha})")
+                failures.append(f"Mann-Whitney U test significant (p={p_greater:.4f} < {mann_whitney_alpha})")
         except Exception as e:
             details["mann_whitney_error"] = str(e)
 
@@ -458,7 +458,7 @@ def gate_regression(
             }
 
     # Practical significance override
-    # Even if statistical tests failed (directionality, Wilcoxon), override to PASS
+    # Even if statistical tests failed (directionality, Mann-Whitney U), override to PASS
     # if the delta is below practical significance minimums.
     # This prevents false positives on statistically significant but negligible changes.
     if not passed:

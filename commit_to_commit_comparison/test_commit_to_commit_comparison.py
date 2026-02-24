@@ -113,8 +113,8 @@ class TestGateRegression:
         with pytest.raises(ValueError, match="directionality must be between 0 and 1"):
             gate_regression(baseline, target, directionality=1.1)
 
-        with pytest.raises(ValueError, match="wilcoxon_alpha must be between 0 and 1"):
-            gate_regression(baseline, target, wilcoxon_alpha=0.0)
+        with pytest.raises(ValueError, match="mann_whitney_alpha must be between 0 and 1"):
+            gate_regression(baseline, target, mann_whitney_alpha=0.0)
 
         with pytest.raises(ValueError, match="bootstrap_confidence must be between 0 and 1"):
             gate_regression(baseline, target, bootstrap_confidence=1.0)
@@ -185,7 +185,7 @@ class TestGateRegression:
             tail_ms_floor=1.0,
             tail_pct_floor=0.0,
             directionality=1.0,
-            use_wilcoxon=False,
+            use_mann_whitney=False,
             bootstrap_n=0,
         )
 
@@ -211,7 +211,7 @@ class TestGateRegression:
         result = gate_regression(
             baseline,
             target,
-            use_wilcoxon=True  # Parameter name kept for backward compatibility
+            use_mann_whitney=True  # Parameter name kept for backward compatibility
         )
 
         assert "mann_whitney" in result.details
@@ -272,7 +272,7 @@ class TestGateRegression:
         baseline = [100.0] * 10
         target = [100.0] * 10
 
-        result = gate_regression(baseline, target, use_wilcoxon=True)
+        result = gate_regression(baseline, target, use_mann_whitney=True)
 
         # Mann-Whitney U should still work with identical distributions
         assert result.passed is True or result.no_change is True

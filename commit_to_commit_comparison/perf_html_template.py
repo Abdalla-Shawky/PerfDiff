@@ -10,7 +10,7 @@ from html import escape
 from constants import (
     ENABLE_QUALITY_GATES, MAX_CV_FOR_REGRESSION_CHECK, MIN_SAMPLES_FOR_REGRESSION,
     CV_THRESHOLD_MULTIPLIER, MS_FLOOR, PCT_FLOOR, TAIL_MS_FLOOR, TAIL_PCT_FLOOR,
-    DIRECTIONALITY, WILCOXON_ALPHA, CHARTJS_CDN_URL,
+    DIRECTIONALITY, MANN_WHITNEY_ALPHA, CHARTJS_CDN_URL,
     ANIMATION_DURATION_FAST, ANIMATION_DURATION_NORMAL, ANIMATION_DURATION_SLOW,
     CHART_COLOR_BASELINE, CHART_COLOR_TARGET_IMPROVEMENT, CHART_COLOR_TARGET_REGRESSION,
     CHART_COLOR_NEUTRAL, LIGHT_BG_PRIMARY, LIGHT_BG_SECONDARY, LIGHT_BG_TERTIARY,
@@ -1320,9 +1320,9 @@ def render_template(**context) -> str:
             <td>Max fraction of runs that can be slower</td>
           </tr>
           <tr>
-            <td><strong>Wilcoxon p-value</strong></td>
-            <td>≥ {WILCOXON_ALPHA} (significance level)</td>
-            <td>{WILCOXON_ALPHA} (not affected by CV)</td>
+            <td><strong>Mann-Whitney U p-value</strong></td>
+            <td>≥ {MANN_WHITNEY_ALPHA} (significance level)</td>
+            <td>{MANN_WHITNEY_ALPHA} (not affected by CV)</td>
             <td>Statistical significance threshold</td>
           </tr>
         </table>
@@ -1338,7 +1338,7 @@ def render_template(**context) -> str:
       </div>
     </div>
 
-    {"<div class='section'><div class='section-header' onclick='toggleSection(\"wilcoxon\")'><div><h2 class='section-title'>📈 Wilcoxon Statistical Test</h2><div class='section-subtitle'>Tests if the difference is statistically significant (not just random noise)</div></div><span class='toggle-icon'>▼</span></div><div id='wilcoxon' class='section-content'>" + _mini_table(wil_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> The Wilcoxon test checks if the performance difference is real or could be random variation. A p-value < 0.05 means the difference is statistically significant.</div></div></div>" if wil_rows else ""}
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"mann_whitney\")'><div><h2 class='section-title'>📈 Mann-Whitney U Test</h2><div class='section-subtitle'>Tests if the target distribution is stochastically greater than baseline (for independent samples)</div></div><span class='toggle-icon'>▼</span></div><div id='mann_whitney' class='section-content'>" + _mini_table(wil_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> The Mann-Whitney U test checks if the performance difference is real or could be random variation. A p-value < 0.05 means the difference is statistically significant. This non-parametric test works with independent samples (sequential testing).</div></div></div>" if wil_rows else ""}
 
     {"<div class='section'><div class='section-header' onclick='toggleSection(\"bootstrap\")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Range of uncertainty for the median performance change</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'>" + _mini_table(bci_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> We're 95% confident the true median change is between the CI low and high values. This accounts for measurement uncertainty.</div></div></div>" if bci_rows else ""}
 

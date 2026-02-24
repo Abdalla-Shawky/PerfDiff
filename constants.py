@@ -20,7 +20,7 @@ MS_FLOOR = 50.0
 PCT_FLOOR = 0.05
 
 # Practical significance override thresholds
-# Even if statistical tests fail (directionality, Wilcoxon), override to PASS
+# Even if statistical tests fail (directionality, Mann-Whitney U), override to PASS
 # if the delta is below these practical significance minimums.
 # This prevents false positives on statistically significant but negligible changes.
 # Example: 2.5ms delta (0.1%) with p=0.003 is statistically significant but not practically meaningful.
@@ -68,14 +68,12 @@ DIRECTIONALITY = 0.70
 
 # Enable/disable Mann-Whitney U test (for independent samples)
 # This non-parametric test detects if target distribution is stochastically greater than baseline
-# Note: Parameter name kept as USE_WILCOXON for backward compatibility
-USE_WILCOXON = True
+USE_MANN_WHITNEY = True
 
 # Significance level (alpha) for Mann-Whitney U test (0.0 - 1.0)
 # 0.05 = 5% significance level (95% confidence)
 # Lower values make the test more conservative
-# Note: Parameter name kept as WILCOXON_ALPHA for backward compatibility
-WILCOXON_ALPHA = 0.05
+MANN_WHITNEY_ALPHA = 0.05
 
 # Confidence level for bootstrap confidence intervals (0.0 - 1.0)
 # 0.95 = 95% confidence interval
