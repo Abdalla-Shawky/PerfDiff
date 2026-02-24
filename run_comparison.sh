@@ -1,41 +1,73 @@
 #!/bin/bash
-# Multi-Trace Performance Comparison Runner
-# Usage: ./run_comparison.sh baseline.json target.json [output_dir]
+#
+# Performance Regression Comparison Script
+# Usage: ./run_comparison.sh <baseline_json> <target_json> <output_dir>
+#
 
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 <baseline.json> <target.json> [output_dir]"
+set -e  # Exit on error
+
+# Check arguments
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <baseline_json> <target_json> <output_dir>"
     echo ""
     echo "Example:"
     echo "  $0 commit_to_commit_comparison/mock_data/baseline_traces.json \\"
     echo "     commit_to_commit_comparison/mock_data/target_traces.json \\"
-    echo "     reports"
+    echo "     commit_to_commit_comparison/test_output"
     exit 1
 fi
 
-BASELINE="$1"
-TARGET="$2"
-OUTPUT_DIR="${3:-output}"
+BASELINE_JSON="$1"
+TARGET_JSON="$2"
+OUTPUT_DIR="$3"
 
-# Get the directory where this script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Validate input files exist
+if [ ! -f "$BASELINE_JSON" ]; then
+    echo "Error: Baseline file not found: $BASELINE_JSON"
+    exit 1
+fi
 
-# Change to the script directory to ensure correct Python path
+if [ ! -f "$TARGET_JSON" ]; then
+    echo "Error: Target file not found: $TARGET_JSON"
+    exit 1
+fi
+
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+echo "======================================"
+echo "Performance Regression Comparison"
+echo "======================================"
+echo "Baseline: $BASELINE_JSON"
+echo "Target:   $TARGET_JSON"
+echo "Output:   $OUTPUT_DIR"
+echo ""
+
+# Path to the Python source (in PerfDiff directory)
+SCRIPT_DIR="/Users/abdalla.ahmed/Documents/PerfDiff"
+
+# Change to PerfDiff directory to run as module
 cd "$SCRIPT_DIR"
 
-# Run the comparison
+# Run the multi-trace comparison as a Python module
 python3 -m commit_to_commit_comparison.multi_trace_comparison \
-    "$BASELINE" \
-    "$TARGET" \
-    --output-dir "$OUTPUT_DIR"
+    "$OLDPWD/$BASELINE_JSON" \
+    "$OLDPWD/$TARGET_JSON" \
+    --output-dir "$OLDPWD/$OUTPUT_DIR"
 
-# Check if successful
-if [ $? -eq 0 ]; then
+EXIT_CODE=$?
+
+echo ""
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "✅ PASS: No performance regressions detected"
     echo ""
-    echo "✅ Reports generated successfully!"
-    echo "📂 Output directory: $OUTPUT_DIR"
-    echo "🌐 Open $OUTPUT_DIR/index.html to view"
+    echo "View the report:"
+    echo "  open $OUTPUT_DIR/index.html"
 else
+    echo "❌ FAIL: Performance regression detected (exit code: $EXIT_CODE)"
     echo ""
-    echo "❌ Error generating reports"
-    exit 1
+    echo "View the report for details:"
+    echo "  open $OUTPUT_DIR/index.html"
 fi
+
+exit $EXIT_CODE
