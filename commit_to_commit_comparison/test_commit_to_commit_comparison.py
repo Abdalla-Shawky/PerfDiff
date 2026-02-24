@@ -74,14 +74,27 @@ class TestGateRegression:
         assert "Empty arrays" in result.reason
 
     def test_mismatched_lengths(self):
-        """Test handling of mismatched array lengths."""
-        baseline = [100, 200, 300]
-        target = [100, 200]
+        """Test that mismatched array lengths are now allowed (independent samples)."""
+        # With insufficient samples, should be INCONCLUSIVE
+        baseline = [100, 200, 300]  # 3 samples < 10 minimum
+        target = [100, 200]  # 2 samples < 10 minimum
 
         result = gate_regression(baseline, target)
 
-        assert result.passed is False
-        assert "must have same length" in result.reason
+        assert result.passed is True  # Doesn't fail build
+        assert result.inconclusive is True
+        assert "INSUFFICIENT SAMPLES" in result.reason
+
+    def test_unequal_lengths_with_sufficient_samples(self):
+        """Test that unequal-length arrays work with sufficient samples."""
+        baseline = [100, 101, 99, 100, 102, 100, 101, 99, 100, 101, 100, 102]  # 12 samples
+        target = [100, 101, 99, 100, 102, 100, 101, 99, 100, 101]  # 10 samples
+
+        result = gate_regression(baseline, target)
+
+        # Should pass (no regression) or return no_change, not inconclusive
+        assert result.inconclusive is False
+        assert result.passed is True or result.no_change is True
 
     def test_invalid_parameters_raise(self):
         """Test parameter validation errors."""
@@ -190,26 +203,28 @@ class TestGateRegression:
 
         assert "bootstrap_ci_median" not in result.details
 
-    def test_wilcoxon_with_approx_method(self):
-        """Test that Wilcoxon uses approx method and provides valid z-score."""
+    def test_mann_whitney_u_test(self):
+        """Test that Mann-Whitney U test is used for independent samples."""
         baseline = [800] * 10
         target = [850] * 10
 
         result = gate_regression(
             baseline,
             target,
-            use_wilcoxon=True
+            use_wilcoxon=True  # Parameter name kept for backward compatibility
         )
 
-        assert "wilcoxon" in result.details
-        wilcox = result.details["wilcoxon"]
+        assert "mann_whitney" in result.details
+        mw = result.details["mann_whitney"]
 
-        # Check that we have proper fields
-        assert "p_greater" in wilcox
-        assert "p_two_sided" in wilcox
-        # z-score might be present depending on scipy version
-        if "z" in wilcox:
-            assert isinstance(wilcox["z"], float)
+        # Check that we have proper fields for Mann-Whitney U
+        assert "p_greater" in mw
+        assert "p_two_sided" in mw
+        assert "u_statistic" in mw
+        assert "n_baseline" in mw
+        assert "n_target" in mw
+        assert mw["n_baseline"] == 10
+        assert mw["n_target"] == 10
 
     def test_bootstrap_confidence_interval(self):
         """Test that bootstrap CI is calculated correctly."""
@@ -252,16 +267,17 @@ class TestGateRegression:
         assert bci1["low"] == bci2["low"]
         assert bci1["high"] == bci2["high"]
 
-    def test_wilcoxon_skipped_when_all_deltas_zero(self):
-        """Test Wilcoxon is skipped cleanly when all deltas are zero."""
+    def test_mann_whitney_with_identical_distributions(self):
+        """Test Mann-Whitney when baseline and target are identical distributions."""
         baseline = [100.0] * 10
         target = [100.0] * 10
 
         result = gate_regression(baseline, target, use_wilcoxon=True)
 
-        # No non-zero deltas means no Wilcoxon result should be recorded
-        assert result.passed is True
-        assert "wilcoxon" not in result.details
+        # Mann-Whitney U should still work with identical distributions
+        assert result.passed is True or result.no_change is True
+        # Mann-Whitney should be present (works with independent samples even if identical)
+        assert "mann_whitney" in result.details
 
     def test_inconclusive_on_insufficient_samples(self):
         """Test quality gate behavior when sample size is too small."""
@@ -460,10 +476,16 @@ class TestEquivalenceBootstrapMedian:
         with pytest.raises(ValueError, match="cannot be empty"):
             equivalence_bootstrap_median([], [1, 2])
 
-    def test_mismatched_length_validation(self):
-        """Test that mismatched lengths raise ValueError."""
-        with pytest.raises(ValueError, match="length mismatch"):
-            equivalence_bootstrap_median([1, 2, 3], [1, 2])
+    def test_unequal_lengths_allowed(self):
+        """Test that unequal lengths work with equivalence testing (independent samples)."""
+        baseline = [100, 101, 99, 100, 102, 100, 101, 99, 100, 101, 100, 102]  # 12 samples
+        target = [100, 101, 99, 100, 102, 100, 101, 99, 100, 101]  # 10 samples
+
+        # Should not raise an error - independent samples support unequal lengths
+        result = equivalence_bootstrap_median(baseline, target, margin_ms=30.0)
+
+        # With very similar values, should be equivalent
+        assert result.equivalent is True
 
     def test_invalid_margin_validation(self):
         """Test that invalid margin raises ValueError."""

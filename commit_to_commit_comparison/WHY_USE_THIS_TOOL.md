@@ -178,32 +178,25 @@ Checks if a consistent majority of runs are slower.
 ### Why You Need It:
 
 ```
-Scenario: Median similar, but consistently slower
+Scenario: Median similar, but target consistently slower
 
-Paired runs (baseline -> target):
-  Run 1:  100ms -> 108ms (+8ms)
-  Run 2:   98ms -> 105ms (+7ms)
-  Run 3:  102ms -> 110ms (+8ms)
-  Run 4:  101ms -> 109ms (+8ms)
-  Run 5:   99ms -> 106ms (+7ms)
-  Run 6:  103ms -> 95ms  (-8ms)  # One faster run
-  Run 7:  100ms -> 107ms (+7ms)
-  Run 8:   97ms -> 104ms (+7ms)
-  Run 9:  101ms -> 108ms (+7ms)
-  Run 10: 102ms -> 109ms (+7ms)
+Baseline samples: [100, 98, 102, 101, 99, 103, 100, 97, 101, 102] (median = 100.5ms)
+Target samples:   [108, 105, 110, 109, 106, 107, 104, 108, 109, 95]  (median = 107.5ms)
 
-Median delta: ~7ms (below 50ms threshold)
-But: 90% of runs are slower!
+Median difference: 7ms (below 50ms threshold)
+But: 9/10 target samples > baseline median (100.5ms)
+Directionality: 90% of target samples slower!
 ```
 
 ### The Math:
 ```
-positive_fraction = count(target - baseline > 0) / n
+baseline_median = median(baseline)
+positive_fraction = count(target > baseline_median) / len(target)
 
 if positive_fraction >= 0.70:  # 70% threshold
     flag_regression()
 
-Example: 9/10 = 90% runs slower --> FLAGGED
+Example: 9/10 = 90% target samples above baseline median --> FLAGGED
 ```
 
 ### Why 70%?
@@ -213,24 +206,24 @@ Example: 9/10 = 90% runs slower --> FLAGGED
 
 ---
 
-## Algorithm 5: Wilcoxon Signed-Rank Test
+## Algorithm 5: Mann-Whitney U Test
 
 ### What It Does:
-Statistical test that detects if the performance distribution has shifted.
+Statistical test that detects if target distribution is stochastically greater than baseline distribution (for independent samples).
 
 ### Why You Need It:
 
-| Simple Approach | Wilcoxon Test |
-|-----------------|---------------|
-| "Is median different?" | "Is the entire distribution shifted?" |
+| Simple Approach | Mann-Whitney U Test |
+|-----------------|---------------------|
+| "Is median different?" | "Is target distribution shifted higher?" |
 | No p-value | p-value for confidence |
 | Binary yes/no | Statistical significance |
 
 ### The Math:
 ```
-1. Calculate paired differences: delta[i] = target[i] - baseline[i]
-2. Rank absolute differences
-3. Sum ranks of positive vs negative differences
+1. Combine all observations from both groups
+2. Rank all observations together
+3. Calculate U statistic based on ranks in each group
 4. Compare to expected distribution under null hypothesis
 5. Output: p-value
 
@@ -238,10 +231,11 @@ if p_value < 0.05:  # 95% confidence
     "Statistically significant performance change"
 ```
 
-### Why Wilcoxon (not t-test)?
+### Why Mann-Whitney U (for independent samples)?
 - **Non-parametric**: No assumption of normal distribution
 - **Robust to outliers**: Uses ranks, not raw values
-- **Paired design**: Accounts for run-to-run correlation
+- **Independent samples design**: Proper for sequential testing (AAA BBB)
+- **Unequal sample sizes**: Works with different baseline/target sizes
 - **Performance data is rarely normal**: Often skewed
 
 ---
@@ -259,11 +253,11 @@ Scenario: Statistically significant but who cares?
 Baseline: [100.0, 100.1, 100.0, 100.2, 100.1] (very consistent)
 Target:   [102.0, 102.1, 102.0, 102.2, 102.1] (also consistent)
 
-Wilcoxon p-value: 0.003 (highly significant!)
-Median delta: 2ms (0.002%)
+Mann-Whitney U p-value: 0.003 (highly significant!)
+Median difference: 2ms (0.002%)
 
-Without override: "FAIL: Wilcoxon test significant (p=0.003)"
-With override:    "PASS: 2ms delta below practical threshold (2ms)"
+Without override: "FAIL: Mann-Whitney U test significant (p=0.003)"
+With override:    "PASS: 2ms difference below practical threshold (2ms)"
 ```
 
 ### The Math:
@@ -303,15 +297,14 @@ Provides confidence intervals for the median delta.
 
 ### The Math:
 ```
-1. Take original paired differences
-2. Resample with replacement (5000 times)
-3. Calculate median of each resample
-4. Take 2.5th and 97.5th percentile of bootstrap medians
-5. Output: [CI_low, CI_high]
+1. Resample baseline and target arrays independently (5000 times each)
+2. Calculate median difference for each resample pair
+3. Take 2.5th and 97.5th percentile of bootstrap median differences
+4. Output: [CI_low, CI_high]
 
 Example:
-  Original delta median: 15ms
-  Bootstrap samples: [12, 18, 14, 16, 13, 19, 15, ...]
+  Original median difference: 15ms
+  Bootstrap median differences: [12, 18, 14, 16, 13, 19, 15, ...]
   95% CI: [8ms, 22ms]
 
 Interpretation:
@@ -483,11 +476,11 @@ Action: Fix measurement methodology
 4. **Investigation**: Quantify impact of code changes
 
 ### Best Practices:
-1. **Run paired tests**: Same device, same conditions, interleaved
-2. **Collect sufficient samples**: Minimum 10, prefer 30+
-3. **Control variance**: Target CV < 15%
-4. **Check tail latency**: P90 matters for user experience
-5. **Trust the tool**: Inconclusive means fix your methodology
+1. **Collect sufficient samples**: Minimum 10 per group, prefer 30+
+2. **Control variance**: Target CV < 15% for reliable results
+3. **Check tail latency**: P90 matters for user experience
+4. **Trust the tool**: Inconclusive means improve your test environment
+5. **Sequential collection**: Run all baseline, then all target (AAA BBB)
 
 ---
 

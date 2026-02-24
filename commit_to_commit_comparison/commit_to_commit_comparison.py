@@ -145,12 +145,18 @@ def _check_quality_gates(
     if not enable_gates:
         return None
 
-    n = len(baseline)
+    n_baseline = len(baseline)
+    n_target = len(target)
 
-    # Gate 1: Sample size
-    if n < min_samples:
+    # Gate 1: Sample size (check both baseline and target independently for independent samples)
+    if n_baseline < min_samples:
         return (
-            f"INSUFFICIENT SAMPLES: Only {n} measurements (minimum {min_samples} required). "
+            f"INSUFFICIENT SAMPLES: Baseline has only {n_baseline} measurements (minimum {min_samples} required). "
+            f"Results would be unreliable. Collect more data and re-run."
+        )
+    if n_target < min_samples:
+        return (
+            f"INSUFFICIENT SAMPLES: Target has only {n_target} measurements (minimum {min_samples} required). "
             f"Results would be unreliable. Collect more data and re-run."
         )
 
@@ -163,26 +169,30 @@ def _check_quality_gates(
         return (
             f"HIGH VARIANCE: CV = {max_observed_cv:.1f}% exceeds maximum {max_cv:.1f}%. "
             f"Measurements are too noisy for reliable regression detection. "
-            f"Use interleaved testing and control environment (see MEASUREMENT_GUIDE.md). "
+            f"Control test environment and collect more samples (see MEASUREMENT_GUIDE.md). "
             f"Target: CV < {max_cv:.1f}%"
         )
 
     return None
 
 
-def _bootstrap_median_ci(
-    delta: np.ndarray,
+def _bootstrap_median_diff_ci_independent(
+    baseline: np.ndarray,
+    target: np.ndarray,
     confidence: float,
     n_boot: int,
     rng: np.random.Generator
 ) -> tuple[float, float]:
     """
-    Calculate bootstrap confidence interval for median delta.
+    Calculate bootstrap confidence interval for median difference (independent samples).
 
+    For independent samples, we resample baseline and target separately,
+    then compute the median difference for each bootstrap iteration.
     Uses percentile method with specified confidence level.
 
     Args:
-        delta: Array of paired differences (target - baseline)
+        baseline: Array of baseline measurements
+        target: Array of target measurements
         confidence: Confidence level (e.g., 0.95 for 95% CI)
         n_boot: Number of bootstrap resamples
         rng: NumPy random number generator for reproducibility
@@ -192,23 +202,31 @@ def _bootstrap_median_ci(
 
     Example:
         >>> rng = np.random.default_rng(42)
-        >>> delta = np.array([1.2, -0.5, 2.1, 0.8, -1.0])
-        >>> ci_low, ci_high = _bootstrap_median_ci(delta, 0.95, 1000, rng)
-        >>> ci_low < np.median(delta) < ci_high
+        >>> baseline = np.array([100, 102, 98, 105, 100])
+        >>> target = np.array([110, 112, 108])
+        >>> ci_low, ci_high = _bootstrap_median_diff_ci_independent(baseline, target, 0.95, 1000, rng)
+        >>> median_diff = np.median(target) - np.median(baseline)
+        >>> ci_low < median_diff < ci_high
         True
     """
-    boot_medians = []
-    n = len(delta)
-    for _ in range(n_boot):
-        indices = rng.choice(n, size=n, replace=True)
-        boot_delta = delta[indices]
-        boot_medians.append(np.median(boot_delta))
+    boot_median_diffs = []
+    n_baseline = len(baseline)
+    n_target = len(target)
 
-    boot_medians = np.array(boot_medians)
+    for _ in range(n_boot):
+        # Resample baseline and target independently
+        baseline_sample = baseline[rng.choice(n_baseline, size=n_baseline, replace=True)]
+        target_sample = target[rng.choice(n_target, size=n_target, replace=True)]
+
+        # Compute median difference
+        median_diff = np.median(target_sample) - np.median(baseline_sample)
+        boot_median_diffs.append(median_diff)
+
+    boot_median_diffs = np.array(boot_median_diffs)
     alpha = 1 - confidence
     # Two-sided confidence interval: split alpha equally on both tails
-    ci_low = float(np.quantile(boot_medians, alpha / 2, method="linear"))
-    ci_high = float(np.quantile(boot_medians, 1 - alpha / 2, method="linear"))
+    ci_low = float(np.quantile(boot_median_diffs, alpha / 2, method="linear"))
+    ci_high = float(np.quantile(boot_median_diffs, 1 - alpha / 2, method="linear"))
 
     return ci_low, ci_high
 
@@ -275,10 +293,12 @@ def gate_regression(
     a = np.array(baseline, dtype=float)
     b = np.array(target, dtype=float)
 
-    if len(a) != len(b):
+    # For independent samples, arrays can have different lengths
+    # Check for empty arrays
+    if len(a) == 0:
         return GateResult(
             passed=False,
-            reason="Baseline and target arrays must have same length",
+            reason="Empty baseline array provided",
             details={
                 "baseline_length": len(a),
                 "target_length": len(b),
@@ -286,10 +306,10 @@ def gate_regression(
             inconclusive=False
         )
 
-    if len(a) == 0:
+    if len(b) == 0:
         return GateResult(
             passed=False,
-            reason="Empty arrays provided",
+            reason="Empty target array provided",
             details={
                 "baseline_length": len(a),
                 "target_length": len(b),
@@ -306,14 +326,16 @@ def gate_regression(
             details={
                 "baseline_cv": _calculate_cv(a),
                 "target_cv": _calculate_cv(b),
-                "sample_size": len(a),
+                "baseline_sample_size": len(a),
+                "target_sample_size": len(b),
             },
             inconclusive=True
         )
 
-    delta = b - a
-    median_delta = float(np.median(delta))
+    # For independent samples: compare medians directly (not element-wise differences)
     baseline_median = float(np.median(a))
+    target_median = float(np.median(b))
+    median_delta = target_median - baseline_median
 
     # Calculate CV for adaptive thresholds
     baseline_cv = _calculate_cv(a)
@@ -361,10 +383,11 @@ def gate_regression(
         failures.append(f"Tail delta {tail_delta:.2f}ms exceeds threshold {tail_threshold:.2f}ms")
         passed = False
 
-    # Check 3: Directionality
-    positive_fraction = float(np.mean(delta > 0))
+    # Check 3: Directionality (for independent samples)
+    # Check what fraction of target samples exceed baseline median
+    positive_fraction = float(np.mean(b > baseline_median))
     if positive_fraction >= directionality:
-        failures.append(f"{positive_fraction*100:.1f}% of runs slower (>= {directionality*100:.1f}% threshold)")
+        failures.append(f"{positive_fraction*100:.1f}% of target samples slower than baseline median (>= {directionality*100:.1f}% threshold)")
         passed = False
 
     details: Dict[str, Any] = {
@@ -380,36 +403,32 @@ def gate_regression(
         "cv_multiplier": cv_multiplier,
     }
 
-    # Wilcoxon signed-rank test
-    if use_wilcoxon and len(delta) > 0:
-        # Remove zeros for Wilcoxon test
-        delta_nonzero = delta[delta != 0]
-        if len(delta_nonzero) > 0:
-            try:
-                res = stats.wilcoxon(delta_nonzero, alternative='greater', method='approx')
-                p_greater = res.pvalue
-                # Use z-statistic from approx method if available
-                z_score = res.zstatistic if hasattr(res, 'zstatistic') else None
+    # Mann-Whitney U test (for independent samples)
+    # Tests: "Is target distribution stochastically greater than baseline?"
+    if use_wilcoxon:  # Keep same parameter name for backward compatibility
+        try:
+            res = stats.mannwhitneyu(b, a, alternative='greater', method='auto')
+            p_greater = res.pvalue
+            u_statistic = res.statistic
 
-                # Two-sided test
-                res_two = stats.wilcoxon(delta_nonzero, alternative='two-sided', method='approx')
-                p_two_sided = res_two.pvalue
+            # Two-sided test
+            res_two = stats.mannwhitneyu(b, a, alternative='two-sided', method='auto')
+            p_two_sided = res_two.pvalue
 
-                wilcox_data = {
-                    "n": len(delta_nonzero),
-                    "p_greater": float(p_greater),
-                    "p_two_sided": float(p_two_sided),
-                }
-                if z_score is not None:
-                    wilcox_data["z"] = float(z_score)
+            mann_whitney_data = {
+                "n_baseline": len(a),
+                "n_target": len(b),
+                "u_statistic": float(u_statistic),
+                "p_greater": float(p_greater),
+                "p_two_sided": float(p_two_sided),
+            }
+            details["mann_whitney"] = mann_whitney_data
 
-                details["wilcoxon"] = wilcox_data
-
-                if p_greater < wilcoxon_alpha:
-                    passed = False
-                    failures.append(f"Wilcoxon test significant (p={p_greater:.4f} < {wilcoxon_alpha})")
-            except Exception as e:
-                details["wilcoxon_error"] = str(e)
+            if p_greater < wilcoxon_alpha:  # Reuse same alpha threshold
+                passed = False
+                failures.append(f"Mann-Whitney U test significant (p={p_greater:.4f} < {wilcoxon_alpha})")
+        except Exception as e:
+            details["mann_whitney_error"] = str(e)
 
     # Check for NO CHANGE state: tests passed AND delta within practical threshold
     if passed:  # All regression checks passed
@@ -496,10 +515,10 @@ def gate_regression(
         else:
             reason = "FAIL: " + "; ".join(failures)
 
-    # Bootstrap CI for median delta
+    # Bootstrap CI for median difference (independent samples)
     if bootstrap_n > 0:
         try:
-            ci_low, ci_high = _bootstrap_median_ci(delta, bootstrap_confidence, bootstrap_n, rng)
+            ci_low, ci_high = _bootstrap_median_diff_ci_independent(a, b, bootstrap_confidence, bootstrap_n, rng)
 
             details["bootstrap_ci_median"] = {
                 "confidence": bootstrap_confidence,
@@ -522,10 +541,10 @@ def equivalence_bootstrap_median(
     seed: int = SEED,
 ) -> EquivalenceResult:
     """
-    Test for equivalence using bootstrap CI on median delta.
+    Test for equivalence using bootstrap CI on median difference (independent samples).
 
     Two distributions are considered equivalent if the bootstrap confidence
-    interval for the median delta falls entirely within [-margin_ms, margin_ms].
+    interval for the median difference falls entirely within [-margin_ms, margin_ms].
 
     Args:
         baseline: Baseline measurements
@@ -539,14 +558,11 @@ def equivalence_bootstrap_median(
         EquivalenceResult with equivalent status and CI
 
     Raises:
-        ValueError: If arrays are empty, mismatched lengths, or invalid parameters
+        ValueError: If arrays are empty or invalid parameters
     """
     # Input validation
     if len(baseline) == 0 or len(target) == 0:
         raise ValueError("Baseline and target arrays cannot be empty")
-
-    if len(baseline) != len(target):
-        raise ValueError(f"Array length mismatch: baseline has {len(baseline)} elements, target has {len(target)} elements")
 
     if margin_ms <= 0:
         raise ValueError(f"margin_ms must be positive, got {margin_ms}")
@@ -562,11 +578,10 @@ def equivalence_bootstrap_median(
 
     a = np.array(baseline, dtype=float)
     b = np.array(target, dtype=float)
-    delta = b - a
 
-    # Bootstrap CI for median delta
+    # Bootstrap CI for median difference (independent samples)
     try:
-        ci_low, ci_high = _bootstrap_median_ci(delta, confidence, n_boot, rng)
+        ci_low, ci_high = _bootstrap_median_diff_ci_independent(a, b, confidence, n_boot, rng)
     except Exception as e:
         raise RuntimeError(f"Bootstrap CI calculation failed: {e}") from e
 

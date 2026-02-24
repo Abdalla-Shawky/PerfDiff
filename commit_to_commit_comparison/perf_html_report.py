@@ -378,16 +378,28 @@ def render_html_report(
     if "threshold_ms" in details:
         summary_rows.append(["Gate threshold", _fmt_ms(float(details["threshold_ms"]))])
 
-    # Wilcoxon (if present)
-    wil = details.get("wilcoxon")
-    wil_rows = []
-    if isinstance(wil, dict):
-        wil_rows = [
-            ["Wilcoxon n", str(wil.get("n", ""))],
-            ["Wilcoxon z", f'{wil.get("z", 0.0):.3f}'],
-            ["Wilcoxon p(greater)", f'{wil.get("p_greater", 1.0):.6f}'],
-            ["Wilcoxon p(two-sided)", f'{wil.get("p_two_sided", 1.0):.6f}'],
-        ]
+    # Mann-Whitney U test (if present) - check both old and new key names for compatibility
+    mw = details.get("mann_whitney") or details.get("wilcoxon")
+    mw_rows = []
+    if isinstance(mw, dict):
+        # Mann-Whitney U test format (independent samples)
+        if "u_statistic" in mw:
+            mw_rows = [
+                ["Mann-Whitney n (baseline)", str(mw.get("n_baseline", ""))],
+                ["Mann-Whitney n (target)", str(mw.get("n_target", ""))],
+                ["Mann-Whitney U", f'{mw.get("u_statistic", 0.0):.1f}'],
+                ["Mann-Whitney p(greater)", f'{mw.get("p_greater", 1.0):.6f}'],
+                ["Mann-Whitney p(two-sided)", f'{mw.get("p_two_sided", 1.0):.6f}'],
+            ]
+        # Legacy Wilcoxon format (backward compatibility)
+        else:
+            mw_rows = [
+                ["Wilcoxon n", str(mw.get("n", ""))],
+                ["Wilcoxon z", f'{mw.get("z", 0.0):.3f}'],
+                ["Wilcoxon p(greater)", f'{mw.get("p_greater", 1.0):.6f}'],
+                ["Wilcoxon p(two-sided)", f'{mw.get("p_two_sided", 1.0):.6f}'],
+            ]
+    wil_rows = mw_rows  # Keep variable name for backward compatibility below
 
     # Bootstrap CI (if present)
     bci = details.get("bootstrap_ci_median")

@@ -1,18 +1,18 @@
 # Commit-to-Commit Comparison Overview
 
-This module detects performance regressions between a **baseline** build and a **target** build using paired measurements. It goes beyond comparing two medians by incorporating data-quality checks, tail latency, directionality, and statistical tests to reduce false positives/negatives in noisy environments.
+This module detects performance regressions between a **baseline** build and a **target** build using independent samples. It goes beyond comparing two medians by incorporating data-quality checks, tail latency, directionality, and statistical tests to reduce false positives/negatives in noisy environments.
 
 ---
 
 ## What It Does (High-Level)
 
-Given two equal-length arrays of paired measurements:
-- **Baseline**: performance before the change
-- **Target**: performance after the change
+Given two arrays of independent measurements:
+- **Baseline**: performance before the change (collected sequentially)
+- **Target**: performance after the change (collected sequentially)
 
 The system:
-1. Validates data quality (sample size + variance gates)
-2. Computes paired deltas (target - baseline)
+1. Validates data quality (sample size + variance gates for each array)
+2. Computes median difference (target median - baseline median)
 3. Evaluates regression signals (median, tail, directionality, statistics)
 4. Applies practical significance rules
 5. Produces a clear verdict (PASS / FAIL / NO CHANGE / INCONCLUSIVE)
@@ -34,13 +34,14 @@ Example:
 - Baseline CV = 22%, Target CV = 19% (both above threshold) → **INCONCLUSIVE**\n
 Why needed: High variance can flip medians and p-values randomly between runs.
 
-2) **Paired Delta Computation**
-- For each run: `delta_i = target_i - baseline_i`
-- Uses paired deltas to remove run-to-run noise.
+2) **Median Difference Computation**
+- Compares medians directly: `median_delta = median(target) - median(baseline)`
+- Arrays can have different lengths (independent samples).
 
 Example:
-- Baseline: [100, 102, 98], Target: [103, 101, 99] → Deltas: [3, -1, 1]\n
-Why needed: Pairing removes environmental drift (e.g., thermal or background load).
+- Baseline: [100, 102, 98, 105, 103] (5 samples), Target: [108, 110, 107] (3 samples)\n
+- median(baseline) = 102ms, median(target) = 108ms → median_delta = +6ms\n
+Why: Robust central tendency comparison for independent samples.
 
 3) **Median Delta Threshold**
 - Compares median delta to an **adaptive threshold**:
@@ -63,31 +64,33 @@ Example:
 Why needed: Users feel tail regressions even when median looks stable.
 
 5) **Directionality Check**
-- If the fraction of positive deltas exceeds a threshold (e.g., 70%),
-  it indicates consistent slowdown even if the median is near the threshold.
+- Checks what fraction of target samples exceed baseline median.
+- If this fraction exceeds a threshold (e.g., 70%), indicates consistent slowdown.
 
 Example:
-- Baseline: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]\n
-- Target:   [101, 102, 100, 101, 103, 101, 100, 102, 101, 101] → 9/10 slower\n
-- Directionality = 90% ≥ 70% → **FAIL**\n
-Why needed: Consistent small slowdowns can be real even if median is borderline.
+- Baseline: [100, 100, 100, 100, 100], median = 100ms\n
+- Target:   [101, 102, 103, 101, 104, 102, 103, 101, 102, 101] (10 samples)\n
+- 10/10 target samples > 100ms → Directionality = 100% ≥ 70% → **FAIL**\n
+Why needed: Detects when target distribution is consistently slower than baseline.
 
-6) **Wilcoxon Signed-Rank Test (optional)**
-- Tests whether target is significantly slower than baseline.
-- Adds statistical confidence for small effect sizes.
+6) **Mann-Whitney U Test (optional)**
+- Non-parametric test for independent samples.
+- Tests whether target distribution is stochastically greater than baseline.
+- Adds statistical confidence for detecting distributional shifts.
 
 Example:
 - Baseline: [100, 101, 99, 100, 101], Target: [108, 109, 107, 108, 109]\n
-- Median delta = +8ms, p-value = 0.01 (< 0.05) → statistically significant slowdown\n
-Why needed: Detects real shifts when distributions overlap.
+- Median difference = +8ms, p-value = 0.01 (< 0.05) → statistically significant slowdown\n
+Why needed: Detects real distributional shifts even when there's overlap.
 
 7) **Bootstrap Confidence Interval**
-- Computes CI on median delta to show uncertainty and confidence.
+- Computes CI on median difference by resampling baseline and target independently.
+- Shows uncertainty and confidence in the median difference estimate.
 
 Example:
 - Baseline: [100, 100, 101, 99, 100], Target: [104, 105, 103, 104, 106]\n
-- 95% CI for median delta = [+2ms, +12ms] → suggests consistent regression\n
-Why needed: Shows uncertainty and avoids overconfidence from single point estimates.
+- 95% CI for median difference = [+2ms, +12ms] → suggests consistent regression\n
+Why needed: Quantifies uncertainty and avoids overconfidence from point estimates.
 
 8) **Practical Significance Rules**
 - If the delta is below a dynamic practical threshold, the tool:
@@ -98,17 +101,17 @@ Why: Avoids blocking on tiny, statistically-significant but practically irreleva
 
 Example:
 - Baseline: [1490, 1505, 1510, 1498, 1502], Target: [1491, 1506, 1511, 1499, 1503]\n
-- Median delta = +1.5ms on 1500ms baseline; practical threshold = 5ms\n
-- Wilcoxon says significant, but delta is negligible → **PASS (override)**\n
-Why needed: Prevents CI failures for changes users can’t perceive.
+- Median difference = +1.5ms on 1500ms baseline; practical threshold = 5ms\n
+- Mann-Whitney U says significant, but delta is negligible → **PASS (override)**\n
+Why needed: Prevents CI failures for changes users can't perceive.
 
 ---
 
 ## Verdict States
 
 - **PASS**: No regression detected.
-- **FAIL**: Regression detected (median/tail/directionality/Wilcoxon exceeded thresholds).
-- **NO CHANGE**: Delta is within practical significance bounds.
+- **FAIL**: Regression detected (median/tail/directionality/Mann-Whitney U exceeded thresholds).
+- **NO CHANGE**: Difference is within practical significance bounds.
 - **INCONCLUSIVE**: Data quality too poor to decide.
 
 ---

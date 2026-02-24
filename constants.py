@@ -66,13 +66,15 @@ DIRECTIONALITY = 0.70
 # STATISTICAL TEST PARAMETERS
 # ==============================================================================
 
-# Enable/disable Wilcoxon signed-rank test
-# This non-parametric test detects distributional shifts
+# Enable/disable Mann-Whitney U test (for independent samples)
+# This non-parametric test detects if target distribution is stochastically greater than baseline
+# Note: Parameter name kept as USE_WILCOXON for backward compatibility
 USE_WILCOXON = True
 
-# Significance level (alpha) for Wilcoxon test (0.0 - 1.0)
+# Significance level (alpha) for Mann-Whitney U test (0.0 - 1.0)
 # 0.05 = 5% significance level (95% confidence)
 # Lower values make the test more conservative
+# Note: Parameter name kept as WILCOXON_ALPHA for backward compatibility
 WILCOXON_ALPHA = 0.05
 
 # Confidence level for bootstrap confidence intervals (0.0 - 1.0)
