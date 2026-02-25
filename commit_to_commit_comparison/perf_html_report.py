@@ -597,6 +597,7 @@ def main() -> int:
             "reason": gate.reason,
             "details": gate.details,
             "inconclusive": gate.inconclusive,
+            "no_change": gate.no_change,
         },
         mode=args.mode,
         eq=eq_payload,
