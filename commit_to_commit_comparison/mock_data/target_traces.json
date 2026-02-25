@@ -1,18 +1,56 @@
 {
   "commit": "target_def456",
-  "timestamp": "2026-02-24T15:00:00Z",
+  "timestamp": "2026-02-24T14:30:00Z",
   "traces": [
     {
-      "name": "app_start_to_interactive",
-      "measurements": [101, 103, 99, 102, 100, 104, 98, 101, 105, 102, 100, 103]
+      "name": "1_pass_all_checks",
+      "measurements": [100, 102, 98, 105, 103, 101, 99, 100, 104, 102, 100, 101],
+      "description": "✅ PASS - No performance regression detected"
     },
     {
-      "name": "homeTabStartToInteractive",
-      "measurements": [451, 461, 456, 449, 453, 459, 452, 450, 457, 454, 451, 455]
+      "name": "2_fail_median_delta_only",
+      "measurements": [98, 145, 150, 152, 155, 156, 158, 160, 162, 164, 168, 175],
+      "description": "❌ FAIL - Median delta check: median shifted by +56ms (threshold: 50ms, CV ~6%). Demonstrates median regression detection with mixed timing to stay under directionality threshold."
     },
     {
-      "name": "tabBarStartToInteractive",
-      "measurements": [1201, 1181, 1211, 1196, 1206, 1191, 1199, 1203, 1189, 1193, 1201, 1197]
+      "name": "3_fail_tail_p90_only",
+      "measurements": [507, 512, 517, 522, 527, 532, 537, 542, 628, 638, 648, 658],
+      "description": "❌ FAIL - Tail latency (p90) check: p90 degraded by +90ms while median shifted only +7ms (under 50ms threshold, CV ~10%). Demonstrates importance of monitoring worst-case performance for SLOs."
+    },
+    {
+      "name": "4_fail_directionality_only",
+      "measurements": [103, 105, 101, 108, 106, 104, 102, 103, 107, 105, 103, 104],
+      "description": "❌ FAIL - Directionality check: 100% of runs slower than baseline median (threshold: 70%). Demonstrates detection of consistent small slowdowns."
+    },
+    {
+      "name": "5_fail_mann_whitney_only",
+      "measurements": [107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118],
+      "description": "❌ FAIL - Mann-Whitney U test: uniform distribution shift detected (p < 0.05, CV ~3%). Demonstrates statistical testing catches significant distributional changes even with small median deltas."
+    },
+    {
+      "name": "6_inconclusive_high_variance",
+      "measurements": [55, 155, 65, 145, 75, 135, 85, 125, 95, 115, 105, 110],
+      "description": "⚠️ INCONCLUSIVE - High variance: CV > 15% indicates unreliable data. Demonstrates quality gate protection."
+    },
+    {
+      "name": "7_inconclusive_insufficient_samples",
+      "measurements": [105, 110, 107, 103, 108],
+      "description": "⚠️ INCONCLUSIVE - Insufficient samples: only 5 samples (need 10+). Demonstrates sample size requirement."
+    },
+    {
+      "name": "8_directionality_vs_mann_whitney_bimodal",
+      "measurements": [99, 99, 99, 99, 99, 99, 105, 105, 105, 105, 105, 105],
+      "description": "🎯 DEMONSTRATES DIFFERENCE - Bimodal distribution (half faster, half slower):\n\nBaseline: All exactly 100ms (zero variance)\nTarget: 6 samples at 99ms (faster), 6 samples at 105ms (slower)\nMedian: target=102ms vs baseline=100ms (+2ms)\n\n📊 CHECK RESULTS:\n• Directionality: 6/12 = 50% slower → PASS ✅ (< 70% threshold)\n  - Only half the samples exceeded baseline median\n  - Simple count-based approach says \"not enough slow samples\"\n\n• Mann-Whitney: p ≈ 0.51 → PASS ✅ \n  - U-statistic = 72 (half beat baseline, half don't)\n  - 50/50 split is not statistically significant\n  - Distribution-based approach confirms no significant shift\n\n💡 KEY INSIGHT: Both checks PASS here, but they measure fundamentally different things:\n• Directionality: \"Did 70%+ cross the baseline median?\" (threshold-based)\n• Mann-Whitney: \"Is the overall distribution statistically different?\" (rank-based)\n\nIn this case, the bimodal split (6 faster, 6 slower) is NOT a regression - it's just variance. Both checks correctly identify this, but through different mathematical approaches. This proves they're measuring different aspects, even when results align."
+    },
+    {
+      "name": "9_directionality_vs_mann_whitney_tiny_shift",
+      "measurements": [100.8, 101.8, 99.8, 100.8, 102.8, 98.8, 100.8, 101.8, 99.8, 100.8, 101.8, 100.8],
+      "description": "🎯 DEMONSTRATES DIFFERENCE - Tiny consistent +0.8ms shift across ALL samples:\n\nBaseline: 98-102ms (median=100ms, normal variance)\nTarget: Each sample shifted +0.8ms higher\nMedian: target=100.8ms vs baseline=100ms (+0.8ms)\n\n📊 CHECK RESULTS:\n• Directionality: ~83-92% slower → FAIL ❌ (> 70% threshold)\n  - Almost all samples exceeded baseline median of 100ms\n  - VERY sensitive to even tiny upward shifts\n  - Sees: \"83% of samples crossed the line!\"\n\n• Mann-Whitney: p ≈ 0.02 → FAIL ❌\n  - Detects statistically significant shift\n  - But considers magnitude: is 0.8ms meaningful?\n  - More nuanced than simple percentage\n\n💡 KEY INSIGHT: Both FAIL, but for different reasons:\n• Directionality is OVERLY SENSITIVE: flags any shift affecting >70% of samples, regardless of magnitude\n• Mann-Whitney is MORE NUANCED: considers statistical significance of the shift\n\nIn practice, this 0.8ms shift might trigger:\n- Directionality: FAIL (too many samples crossed)\n- Mann-Whitney: FAIL (statistically significant)\n- Practical Significance: PASS (0.8ms < 2ms threshold)\n\nThis shows why we need ALL checks - Directionality catches breadth, Mann-Whitney catches statistical significance, Practical Significance catches real-world impact!"
+    },
+    {
+      "name": "10_directionality_vs_mann_whitney_tail_problem",
+      "measurements": [98, 97, 99, 98, 97, 99, 98, 97, 99, 115, 118, 120, 122, 125],
+      "description": "🎯 DEMONSTRATES DIFFERENCE - Tail latency problem (majority fast, minority VERY slow):\n\nBaseline: All exactly 100ms (n=15, zero variance)\nTarget: 9 samples FASTER (97-99ms), 5 samples MUCH SLOWER (115-125ms)\nMedian: target=99ms vs baseline=100ms (-1ms, median improved!)\n\n📊 CHECK RESULTS:\n• Directionality: 5/14 = 36% slower → PASS ✅ (< 70% threshold)\n  - Only 36% of samples exceeded baseline median (100ms)\n  - Majority (64%) are actually FASTER\n  - Simple count says: \"Most samples are fine, no problem\"\n\n• Mann-Whitney: p ≈ 0.85 → PASS ✅\n  - Even though 5 samples are +15-25ms slower\n  - The 9 faster samples dominate the distribution\n  - Not enough evidence of overall shift\n\n• Tail Latency (P90): Should show +15-25ms degradation → FAIL ❌\n  - P90 latency: baseline=100ms, target≈120ms\n  - This is the check that catches this problem!\n\n💡 KEY INSIGHT: This scenario demonstrates WHY we need MULTIPLE checks:\n• Directionality: MISSES the tail problem (only 36% affected)\n• Mann-Whitney: MISSES the tail problem (9 fast samples dominate)\n• Tail Latency (P90): CATCHES the tail problem (worst-case degraded)\n\nReal-world impact:\n- Median: Improved (-1ms) ✅\n- Most requests: Faster ✅  \n- Worst-case (P90+): MUCH SLOWER ❌ ← SLA violation!\n\nThis is a classic tail latency regression that requires dedicated tail monitoring. Directionality and Mann-Whitney are NOT duplicates - they're both median-focused checks that complement the tail latency check."
     }
   ]
 }

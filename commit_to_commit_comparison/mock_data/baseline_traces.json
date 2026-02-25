@@ -3,16 +3,44 @@
   "timestamp": "2026-02-24T14:00:00Z",
   "traces": [
     {
-      "name": "app_start_to_interactive",
+      "name": "1_pass_all_checks",
       "measurements": [100, 102, 98, 105, 103, 101, 99, 100, 104, 102, 100, 101]
     },
     {
-      "name": "homeTabStartToInteractive",
-      "measurements": [450, 460, 455, 448, 452, 458, 451, 449, 456, 453, 450, 454]
+      "name": "2_fail_median_delta_only",
+      "measurements": [100, 102, 98, 105, 103, 101, 99, 100, 104, 102, 100, 101]
     },
     {
-      "name": "tabBarStartToInteractive",
-      "measurements": [1200, 1180, 1210, 1195, 1205, 1190, 1198, 1202, 1188, 1192, 1200, 1196]
+      "name": "3_fail_tail_p90_only",
+      "measurements": [500, 505, 510, 515, 520, 525, 530, 535, 540, 545, 550, 555]
+    },
+    {
+      "name": "4_fail_directionality_only",
+      "measurements": [100, 102, 98, 105, 103, 101, 99, 100, 104, 102, 100, 101]
+    },
+    {
+      "name": "5_fail_mann_whitney_only",
+      "measurements": [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111]
+    },
+    {
+      "name": "6_inconclusive_high_variance",
+      "measurements": [50, 150, 60, 140, 70, 130, 80, 120, 90, 110, 100, 105]
+    },
+    {
+      "name": "7_inconclusive_insufficient_samples",
+      "measurements": [100, 105, 102, 98, 103]
+    },
+    {
+      "name": "8_directionality_vs_mann_whitney_bimodal",
+      "measurements": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+    },
+    {
+      "name": "9_directionality_vs_mann_whitney_tiny_shift",
+      "measurements": [100, 101, 99, 100, 102, 98, 100, 101, 99, 100, 101, 100]
+    },
+    {
+      "name": "10_directionality_vs_mann_whitney_tail_problem",
+      "measurements": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
     }
   ]
 }
