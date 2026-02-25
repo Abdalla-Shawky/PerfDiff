@@ -211,7 +211,7 @@ def render_html_report(
         n = len(data)
         median = float(np.median(data))
         mean = float(np.mean(data))
-        std = float(np.std(data))
+        std = float(np.std(data, ddof=1))  # Sample std dev (consistent with quality gates)
         cv = (std / mean * PCT_CONVERSION_FACTOR) if mean > 0 else 0  # Coefficient of variation
         min_val = float(np.min(data))
         max_val = float(np.max(data))
