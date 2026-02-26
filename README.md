@@ -9,6 +9,25 @@ A production-ready statistical tool for detecting performance regressions with *
 
 ---
 
+## 📑 Table of Contents
+
+- [🎯 Why This Tool Exists](#-why-this-tool-exists)
+- [✅ What This Tool Does Differently](#-what-this-tool-does-differently)
+- [🚀 Quick Start](#-quick-start)
+- [📖 Regression Detection Gates](#-regression-detection-gates)
+- [📊 Comparison Table](#-comparison-table)
+- [💡 Usage Examples](#-usage-examples)
+- [🧪 Running Tests](#-running-tests)
+- [🎯 Who Is This Tool For?](#-who-is-this-tool-for)
+- [🚦 Configuration Options](#-configuration-options)
+- [💡 Quick Tips](#-quick-tips)
+- [📊 Project Structure](#-project-structure)
+- [🏆 Why This Tool?](#-why-this-tool)
+- [📚 Documentation](#-documentation)
+- [📄 License](#-license)
+
+---
+
 ## 🎯 Why This Tool Exists
 
 ### The Performance Testing Problem
@@ -165,43 +184,10 @@ python -m commit2commit.multi_trace_comparison \
 open test_output/index.html
 ```
 
-This will:
-- ✅ Compare multiple performance traces (baseline vs target)
-- ✅ Generate interactive HTML reports with charts
-- ✅ Demonstrate all regression detection features
-- ✅ Exit code 0 (PASS) or 1 (FAIL with regressions detected)
-
-### Usage Examples
-
-**Compare multiple traces (recommended):**
-```bash
-# Create traces JSON files with your performance data
-perfdiff baseline_traces.json target_traces.json --output-dir ./reports
-
-# Output:
-# - reports/index.html (summary of all traces)
-# - reports/trace_name.html (detailed report for each trace)
-```
-
-**Single trace comparison (for custom scripts):**
-```bash
-python -c "
-from commit2commit.trace_to_trace import gate_regression
-import numpy as np
-
-baseline = np.array([800, 805, 798, 810, 799, 803, 801, 807, 802, 804])
-target = np.array([845, 850, 838, 860, 842, 848, 844, 855, 849, 847])
-
-result = gate_regression(baseline, target)
-print(f'Verdict: {\"FAIL\" if not result.passed else \"PASS\"}')
-print(f'Reason: {result.reason}')
-"
-```
-
-**Expected output:**
-- 📄 HTML reports with interactive visualizations
-- 📊 Statistical analysis (Mann-Whitney U, Bootstrap CIs)
-- 🚦 Exit codes: 0 (PASS), 1 (FAIL), 2+ (ERROR)
+**Output:**
+- 📊 `test_output/index.html` - Summary of all traces
+- 📄 `test_output/[trace_name].html` - Detailed report per trace
+- 🚦 Exit code: 0 (PASS) or 1 (FAIL with regressions)
 
 ---
 
@@ -269,71 +255,38 @@ The tool performs checks in this order:
 
 ---
 
-## 💡 Examples
+## 💡 Usage Examples
 
-### Example 1: Multi-Trace Comparison (Recommended)
+### CLI Usage
 
 ```bash
-# Using the CLI command
-perfdiff \
-    commit2commit/mock_data/baseline_traces.json \
-    commit2commit/mock_data/target_traces.json \
-    --output-dir ./test_output
-
-# Or using the module directly
-python -m commit2commit.multi_trace_comparison \
-    commit2commit/mock_data/baseline_traces.json \
-    commit2commit/mock_data/target_traces.json \
-    --output-dir ./test_output
-
-# View the results
-open test_output/index.html
+# Production use
+perfdiff baseline.json target.json --output-dir ./reports
 ```
 
-### Example 2: Single Trace Programmatic Usage
+### Programmatic Usage
 
 ```python
 from commit2commit.trace_to_trace import gate_regression
 import numpy as np
 
-# Your performance measurements
-baseline = np.array([100, 102, 98, 101, 99])
-target = np.array([110, 112, 108, 111, 109])
+baseline = np.array([100, 102, 98, 101, 99, 103, 97, 100, 102, 101])
+target = np.array([110, 112, 108, 111, 109, 113, 107, 110, 112, 111])
 
-# Run statistical analysis
 result = gate_regression(baseline, target)
 
-# Check the verdict
-if result.passed:
-    print(f"✅ PASS: {result.reason}")
-else:
-    print(f"❌ FAIL: {result.reason}")
-
-# Access detailed metrics
-print(f"Median delta: {result.details['median_delta_ms']}ms")
-print(f"P-value: {result.details['mann_whitney_p']}")
+if not result.passed:
+    print(f"❌ {result.reason}")
+    print(f"Δ median: {result.details['median_delta_ms']}ms")
+    print(f"p-value: {result.details['mann_whitney_p']:.4f}")
 ```
 
-### Example 3: CI/CD Integration
+### CI/CD Integration
 
 ```bash
-# Install PerfDiff in your CI environment
 pip install git+https://github.com/Abdalla-Shawky/PerfDiff.git@v1.0.0
-
-# Run comparison (assumes you have baseline.json and target.json)
-perfdiff baseline_traces.json target_traces.json --output-dir ./reports
-
-# Check exit code
-if [ $? -eq 1 ]; then
-  echo "❌ Performance regressions detected!"
-  echo "📊 View detailed report: ./reports/index.html"
-  exit 1
-elif [ $? -eq 0 ]; then
-  echo "✅ No regressions detected"
-else
-  echo "⚠️  Analysis error occurred"
-  exit 2
-fi
+perfdiff baseline.json target.json --output-dir ./reports
+[ $? -eq 1 ] && echo "❌ Regressions detected" && exit 1
 ```
 
 ---
@@ -346,37 +299,11 @@ pip install pytest
 
 # Run all tests
 cd commit2commit
-python -m pytest test_commit2commit.py -v
+python -m pytest test_trace_to_trace.py -v
 
 # Expected output:
 # ========================= 52 passed in ~5.0s =========================
 ```
-
----
-
-## 📚 Documentation
-
-All documentation is located in the [`docs/`](docs/) folder.
-
-### Core Guides
-
-| Document | Description |
-|----------|-------------|
-| [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md) | 📊 **NEW!** Complete technical summary (Version 2.0) |
-| [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md) | 📊 Original statistical fixes documentation (Version 1.0) |
-| [USER_GUIDE.md](docs/USER_GUIDE.md) | 📖 Complete usage guide with examples |
-| [TEST_REPORT.md](docs/TEST_REPORT.md) | 🧪 Comprehensive test results (52/52 passing) |
-| [MEASUREMENT_GUIDE.md](docs/MEASUREMENT_GUIDE.md) | 📏 Best practices for measurement |
-
-### Feature Documentation
-
-| Document | Description |
-|----------|-------------|
-| [PREMIUM_UI_COMPLETE.md](docs/PREMIUM_UI_COMPLETE.md) | 🎨 Premium UI design details |
-| [DATA_QUALITY_FEATURE.md](docs/DATA_QUALITY_FEATURE.md) | 🔬 Data quality assessment |
-| [QUALITY_GATES_GUIDE.md](docs/QUALITY_GATES_GUIDE.md) | 🚦 Quality gates explained |
-| [MODES_EXPLAINED.md](docs/MODES_EXPLAINED.md) | ⚙️ PR vs Release mode |
-| [THRESHOLD_COMPUTATION_EXPLAINED.md](docs/THRESHOLD_COMPUTATION_EXPLAINED.md) | 📊 Threshold calculation |
 
 ---
 
@@ -470,38 +397,60 @@ done
 ## 📊 Project Structure
 
 ```
-.
-├── commit2commit/
-│   ├── trace_to_trace.py               # Core regression detection logic (single trace)
-│   ├── multi_trace_comparison.py       # Multi-trace comparison + CLI entry point
-│   ├── perf_html_report.py             # HTML report generation
-│   ├── perf_html_template.py           # HTML/CSS/JS template
-│   ├── constants.py                    # Configuration constants
-│   ├── test_trace_to_trace.py          # Test suite (52 tests)
-│   ├── mock_data/                      # Sample test data
-│   └── test_output/                    # Generated test reports
-├── STATISTICAL_FIXES_SUMMARY.md        # Statistical fixes documentation
-├── README.md                           # This file
-├── docs/                               # Documentation folder (20+ files)
-└── generated_reports/                  # Generated HTML reports (gitignored)
+PerfDiff/
+├── commit2commit/                          # Main package
+│   ├── trace_to_trace.py                  # Core: Single trace statistical analysis
+│   ├── multi_trace_comparison.py          # Orchestrator: Multi-trace + CLI entry point
+│   ├── constants.py                       # Configuration thresholds
+│   │
+│   ├── perf_html_report.py                # HTML report generator
+│   ├── perf_html_template.py              # Premium UI template
+│   ├── comparison_html_template.py        # Summary table template
+│   ├── trace_detail_html_template.py      # Individual trace template
+│   ├── timeline_html_template.py          # Timeline visualization
+│   │
+│   ├── test_trace_to_trace.py             # Test suite (52 tests passing)
+│   ├── mock_data/                         # Sample traces for testing
+│   │   ├── baseline_traces.json
+│   │   └── target_traces.json
+│   └── __init__.py
+│
+├── setup.py                                # pip installation config
+├── requirements.txt                        # Python dependencies
+├── run_comparison.sh                       # Quick test script
+│
+├── README.md                               # This file
+├── STATISTICAL_FIXES_SUMMARY.md           # Statistical methodology
+├── TOOL_TECHNICAL_SUMMARY.md              # Technical details
+├── EXECUTIVE_SUMMARY.md                   # High-level overview
+│
+└── docs/                                   # Detailed documentation
+    ├── USER_GUIDE.md
+    ├── TEST_REPORT.md
+    └── ... (20+ documentation files)
 ```
 
+**Key Modules:**
+
+| Module | Purpose |
+|--------|---------|
+| `trace_to_trace.py` | Core statistical engine - compares one trace pair |
+| `multi_trace_comparison.py` | CLI tool - compares multiple traces, generates reports |
+| `constants.py` | All thresholds (MS_FLOOR, PCT_FLOOR, CV limits, etc.) |
+| `perf_html_*.py` | HTML report generation with interactive charts |
+
 ---
+## 📚 Documentation
 
-## 🏆 Why This Tool?
+📖 **Full User Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+📊 **Technical Summary**: [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md)
+📊 **Statistical Details**: [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md)
+🧪 **Test Results**: [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
+📋 **Executive Summary**: [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)
 
-This isn't just another performance testing tool. It's a **complete solution** built with:
-
-✅ **Statistical Rigor** - One-sided Mann-Whitney U, bootstrap CI, direction checks
-✅ **Data Quality Focus** - Automatic detection of unreliable measurements
-✅ **Professional UI** - World-class design that stakeholders trust
-✅ **Production Ready** - 52/52 tests passing, comprehensive documentation
-✅ **CI/CD Friendly** - Exit codes, auto-folder creation, reproducible results
-✅ **Transparent** - Shows all thresholds, configurations, and quality metrics
-✅ **No False Failures** - Direction checks prevent failures on improvements
-✅ **No Hidden Regressions** - Dual-threshold override respects tail latency
-
-**Stop guessing. Start measuring with statistical rigor.** 📊
+**Version:** 1.0.0
+**Author:** Shawky
+**Repository:** [github.com/Abdalla-Shawky/PerfDiff](https://github.com/Abdalla-Shawky/PerfDiff)
 
 ---
 
@@ -509,4 +458,3 @@ This isn't just another performance testing tool. It's a **complete solution** b
 
 MIT License - Feel free to use in your projects!
 
----
