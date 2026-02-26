@@ -510,17 +510,3 @@ This isn't just another performance testing tool. It's a **complete solution** b
 MIT License - Feel free to use in your projects!
 
 ---
-
-## 🚀 Support
-
-📖 **Full Documentation**: See [USER_GUIDE.md](docs/USER_GUIDE.md)
-📊 **Technical Summary**: See [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md)
-📊 **Statistical Details**: See [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md)
-🧪 **Test Results**: See [TEST_REPORT.md](docs/TEST_REPORT.md)
-🚀 **Quick Start**: Try `perfdiff baseline.json target.json --output-dir ./reports`
-
----
-
-**Built with statistical rigor. Tested thoroughly. Production ready.** 🚀
-
-**Version 1.0.0** - Statistical Rigor · Platform Agnostic · pip Installable · 52/52 Tests Passing
