@@ -181,53 +181,6 @@ python commit2commit/perf_html_report.py \
 
 ---
 
-## 📊 Key Features
-
-### 🎨 Premium UI
-- **World-class design** - Professional UI inspired by Stripe, Vercel, and Linear
-- **Interactive Chart.js visualizations** - Histogram, line charts, statistical summaries
-- **Dark mode** - Beautiful dark theme optimized for reduced eye strain
-- **Smooth animations** - Polished micro-interactions and transitions
-- **Responsive design** - Optimized for mobile, tablet, and desktop
-- **Export functionality** - JSON, CSV, and print/PDF support
-
-### 🔬 Data Quality Assessment
-- **Quality scoring** - 0-100 score based on sample size, variance, outliers
-- **Quality gates** - Automatic rejection of unreliable data (CV > 15%)
-- **INCONCLUSIVE status** - Returns inconclusive instead of false positives/negatives
-- **Visual indicators** - Color-coded quality badges and progress bars
-- **Issue detection** - Identifies high variance, outliers, insufficient samples
-
-### 🎯 Statistically Rigorous
-- **One-sided Mann-Whitney U test** - Directional hypothesis testing
-- **Bootstrap confidence intervals** - Default 95% CI for median delta
-- **Independent sample comparisons** - Proper for sequential testing (AAA BBB)
-- **Multi-check validation** - Median, tail, directionality, and statistical tests
-- **Direction checks** - Never fails on improvements (P(T>B) >= 0.55)
-
-### 🛡️ Quality Gates & Validation
-- **Pre-flight checks** - Validates data quality before regression detection
-- **CV threshold** - Rejects data with coefficient of variation > 15%
-- **Sample size checks** - Requires minimum 10 samples for reliability
-- **INCONCLUSIVE handling** - High variance → INCONCLUSIVE (not stricter thresholds)
-- **Transparent reporting** - Shows thresholds and observed values
-
-### 📊 Adaptive Thresholds
-- **Hybrid approach** - Combines absolute (ms) and relative (%) thresholds
-- **Fast & slow operations** - Works for <100ms and >1s operations
-- **Configurable** - Customize thresholds via CLI or constants.py
-- **Example**: Fail if change > max(5ms, 3% of baseline)
-- **No CV multiplier** - Quality gates handle variance (CV > 15% → INCONCLUSIVE)
-
-### 🤖 CI/CD Ready
-- **Exit codes** - 0 (pass), 1 (fail), 2 (error) for automation
-- **JSON input support** - Parse arrays from JSON or CSV format
-- **Reproducible results** - Fixed random seeds
-- **Auto-folder creation** - Reports saved to `generated_reports/`
-- **Modes**: PR (strict) vs Release (equivalence testing)
-
----
-
 ## 📖 Regression Detection Gates
 
 The tool performs checks in this order:
