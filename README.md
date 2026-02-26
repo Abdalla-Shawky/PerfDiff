@@ -22,8 +22,6 @@ A production-ready statistical tool for detecting performance regressions with *
 - [🚦 Configuration Options](#-configuration-options)
 - [💡 Quick Tips](#-quick-tips)
 - [📊 Project Structure](#-project-structure)
-- [🏆 Why This Tool?](#-why-this-tool)
-- [📚 Documentation](#-documentation)
 - [📄 License](#-license)
 
 ---
@@ -420,14 +418,11 @@ PerfDiff/
 ├── run_comparison.sh                       # Quick test script
 │
 ├── README.md                               # This file
-├── STATISTICAL_FIXES_SUMMARY.md           # Statistical methodology
 ├── TOOL_TECHNICAL_SUMMARY.md              # Technical details
 ├── EXECUTIVE_SUMMARY.md                   # High-level overview
 │
 └── docs/                                   # Detailed documentation
-    ├── USER_GUIDE.md
-    ├── TEST_REPORT.md
-    └── ... (20+ documentation files)
+    └── STATISTICAL_METHODOLOGY.md
 ```
 
 **Key Modules:**
@@ -438,19 +433,6 @@ PerfDiff/
 | `multi_trace_comparison.py` | CLI tool - compares multiple traces, generates reports |
 | `constants.py` | All thresholds (MS_FLOOR, PCT_FLOOR, CV limits, etc.) |
 | `perf_html_*.py` | HTML report generation with interactive charts |
-
----
-## 📚 Documentation
-
-📖 **Full User Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
-📊 **Technical Summary**: [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md)
-📊 **Statistical Details**: [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md)
-🧪 **Test Results**: [docs/TEST_REPORT.md](docs/TEST_REPORT.md)
-📋 **Executive Summary**: [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)
-
-**Version:** 1.0.0
-**Author:** Shawky
-**Repository:** [github.com/Abdalla-Shawky/PerfDiff](https://github.com/Abdalla-Shawky/PerfDiff)
 
 ---
 
