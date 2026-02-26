@@ -22,7 +22,7 @@ long_description = readme_file.read_text() if readme_file.exists() else __doc__
 
 setup(
     name="perfdiff",
-    version="4.0.0",
+    version="1.0.0",
     description="Statistical performance regression detection tool with premium UI",
     long_description=long_description,
     long_description_content_type="text/markdown",
