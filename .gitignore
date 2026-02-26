@@ -41,7 +41,7 @@ generated_reports/
 # Ignore .md files in root except README.md
 /*.md
 !README.md
-docs
+docs_untracked
 
 # Backup files
 *.backup
