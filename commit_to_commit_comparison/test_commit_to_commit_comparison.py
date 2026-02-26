@@ -13,7 +13,7 @@ from commit_to_commit_comparison.commit_to_commit_comparison import (
     EquivalenceResult,
     _calculate_dynamic_practical_threshold,
 )
-from constants import MIN_SAMPLES_FOR_REGRESSION, MAX_CV_FOR_REGRESSION_CHECK
+from .constants import MIN_SAMPLES_FOR_REGRESSION, MAX_CV_FOR_REGRESSION_CHECK
 
 
 class TestGateRegression:

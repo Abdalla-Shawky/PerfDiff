@@ -19,7 +19,7 @@ try:
 except ImportError:
     from .perf_html_template import render_template
 
-from constants import (
+from .constants import (
     MS_FLOOR,
     PCT_FLOOR,
     TAIL_QUANTILE,

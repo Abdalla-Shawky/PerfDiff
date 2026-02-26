@@ -7,7 +7,7 @@ to generate interactive performance regression reports.
 """
 
 from html import escape
-from constants import (
+from .constants import (
     ENABLE_QUALITY_GATES, MAX_CV_FOR_REGRESSION_CHECK, MIN_SAMPLES_FOR_REGRESSION,
     CV_THRESHOLD_MULTIPLIER, MS_FLOOR, PCT_FLOOR, TAIL_MS_FLOOR, TAIL_PCT_FLOOR,
     DIRECTIONALITY, MANN_WHITNEY_ALPHA, CHARTJS_CDN_URL,

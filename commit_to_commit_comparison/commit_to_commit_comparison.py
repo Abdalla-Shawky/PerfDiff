@@ -7,7 +7,7 @@ import math
 import numpy as np
 from scipy import stats
 
-from constants import (
+from .constants import (
     MS_FLOOR,
     PCT_FLOOR,
     TAIL_QUANTILE,

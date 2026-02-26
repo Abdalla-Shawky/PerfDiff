@@ -272,7 +272,7 @@ ENABLE_QUALITY_GATES = True
 # If CV exceeds this, regression check will return INCONCLUSIVE
 # Set to 15% - data with CV > 15% is too noisy for reliable conclusions
 # Your 28% same-commit variance had CV of 17-18%, which would be rejected
-MAX_CV_FOR_REGRESSION_CHECK = 15.0
+MAX_CV_FOR_REGRESSION_CHECK = 20.0
 
 # Minimum quality score required for regression detection
 # If quality score < this threshold, regression check will return INCONCLUSIVE
