@@ -60,6 +60,7 @@ def render_template(**context) -> str:
     runs_rows = context['runs_rows']
     wil_rows = context['wil_rows']
     bci_rows = context['bci_rows']
+    bci_interpretation = context.get('bci_interpretation', '')
     eq_rows = context['eq_rows']
     eq = context['eq']
     mode = context['mode']
@@ -69,6 +70,7 @@ def render_template(**context) -> str:
     delta_data_json = context['delta_data_json']
     export_data_json = context['export_data_json']
     chart_target_color = context['chart_target_color']
+    practical_impact = context.get('practical_impact', {})
 
     return f"""<!doctype html>
 <html>
@@ -1048,6 +1050,20 @@ def render_template(**context) -> str:
 
       <div class="recommendation">{escape(recommendation)}</div>
 
+      {f'''
+      <div class="hint-box {practical_impact.get('severity', 'info')}" style="margin-top: 24px; padding: 16px; border-left: 4px solid {practical_impact.get('color', '#2196f3')};">
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+          {practical_impact['icon']} {practical_impact['title']}
+        </div>
+        <div style="margin-bottom: 12px; color: var(--text-secondary);">
+          {practical_impact['description']}
+        </div>
+        <ul style="margin: 8px 0 0 0; padding-left: 20px; list-style-type: disc;">
+          {''.join(f"<li style='margin: 4px 0;'>{bullet}</li>" for bullet in practical_impact.get('bullets', []))}
+        </ul>
+      </div>
+      ''' if practical_impact and practical_impact.get('bullets') else ''}
+
       <div class="small" style="text-align: center; margin-top: 16px; color: var(--text-secondary);">
         💡 Scroll down for detailed technical analysis
       </div>
@@ -1340,7 +1356,7 @@ def render_template(**context) -> str:
 
     {"<div class='section'><div class='section-header' onclick='toggleSection(\"mann_whitney\")'><div><h2 class='section-title'>📈 Mann-Whitney U Test</h2><div class='section-subtitle'>Tests if the target distribution is stochastically greater than baseline (for independent samples)</div></div><span class='toggle-icon'>▼</span></div><div id='mann_whitney' class='section-content'>" + _mini_table(wil_rows) + "<div class='hint-box neutral'><strong>Understanding Mann-Whitney U Test Results:</strong><ul style='margin: 8px 0; padding-left: 20px;'><li><strong>P(Target > Baseline):</strong> The probability that a randomly selected target sample is slower than a randomly selected baseline sample. Values close to 50% indicate no difference; values above 70% indicate substantial performance degradation.</li><li><strong>Effect Size:</strong> Interpretation of the magnitude of difference:<ul style='margin-top: 4px;'><li>Negligible (&lt;55%): No meaningful difference</li><li>Small (55-64%): Slight degradation</li><li>Medium (64-71%): Moderate degradation</li><li>Large (71-86%): Substantial degradation</li><li>Very Large (&gt;86%): Severe degradation</li></ul></li><li><strong>p-value:</strong> Tests whether the difference is statistically significant (not random chance). p &lt; 0.05 means the difference is real with 95% confidence. <strong>Direction Check:</strong> The test only fails if p &lt; 0.05 <em>AND</em> P(Target > Baseline) > 50% <em>AND</em> median delta > 0, ensuring we never fail on performance improvements.</li></ul><strong>Note:</strong> P(Target > Baseline) tells you <em>how much worse</em> target is, while p-value tells you <em>if it's real or noise</em>. Both are needed for complete understanding.<br/><br/><strong>📊 Multiple Testing:</strong> Only Mann-Whitney uses p-value hypothesis testing (α=0.05). Other gates (median delta, tail latency, directionality) use threshold comparisons, not p-values. This limits multiple testing inflation - the family-wise error rate is dominated by the single Mann-Whitney test, not compounded across all gates.</div></div></div>" if wil_rows else ""}
 
-    {"<div class='section'><div class='section-header' onclick='toggleSection(\"bootstrap\")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Range of uncertainty for the median performance change</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'>" + _mini_table(bci_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> We're 95% confident the true median change is between the CI low and high values. This accounts for measurement uncertainty.</div></div></div>" if bci_rows else ""}
+    {"<div class='section'><div class='section-header' onclick='toggleSection(\"bootstrap\")'><div><h2 class='section-title'>🎯 Bootstrap Confidence Interval</h2><div class='section-subtitle'>Quantifies uncertainty in the median performance difference using resampling</div></div><span class='toggle-icon'>▼</span></div><div id='bootstrap' class='section-content'>" + _mini_table(bci_rows) + (f"<div class='hint-box info' style='margin-top: 16px; padding: 12px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196f3;'>{bci_interpretation}</div>" if bci_interpretation else "") + "<div class='hint-box neutral'><strong>📊 Understanding Bootstrap Confidence Intervals:</strong><ul style='margin: 8px 0; padding-left: 20px;'><li><strong>What it means:</strong> We are 95% confident that the TRUE population median difference lies between the CI low and CI high values. This accounts for sampling variability and measurement uncertainty.</li><li><strong>How it works:</strong> The bootstrap method resamples the data 5,000 times (with replacement), calculates the median difference for each resample, then takes the 2.5th and 97.5th percentiles of these differences to form the confidence interval.</li><li><strong>Statistical significance:</strong> If the CI does NOT include 0, the difference is statistically significant at the 95% confidence level (equivalent to p < 0.05). If the CI includes 0, the difference may be due to random variation.</li><li><strong>General interpretation examples:</strong><ul style='margin-top: 4px;'><li>CI = [5ms, 12ms]: Clear regression (significant, entire interval positive)</li><li>CI = [-2ms, 8ms]: Inconclusive (includes 0, not statistically significant)</li><li>CI = [-15ms, -3ms]: Clear improvement (significant, entire interval negative)</li></ul></li></ul><strong>Note:</strong> This CI is for informational purposes and debugging. The actual PASS/FAIL decision uses the gate checks (median delta, tail latency, Mann-Whitney U, etc.). In <strong>release mode</strong>, the bootstrap CI is used for equivalence testing to determine if the entire CI falls within an acceptable margin.</div></div></div>" if bci_rows else ""}
 
     {"<div class='section'><div class='section-header' onclick='toggleSection(\"equivalence\")'><div><h2 class='section-title'>⚖️ Equivalence Test (Release Mode)</h2><div class='section-subtitle'>Checks if performance is 'close enough' to baseline</div></div><span class='toggle-icon'>▼</span></div><div id='equivalence' class='section-content'>" + _mini_table(eq_rows) + "<div class='hint-box neutral'><strong>What is this?</strong> In release mode, we test if the new version is equivalent to the old (within a margin). This is more permissive than regression testing.</div></div></div>" if eq_rows else ""}
 

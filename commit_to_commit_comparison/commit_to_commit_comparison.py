@@ -470,6 +470,8 @@ def gate_regression(
         "median_delta_ms": median_delta,
         "tail_threshold_ms": tail_threshold,
         "tail_delta_ms": tail_delta,
+        "baseline_tail": baseline_tail,
+        "target_tail": target_tail,
         "positive_fraction": positive_fraction,
         "baseline_cv": baseline_cv,
         "target_cv": target_cv,

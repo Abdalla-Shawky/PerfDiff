@@ -128,6 +128,172 @@ def _mini_table(rows: List[List[str]]) -> str:
     return "<table>" + "".join(trs) + "</table>"
 
 
+def _calculate_practical_impact(
+    delta_med: float,
+    delta_p90: float,
+    pos_frac: float,
+    base_med: float,
+    passed: bool,
+    inconclusive: bool,
+    details: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Calculate the practical impact of performance changes for end users.
+
+    Returns a dict with:
+    - title: Short title describing impact
+    - description: Detailed explanation
+    - icon: Emoji icon
+    - color: Color for styling
+    - severity: "info", "warning", "success", "error"
+    """
+    if inconclusive:
+        return {
+            "title": "Cannot Assess Impact",
+            "description": "Data quality is too poor to determine practical impact on users.",
+            "icon": "⚠️",
+            "color": "#ff9800",
+            "severity": "warning",
+            "bullets": []
+        }
+
+    # Calculate tail delta from details if available (more accurate than p90)
+    tail_delta = details.get("tail_delta_ms", delta_p90)
+
+    # Determine user distribution percentages
+    pct_slower = pos_frac * 100  # Percentage seeing slowdown
+    pct_faster = (1 - pos_frac) * 100  # Percentage seeing improvement
+
+    bullets = []
+
+    # Analyze median impact
+    median_pct = (delta_med / base_med * 100) if base_med > 0 else 0
+    if abs(delta_med) < 5:
+        median_impact = "negligible change"
+    elif delta_med < 0:
+        median_impact = f"<strong style='color: #4caf50;'>{abs(delta_med):.1f}ms faster</strong> ({abs(median_pct):.1f}% improvement)"
+    else:
+        median_impact = f"<strong style='color: #f44336;'>{delta_med:.1f}ms slower</strong> ({median_pct:.1f}% regression)"
+
+    bullets.append(f"<strong>Typical user</strong> (50th percentile): {median_impact}")
+
+    # Analyze tail impact
+    if abs(tail_delta) < 10:
+        tail_impact = "negligible change"
+    elif tail_delta < 0:
+        tail_impact = f"<strong style='color: #4caf50;'>{abs(tail_delta):.1f}ms faster</strong>"
+    else:
+        tail_impact = f"<strong style='color: #f44336;'>{tail_delta:.1f}ms slower</strong>"
+
+    bullets.append(f"<strong>Worst-case users</strong> (tail latency): {tail_impact}")
+
+    # Determine overall impact classification
+    median_improves = delta_med < -5
+    median_regresses = delta_med > 5
+    tail_improves = tail_delta < -10
+    tail_regresses = tail_delta > 10
+
+    # Conflicting signals - add distribution breakdown for mixed cases
+    if median_improves and tail_regresses:
+        # Add distribution breakdown for mixed impact
+        if pct_faster > 70:
+            bullets.append(f"<strong>{pct_faster:.0f}% of measurements improved</strong>, {pct_slower:.0f}% regressed")
+        elif pct_slower > 70:
+            bullets.append(f"<strong>{pct_slower:.0f}% of measurements regressed</strong>, {pct_faster:.0f}% improved")
+        else:
+            bullets.append(f"Distribution: {pct_faster:.0f}% improved, {pct_slower:.0f}% regressed")
+
+        return {
+            "title": "⚠️ Mixed Impact: Median Improves, Tail Regresses",
+            "description": (
+                "Most users will see better performance, but worst-case latency has degraded. "
+                "This may indicate issues like memory pressure, GC pauses, or resource contention that only affect some requests."
+            ),
+            "icon": "⚠️",
+            "color": "#ff9800",
+            "severity": "warning",
+            "bullets": bullets
+        }
+    elif median_regresses and tail_improves:
+        # Add distribution breakdown for mixed impact
+        if pct_faster > 70:
+            bullets.append(f"<strong>{pct_faster:.0f}% of measurements improved</strong>, {pct_slower:.0f}% regressed")
+        elif pct_slower > 70:
+            bullets.append(f"<strong>{pct_slower:.0f}% of measurements regressed</strong>, {pct_faster:.0f}% improved")
+        else:
+            bullets.append(f"Distribution: {pct_faster:.0f}% improved, {pct_slower:.0f}% regressed")
+
+        return {
+            "title": "⚠️ Mixed Impact: Median Regresses, Tail Improves",
+            "description": (
+                "Typical performance has degraded, but worst-case scenarios improved. "
+                "This trade-off may be acceptable if tail latency was previously problematic."
+            ),
+            "icon": "⚠️",
+            "color": "#ff9800",
+            "severity": "warning",
+            "bullets": bullets
+        }
+    elif median_improves and tail_improves:
+        # Clear improvement - don't add confusing distribution stats
+        return {
+            "title": "✅ Clear Improvement Across All Users",
+            "description": (
+                "Both typical and worst-case performance have improved. "
+                "This change is beneficial for all users."
+            ),
+            "icon": "✅",
+            "color": "#4caf50",
+            "severity": "success",
+            "bullets": bullets
+        }
+    elif median_regresses and tail_regresses:
+        # Clear regression - don't add confusing distribution stats
+        return {
+            "title": "❌ Clear Regression Across All Users",
+            "description": (
+                "Both typical and worst-case performance have degraded. "
+                "This change negatively impacts all users."
+            ),
+            "icon": "❌",
+            "color": "#f44336",
+            "severity": "error",
+            "bullets": bullets
+        }
+    else:
+        # Minor changes - add distribution breakdown to show variability
+        if pct_faster > 70:
+            bullets.append(f"<strong>{pct_faster:.0f}% of measurements improved</strong>, {pct_slower:.0f}% regressed")
+        elif pct_slower > 70:
+            bullets.append(f"<strong>{pct_slower:.0f}% of measurements regressed</strong>, {pct_faster:.0f}% improved")
+        else:
+            bullets.append(f"Distribution: {pct_faster:.0f}% improved, {pct_slower:.0f}% regressed")
+
+        if passed:
+            return {
+                "title": "✅ Minimal Performance Impact",
+                "description": (
+                    "Performance changes are within acceptable thresholds. "
+                    "Users are unlikely to notice any difference."
+                ),
+                "icon": "✅",
+                "color": "#4caf50",
+                "severity": "success",
+                "bullets": bullets
+            }
+        else:
+            return {
+                "title": "Performance Changes Detected",
+                "description": (
+                    "Some performance changes detected that exceed acceptable thresholds."
+                ),
+                "icon": "ℹ️",
+                "color": "#2196f3",
+                "severity": "info",
+                "bullets": bullets
+            }
+
+
 def render_html_report(
     title: str,
     baseline: List[float],
@@ -384,6 +550,15 @@ def render_html_report(
     if "threshold_ms" in details:
         summary_rows.append(["Gate threshold", _fmt_ms(float(details["threshold_ms"]))])
 
+    # Tail latency metrics (if present)
+    if "tail_delta_ms" in details:
+        summary_rows.extend([
+            ["Baseline tail (worst k)", _fmt_ms(float(details.get("baseline_tail", 0)))],
+            ["Target tail (worst k)", _fmt_ms(float(details.get("target_tail", 0)))],
+            ["Tail delta", _fmt_ms(float(details["tail_delta_ms"]))],
+            ["Tail threshold", _fmt_ms(float(details.get("tail_threshold_ms", 0)))],
+        ])
+
     # Mann-Whitney U test (if present)
     mw = details.get("mann_whitney")
     mw_rows = []
@@ -412,11 +587,42 @@ def render_html_report(
     # Bootstrap CI (if present)
     bci = details.get("bootstrap_ci_median")
     bci_rows = []
+    bci_interpretation = ""
     if isinstance(bci, dict):
+        ci_low = float(bci.get("low", 0.0))
+        ci_high = float(bci.get("high", 0.0))
+        confidence = float(bci.get("confidence", 0.95))
+
+        # Determine interpretation based on actual CI values
+        if ci_high < 0:
+            # Entire interval is negative - clear improvement
+            bci_interpretation = (
+                f"<strong>Interpretation for this trace:</strong> "
+                f"CI = [{ci_low:.1f}ms, {ci_high:.1f}ms] → "
+                f"<strong style='color: #4caf50;'>Clear improvement</strong> "
+                f"(statistically significant at {confidence*100:.0f}% level, entire interval is negative)"
+            )
+        elif ci_low > 0:
+            # Entire interval is positive - clear regression
+            bci_interpretation = (
+                f"<strong>Interpretation for this trace:</strong> "
+                f"CI = [{ci_low:.1f}ms, {ci_high:.1f}ms] → "
+                f"<strong style='color: #f44336;'>Clear regression</strong> "
+                f"(statistically significant at {confidence*100:.0f}% level, entire interval is positive)"
+            )
+        else:
+            # Interval includes 0 - not statistically significant
+            bci_interpretation = (
+                f"<strong>Interpretation for this trace:</strong> "
+                f"CI = [{ci_low:.1f}ms, {ci_high:.1f}ms] → "
+                f"<strong style='color: #ff9800;'>Not statistically significant</strong> "
+                f"(CI includes 0, difference may be due to random variation)"
+            )
+
         bci_rows = [
-            ["Bootstrap confidence", f'{float(bci.get("confidence", 0.95))*100:.1f}%'],
-            ["Median delta CI low", _fmt_ms(float(bci.get("low", 0.0)))],
-            ["Median delta CI high", _fmt_ms(float(bci.get("high", 0.0)))],
+            ["Bootstrap confidence", f'{confidence*100:.1f}%'],
+            ["Median delta CI low", _fmt_ms(ci_low)],
+            ["Median delta CI high", _fmt_ms(ci_high)],
             ["Bootstrap samples", str(bci.get("n_boot", ""))],
         ]
 
@@ -487,6 +693,17 @@ def render_html_report(
 
     # Determine chart color for target data (regression vs improvement)
     chart_target_color = CHART_COLOR_TARGET_REGRESSION if delta_med > 0 else CHART_COLOR_TARGET_IMPROVEMENT
+
+    # Calculate Practical Impact for end users
+    practical_impact = _calculate_practical_impact(
+        delta_med=delta_med,
+        delta_p90=delta_p90,
+        pos_frac=pos_frac,
+        base_med=base_med,
+        passed=passed,
+        inconclusive=inconclusive,
+        details=details
+    )
 
     # For template compatibility: add 'd' variable pointing to delta_for_viz
     d = delta_for_viz
