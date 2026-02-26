@@ -134,9 +134,19 @@ This tool: "PASS" (direction check prevents false failures) ✅
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (choose one method)
+
+# Method 1: Using requirements.txt (recommended)
+pip install -r requirements.txt
+
+# Method 2: Manual installation
 pip install numpy scipy pytest
 ```
+
+**Required dependencies:**
+- `numpy` (≥1.20.0) - Numerical computing
+- `scipy` (≥1.7.0) - Statistical functions (Mann-Whitney U test)
+- `pytest` (≥7.0.0) - Testing framework (optional, only needed for running tests)
 
 ### Try It Now (Mock Data)
 

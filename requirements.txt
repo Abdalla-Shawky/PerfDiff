@@ -1,0 +1,6 @@
+# Core dependencies for performance regression detection tool
+numpy>=1.20.0
+scipy>=1.7.0
+
+# Testing dependencies
+pytest>=7.0.0
