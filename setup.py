@@ -26,7 +26,7 @@ setup(
     description="Statistical performance regression detection tool with premium UI",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Performance Engineering Team",
+    author="Shawky",
     python_requires=">=3.8",
     packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "tests.*"]),
     install_requires=[
