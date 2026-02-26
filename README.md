@@ -130,54 +130,78 @@ This tool: "PASS" (direction check prevents false failures) ✅
 ### Installation
 
 ```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Method 1: Install from GitHub (recommended)
+pip install git+https://github.com/Abdalla-Shawky/PerfDiff.git@v1.0.0
 
-# Install dependencies (choose one method)
+# Method 2: Local development installation
+git clone https://github.com/Abdalla-Shawky/PerfDiff.git
+cd PerfDiff
+pip install -e .
 
-# Method 1: Using requirements.txt (recommended)
-pip install -r requirements.txt
-
-# Method 2: Manual installation
-pip install numpy scipy pytest
+# Verify installation
+perfdiff --help
 ```
 
-**Required dependencies:**
+**Dependencies (auto-installed):**
 - `numpy` (≥1.20.0) - Numerical computing
 - `scipy` (≥1.7.0) - Statistical functions (Mann-Whitney U test)
-- `pytest` (≥7.0.0) - Testing framework (optional, only needed for running tests)
 
 ### Try It Now (Mock Data)
 
 ```bash
-./run_comparison.sh \
+# Using CLI command
+perfdiff \
     commit2commit/mock_data/baseline_traces.json \
     commit2commit/mock_data/target_traces.json \
-    commit2commit/test_output
+    --output-dir ./test_output
+
+# Or using module directly
+python -m commit2commit.multi_trace_comparison \
+    commit2commit/mock_data/baseline_traces.json \
+    commit2commit/mock_data/target_traces.json \
+    --output-dir ./test_output
 
 # View results
-open commit2commit/test_output/index.html
+open test_output/index.html
 ```
 
 This will:
-- ✅ Process 10 sample traces with various scenarios
-- ✅ Generate HTML reports with interactive charts
+- ✅ Compare multiple performance traces (baseline vs target)
+- ✅ Generate interactive HTML reports with charts
 - ✅ Demonstrate all regression detection features
-- ✅ Show exit code 0 (success) or 1 (regression detected)
+- ✅ Exit code 0 (PASS) or 1 (FAIL with regressions detected)
 
-### Basic Usage
+### Usage Examples
 
+**Compare multiple traces (recommended):**
 ```bash
-python commit2commit/perf_html_report.py \
-  --baseline "[800,805,798,810,799,803,801,807,802,804]" \
-  --target   "[845,850,838,860,842,848,844,855,849,847]" \
-  --out performance_report.html
+# Create traces JSON files with your performance data
+perfdiff baseline_traces.json target_traces.json --output-dir ./reports
+
+# Output:
+# - reports/index.html (summary of all traces)
+# - reports/trace_name.html (detailed report for each trace)
 ```
 
-**Output:**
-- 📄 `generated_reports/performance_report.html` - Interactive HTML report
-- 🚦 Exit code 0 (pass) or 1 (fail) for CI/CD
+**Single trace comparison (for custom scripts):**
+```bash
+python -c "
+from commit2commit.trace_to_trace import gate_regression
+import numpy as np
+
+baseline = np.array([800, 805, 798, 810, 799, 803, 801, 807, 802, 804])
+target = np.array([845, 850, 838, 860, 842, 848, 844, 855, 849, 847])
+
+result = gate_regression(baseline, target)
+print(f'Verdict: {\"FAIL\" if not result.passed else \"PASS\"}')
+print(f'Reason: {result.reason}')
+"
+```
+
+**Expected output:**
+- 📄 HTML reports with interactive visualizations
+- 📊 Statistical analysis (Mann-Whitney U, Bootstrap CIs)
+- 🚦 Exit codes: 0 (PASS), 1 (FAIL), 2+ (ERROR)
 
 ---
 
@@ -247,43 +271,68 @@ The tool performs checks in this order:
 
 ## 💡 Examples
 
-### Example 1: Multi-Trace Comparison
+### Example 1: Multi-Trace Comparison (Recommended)
 
 ```bash
-./run_comparison.sh \
+# Using the CLI command
+perfdiff \
     commit2commit/mock_data/baseline_traces.json \
     commit2commit/mock_data/target_traces.json \
-    commit2commit/test_output
+    --output-dir ./test_output
 
-open commit2commit/test_output/index.html
+# Or using the module directly
+python -m commit2commit.multi_trace_comparison \
+    commit2commit/mock_data/baseline_traces.json \
+    commit2commit/mock_data/target_traces.json \
+    --output-dir ./test_output
+
+# View the results
+open test_output/index.html
 ```
 
-### Example 2: Basic Comparison
+### Example 2: Single Trace Programmatic Usage
 
-```bash
-python commit2commit/perf_html_report.py \
-  --baseline "[100,102,98,101,99]" \
-  --target   "[110,112,108,111,109]" \
-  --out report.html
+```python
+from commit2commit.trace_to_trace import gate_regression
+import numpy as np
+
+# Your performance measurements
+baseline = np.array([100, 102, 98, 101, 99])
+target = np.array([110, 112, 108, 111, 109])
+
+# Run statistical analysis
+result = gate_regression(baseline, target)
+
+# Check the verdict
+if result.passed:
+    print(f"✅ PASS: {result.reason}")
+else:
+    print(f"❌ FAIL: {result.reason}")
+
+# Access detailed metrics
+print(f"Median delta: {result.details['median_delta_ms']}ms")
+print(f"P-value: {result.details['mann_whitney_p']}")
 ```
 
 ### Example 3: CI/CD Integration
 
 ```bash
-# Run benchmarks (sequential testing - AAA BBB)
-./run_benchmarks.sh > baseline.txt
-./run_benchmarks.sh > target.txt
+# Install PerfDiff in your CI environment
+pip install git+https://github.com/Abdalla-Shawky/PerfDiff.git@v1.0.0
 
-# Check for regression
-python commit2commit/perf_html_report.py \
-  --baseline "$(cat baseline.txt)" \
-  --target "$(cat target.txt)" \
-  --out report.html
+# Run comparison (assumes you have baseline.json and target.json)
+perfdiff baseline_traces.json target_traces.json --output-dir ./reports
 
-# Exit code will be 1 if regression detected
-if [ $? -ne 0 ]; then
-  echo "❌ Performance regression detected!"
+# Check exit code
+if [ $? -eq 1 ]; then
+  echo "❌ Performance regressions detected!"
+  echo "📊 View detailed report: ./reports/index.html"
   exit 1
+elif [ $? -eq 0 ]; then
+  echo "✅ No regressions detected"
+else
+  echo "⚠️  Analysis error occurred"
+  exit 2
 fi
 ```
 
@@ -468,10 +517,10 @@ MIT License - Feel free to use in your projects!
 📊 **Technical Summary**: See [TOOL_TECHNICAL_SUMMARY.md](TOOL_TECHNICAL_SUMMARY.md)
 📊 **Statistical Details**: See [STATISTICAL_FIXES_SUMMARY.md](STATISTICAL_FIXES_SUMMARY.md)
 🧪 **Test Results**: See [TEST_REPORT.md](docs/TEST_REPORT.md)
-🚀 **Quick Start**: Try `./run_comparison.sh` with mock data
+🚀 **Quick Start**: Try `perfdiff baseline.json target.json --output-dir ./reports`
 
 ---
 
 **Built with statistical rigor. Tested thoroughly. Production ready.** 🚀
 
-**Version 4.0** - Critical Fixes · Appropriate Thresholds · No CV Contradictions · Tail-Only Regression Detection · 52/52 Tests Passing
+**Version 1.0.0** - Statistical Rigor · Platform Agnostic · pip Installable · 52/52 Tests Passing
