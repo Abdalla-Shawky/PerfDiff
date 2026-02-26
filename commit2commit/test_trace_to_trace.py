@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Comprehensive test suite for commit_to_commit_comparison.py
+Comprehensive test suite for trace_to_trace.py
 
 Tests all fixed issues and core functionality.
 """
 import pytest
 import numpy as np
-from commit2commit.commit_to_commit_comparison import (
+from commit2commit.trace_to_trace import (
     gate_regression,
     equivalence_bootstrap_median,
     GateResult,
@@ -962,7 +962,7 @@ class TestStatisticalFixes:
 
     def test_trimmed_tail_metric_calculation(self):
         """Verify trimmed mean tail metric works correctly (Fix 3)."""
-        from commit2commit.commit_to_commit_comparison import _calculate_robust_tail_metric
+        from commit2commit.trace_to_trace import _calculate_robust_tail_metric
 
         # Test case 1: Explicit k value (override adaptive)
         data1 = np.array([100, 105, 110, 115, 120])

@@ -50,7 +50,7 @@ SCRIPT_DIR="/Users/abdalla.ahmed/Documents/PerfDiff"
 cd "$SCRIPT_DIR"
 
 # Run the multi-trace comparison as a Python module
-python3 -m commit2commit.analyzer \
+python3 -m commit2commit.multi_trace_comparison \
     "$OLDPWD/$BASELINE_JSON" \
     "$OLDPWD/$TARGET_JSON" \
     --output-dir "$OLDPWD/$OUTPUT_DIR"

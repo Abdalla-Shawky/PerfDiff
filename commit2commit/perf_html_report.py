@@ -11,9 +11,9 @@ from typing import List, Any, Dict, Optional
 
 import numpy as np
 
-# ---- Import from your module (the one I gave you earlier) ----
-# If commit_to_commit_comparison.py is in the same package, import via package:
-from commit2commit.commit_to_commit_comparison import gate_regression, equivalence_bootstrap_median
+# ---- Import from trace_to_trace module ----
+# Import core statistical functions from the same package:
+from commit2commit.trace_to_trace import gate_regression, equivalence_bootstrap_median
 try:
     from perf_html_template import render_template
 except ImportError:

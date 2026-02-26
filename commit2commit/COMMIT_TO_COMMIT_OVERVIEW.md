@@ -146,14 +146,14 @@ statistical methods to make decisions that are robust to noise.
 
 ## Key Files
 
-- `commit_to_commit_comparison/commit_to_commit_comparison.py`
-  - Core regression gate logic
-- `commit_to_commit_comparison/perf_html_report.py`
+- `commit2commit/trace_to_trace.py`
+  - Core regression gate logic (single trace comparison)
+- `commit2commit/multi_trace_comparison.py`
+  - Orchestrator for comparing multiple traces + CLI
+- `commit2commit/perf_html_report.py`
   - HTML report generation (single trace)
-- `commit_to_commit_comparison/perf_html_template.py`
+- `commit2commit/perf_html_template.py`
   - UI template for reports
-- `commit_to_commit_comparison/multi_trace_comparison.py`
-  - Multi-trace comparison and HTML summary
 
 ---
 

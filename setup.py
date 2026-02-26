@@ -40,7 +40,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "perfdiff=commit2commit.analyzer:main",
+            "perfdiff=commit2commit.multi_trace_comparison:main",
         ],
     },
     include_package_data=True,

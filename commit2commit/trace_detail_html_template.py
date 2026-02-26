@@ -9,7 +9,7 @@ from html import escape
 from typing import List, Dict, Optional
 
 from .perf_html_report import render_html_report
-from .commit_to_commit_comparison import GateResult
+from .trace_to_trace import GateResult
 
 
 def render_trace_detail_template(

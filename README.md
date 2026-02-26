@@ -615,14 +615,14 @@ done
 ```
 .
 ├── commit2commit/
-│   ├── commit2commit.py  # Core regression detection logic
-│   ├── perf_html_report.py             # CLI and HTML report generation
+│   ├── trace_to_trace.py               # Core regression detection logic (single trace)
+│   ├── multi_trace_comparison.py       # Multi-trace comparison + CLI entry point
+│   ├── perf_html_report.py             # HTML report generation
 │   ├── perf_html_template.py           # HTML/CSS/JS template
-│   ├── analyzer.py       # Multi-trace comparison
-│   ├── test_commit2commit.py  # Test suite (52 tests)
+│   ├── constants.py                    # Configuration constants
+│   ├── test_trace_to_trace.py          # Test suite (52 tests)
 │   ├── mock_data/                      # Sample test data
 │   └── test_output/                    # Generated test reports
-├── constants.py                        # Configuration constants
 ├── STATISTICAL_FIXES_SUMMARY.md        # Statistical fixes documentation
 ├── README.md                           # This file
 ├── docs/                               # Documentation folder (20+ files)
