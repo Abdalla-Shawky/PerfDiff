@@ -40,12 +40,12 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "perfdiff=commit_to_commit_comparison.multi_trace_comparison:main",
+            "perfdiff=commit2commit.analyzer:main",
         ],
     },
     include_package_data=True,
     package_data={
-        "commit_to_commit_comparison": ["*.py"],
+        "commit2commit": ["*.py"],
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",

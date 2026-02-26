@@ -152,12 +152,12 @@ pip install numpy scipy pytest
 
 ```bash
 ./run_comparison.sh \
-    commit_to_commit_comparison/mock_data/baseline_traces.json \
-    commit_to_commit_comparison/mock_data/target_traces.json \
-    commit_to_commit_comparison/test_output
+    commit2commit/mock_data/baseline_traces.json \
+    commit2commit/mock_data/target_traces.json \
+    commit2commit/test_output
 
 # View results
-open commit_to_commit_comparison/test_output/index.html
+open commit2commit/test_output/index.html
 ```
 
 This will:
@@ -169,7 +169,7 @@ This will:
 ### Basic Usage
 
 ```bash
-python commit_to_commit_comparison/perf_html_report.py \
+python commit2commit/perf_html_report.py \
   --baseline "[800,805,798,810,799,803,801,807,802,804]" \
   --target   "[845,850,838,860,842,848,844,855,849,847]" \
   --out performance_report.html
@@ -443,17 +443,17 @@ The tool performs checks in this order:
 
 ```bash
 ./run_comparison.sh \
-    commit_to_commit_comparison/mock_data/baseline_traces.json \
-    commit_to_commit_comparison/mock_data/target_traces.json \
-    commit_to_commit_comparison/test_output
+    commit2commit/mock_data/baseline_traces.json \
+    commit2commit/mock_data/target_traces.json \
+    commit2commit/test_output
 
-open commit_to_commit_comparison/test_output/index.html
+open commit2commit/test_output/index.html
 ```
 
 ### Example 2: Basic Comparison
 
 ```bash
-python commit_to_commit_comparison/perf_html_report.py \
+python commit2commit/perf_html_report.py \
   --baseline "[100,102,98,101,99]" \
   --target   "[110,112,108,111,109]" \
   --out report.html
@@ -467,7 +467,7 @@ python commit_to_commit_comparison/perf_html_report.py \
 ./run_benchmarks.sh > target.txt
 
 # Check for regression
-python commit_to_commit_comparison/perf_html_report.py \
+python commit2commit/perf_html_report.py \
   --baseline "$(cat baseline.txt)" \
   --target "$(cat target.txt)" \
   --out report.html
@@ -488,8 +488,8 @@ fi
 pip install pytest
 
 # Run all tests
-cd commit_to_commit_comparison
-python -m pytest test_commit_to_commit_comparison.py -v
+cd commit2commit
+python -m pytest test_commit2commit.py -v
 
 # Expected output:
 # ========================= 52 passed in ~5.0s =========================
@@ -614,12 +614,12 @@ done
 
 ```
 .
-├── commit_to_commit_comparison/
-│   ├── commit_to_commit_comparison.py  # Core regression detection logic
+├── commit2commit/
+│   ├── commit2commit.py  # Core regression detection logic
 │   ├── perf_html_report.py             # CLI and HTML report generation
 │   ├── perf_html_template.py           # HTML/CSS/JS template
-│   ├── multi_trace_comparison.py       # Multi-trace comparison
-│   ├── test_commit_to_commit_comparison.py  # Test suite (52 tests)
+│   ├── analyzer.py       # Multi-trace comparison
+│   ├── test_commit2commit.py  # Test suite (52 tests)
 │   ├── mock_data/                      # Sample test data
 │   └── test_output/                    # Generated test reports
 ├── constants.py                        # Configuration constants

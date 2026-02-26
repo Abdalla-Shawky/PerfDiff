@@ -487,7 +487,7 @@ Action: Fix measurement methodology
 ## Getting Started
 
 ```python
-from commit_to_commit_comparison import gate_regression
+from commit2commit import gate_regression
 
 result = gate_regression(
     baseline=[...],  # Your baseline measurements

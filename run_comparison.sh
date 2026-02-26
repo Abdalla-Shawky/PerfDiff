@@ -11,9 +11,9 @@ if [ "$#" -ne 3 ]; then
     echo "Usage: $0 <baseline_json> <target_json> <output_dir>"
     echo ""
     echo "Example:"
-    echo "  $0 commit_to_commit_comparison/mock_data/baseline_traces.json \\"
-    echo "     commit_to_commit_comparison/mock_data/target_traces.json \\"
-    echo "     commit_to_commit_comparison/test_output"
+    echo "  $0 commit2commit/mock_data/baseline_traces.json \\"
+    echo "     commit2commit/mock_data/target_traces.json \\"
+    echo "     commit2commit/test_output"
     exit 1
 fi
 
@@ -50,7 +50,7 @@ SCRIPT_DIR="/Users/abdalla.ahmed/Documents/PerfDiff"
 cd "$SCRIPT_DIR"
 
 # Run the multi-trace comparison as a Python module
-python3 -m commit_to_commit_comparison.multi_trace_comparison \
+python3 -m commit2commit.analyzer \
     "$OLDPWD/$BASELINE_JSON" \
     "$OLDPWD/$TARGET_JSON" \
     --output-dir "$OLDPWD/$OUTPUT_DIR"
