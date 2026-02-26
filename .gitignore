@@ -53,4 +53,7 @@ Thumbs.db
 generated_reports/*.html
 commit_to_commit_comparison/test_output/*
 
+#claude
+.claude/settings.local.json
+
 
