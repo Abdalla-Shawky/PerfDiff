@@ -38,11 +38,6 @@ setup(
             "pytest>=7.0.0",
         ],
     },
-    entry_points={
-        "console_scripts": [
-            "perfdiff=commit2commit.multi_trace_comparison:main",
-        ],
-    },
     include_package_data=True,
     package_data={
         "commit2commit": ["*.py"],

@@ -157,7 +157,7 @@ cd PerfDiff
 pip install -e .
 
 # Verify installation
-perfdiff --help
+python3 -m commit2commit.multi_trace_comparison --help
 ```
 
 **Dependencies (auto-installed):**
@@ -167,14 +167,8 @@ perfdiff --help
 ### Try It Now (Mock Data)
 
 ```bash
-# Using CLI command
-perfdiff \
-    commit2commit/mock_data/baseline_traces.json \
-    commit2commit/mock_data/target_traces.json \
-    --output-dir ./test_output
-
-# Or using module directly
-python -m commit2commit.multi_trace_comparison \
+# Run analysis on mock data
+python3 -m commit2commit.multi_trace_comparison \
     commit2commit/mock_data/baseline_traces.json \
     commit2commit/mock_data/target_traces.json \
     --output-dir ./test_output
@@ -264,11 +258,14 @@ The tool performs checks in this order:
 
 ## 💡 Usage Examples
 
-### CLI Usage
+### Module Usage
 
 ```bash
 # Production use
-perfdiff baseline.json target.json --output-dir ./reports
+python3 -m commit2commit.multi_trace_comparison \
+    baseline.json \
+    target.json \
+    --output-dir ./reports
 ```
 
 ### Programmatic Usage
@@ -292,7 +289,10 @@ if not result.passed:
 
 ```bash
 pip install git+https://github.com/Abdalla-Shawky/PerfDiff.git@v1.0.0
-perfdiff baseline.json target.json --output-dir ./reports
+python3 -m commit2commit.multi_trace_comparison \
+    baseline.json \
+    target.json \
+    --output-dir ./reports
 [ $? -eq 1 ] && echo "❌ Regressions detected" && exit 1
 ```
 
@@ -437,7 +437,7 @@ PerfDiff/
 | Module | Purpose |
 |--------|---------|
 | `trace_to_trace.py` | Core statistical engine - compares one trace pair |
-| `multi_trace_comparison.py` | CLI tool - compares multiple traces, generates reports |
+| `multi_trace_comparison.py` | Orchestrator - compares multiple traces, generates reports |
 | `constants.py` | All thresholds (MS_FLOOR, PCT_FLOOR, CV limits, etc.) |
 | `perf_html_*.py` | HTML report generation with interactive charts |
 
