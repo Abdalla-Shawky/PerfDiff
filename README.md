@@ -14,6 +14,7 @@ A production-ready statistical tool for detecting performance regressions with *
 - [🎯 Why This Tool Exists](#-why-this-tool-exists)
 - [✅ What This Tool Does Differently](#-what-this-tool-does-differently)
 - [🚀 Quick Start](#-quick-start)
+- [🔬 Statistical Methodology](#-statistical-methodology)
 - [📖 Regression Detection Gates](#-regression-detection-gates)
 - [📊 Comparison Table](#-comparison-table)
 - [💡 Usage Examples](#-usage-examples)
@@ -186,6 +187,14 @@ open test_output/index.html
 - 📊 `test_output/index.html` - Summary of all traces
 - 📄 `test_output/[trace_name].html` - Detailed report per trace
 - 🚦 Exit code: 0 (PASS) or 1 (FAIL with regressions)
+
+---
+
+## 🔬 Statistical Methodology
+
+For the full statistical design and rationale (Mann-Whitney choice, adaptive tail metric, practical override, and multiple-testing notes), see:
+
+- [Statistical Methodology](docs/STATISTICAL_METHODOLOGY.md)
 
 ---
 
@@ -418,8 +427,6 @@ PerfDiff/
 ├── run_comparison.sh                       # Quick test script
 │
 ├── README.md                               # This file
-├── TOOL_TECHNICAL_SUMMARY.md              # Technical details
-├── EXECUTIVE_SUMMARY.md                   # High-level overview
 │
 └── docs/                                   # Detailed documentation
     └── STATISTICAL_METHODOLOGY.md
@@ -439,4 +446,3 @@ PerfDiff/
 ## 📄 License
 
 MIT License - Feel free to use in your projects!
-
